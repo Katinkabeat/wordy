@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts are loaded in index.html ── */
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: #faf5ff;
+  color: #3b0764;
+}
+
+/* ── Tile styling ── */
+.tile {
+  @apply flex items-center justify-center rounded-lg font-body font-bold select-none cursor-pointer transition-all duration-100;
+  background: linear-gradient(145deg, #f3e8ff, #e9d5ff);
+  border: 1.5px solid #c084fc;
+  box-shadow: 2px 3px 0px rgba(88, 28, 135, 0.4);
+  position: relative;
+}
+.tile:hover:not(.tile-disabled) {
+  box-shadow: 3px 4px 0px rgba(88, 28, 135, 0.5);
+  transform: translateY(-1px);
+}
+.tile.tile-selected {
+  @apply ring-2 ring-pink-400;
+  box-shadow: 0 0 0 3px #f472b6;
+  transform: translateY(-3px);
+}
+.tile.tile-placed {
+  background: linear-gradient(145deg, #e9d5ff, #d8b4fe);
+  box-shadow: 1px 2px 0px rgba(88, 28, 135, 0.3);
+}
+.tile.tile-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tile-value {
+  @apply absolute text-[9px] font-bold;
+  bottom: 2px;
+  right: 3px;
+  color: #7e22ce;
+}
+
+/* ── Board cell styling ── */
+.board-cell {
+  @apply flex items-center justify-center text-center rounded transition-colors duration-150 cursor-pointer;
+  aspect-ratio: 1;
+}
+.board-cell:hover.cell-empty {
+  @apply bg-purple-100;
+}
+.cell-normal  { @apply bg-purple-50  border border-purple-100; }
+.cell-tw      { background: #dc2626; color: white; }
+.cell-dw      { background: #f97316; color: white; }
+.cell-tl      { background: #2563eb; color: white; }
+.cell-dl      { background: #06b6d4; color: white; }
+.cell-centre  { background: #ec4899; color: white; }
+.cell-occupied{ @apply bg-transparent; }
+
+/* ── Button helpers ── */
+.btn-primary {
+  @apply px-4 py-2 rounded-xl font-bold text-white transition-all duration-150 active:scale-95;
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  box-shadow: 0 3px 0 #581c87;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active{ box-shadow: none; transform: translateY(2px); }
+
+.btn-secondary {
+  @apply px-4 py-2 rounded-xl font-bold border-2 border-purple-400 text-purple-700 bg-white transition-all duration-150 active:scale-95;
+}
+.btn-secondary:hover { @apply bg-purple-50; }
+
+.btn-danger {
+  @apply px-4 py-2 rounded-xl font-bold text-white bg-rose-500 transition-all duration-150 active:scale-95;
+  box-shadow: 0 3px 0 #9f1239;
+}
+
+/* ── Card / panel ── */
+.card {
+  @apply bg-white rounded-2xl shadow-md border border-purple-100 p-4;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: #f3e8ff; }
+::-webkit-scrollbar-thumb { background: #c084fc; border-radius: 3px; }

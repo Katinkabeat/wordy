@@ -1,6 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import toast from 'react-hot-toast'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { supabase } from '../../lib/supabase.js'
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+
+// The URL users are redirected to after clicking the email verification link.
+// Must match what's configured in Supabase → Authentication → URL Configuration.
+const SITE_URL = 'https://katinkabeat.github.io/wordy/'
 
 export default function AuthPage() {
   const [mode, setMode]       = useState('login')   // 'login' | 'register'
@@ -8,9 +15,18 @@ export default function AuthPage() {
   const [password, setPass]   = useState('')
   const [username, setUser]   = useState('')
   const [loading, setLoading] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const turnstileRef = useRef(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
+
+    // Block submission until CAPTCHA is solved (only when key is configured)
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      toast.error('Please complete the CAPTCHA check first.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -21,20 +37,41 @@ export default function AuthPage() {
         }
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: { data: { username } },
+          options: {
+            data: { username },
+            // Fix: tells Supabase where to send users after they click the
+            // verification link — must be the live site, not localhost.
+            emailRedirectTo: SITE_URL,
+            ...(captchaToken ? { captchaToken } : {}),
+          },
         })
         if (error) throw error
         toast.success('✨ Account created! Check your email to confirm.')
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { error } = await supabase.auth.signInWithPassword({
+          email, password,
+          options: captchaToken ? { captchaToken } : {},
+        })
         if (error) throw error
         toast.success('Welcome back! 🟣')
       }
     } catch (err) {
       toast.error(err.message ?? 'Something went wrong.')
+      // Always reset the CAPTCHA after an error so the user can try again
+      resetCaptcha()
     } finally {
       setLoading(false)
     }
+  }
+
+  function resetCaptcha() {
+    setCaptchaToken(null)
+    turnstileRef.current?.reset()
+  }
+
+  function switchMode(newMode) {
+    setMode(newMode)
+    resetCaptcha()
   }
 
   return (
@@ -58,7 +95,7 @@ export default function AuthPage() {
             {['login', 'register'].map(m => (
               <button
                 key={m}
-                onClick={() => setMode(m)}
+                onClick={() => switchMode(m)}
                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
                   mode === m
                     ? 'bg-wordy-600 text-white shadow'
@@ -101,8 +138,23 @@ export default function AuthPage() {
               />
             </div>
 
+            {/* Cloudflare Turnstile CAPTCHA */}
+            {TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={token => setCaptchaToken(token)}
+                  onExpire={resetCaptcha}
+                  onError={resetCaptcha}
+                  options={{ theme: 'light' }}
+                />
+              </div>
+            )}
+
             <button
-              type="submit" disabled={loading}
+              type="submit"
+              disabled={loading || (TURNSTILE_SITE_KEY && !captchaToken)}
               className="btn-primary w-full py-3 text-base disabled:opacity-60"
             >
               {loading
@@ -117,7 +169,7 @@ export default function AuthPage() {
             ? "Don't have an account? "
             : 'Already have an account? '}
           <button
-            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+            onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
             className="text-wordy-600 font-bold underline"
           >
             {mode === 'login' ? 'Sign up!' : 'Log in!'}

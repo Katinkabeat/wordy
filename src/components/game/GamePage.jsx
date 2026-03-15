@@ -314,6 +314,17 @@ export default function GamePage({ session }) {
     toast('🔄 Tiles exchanged!')
   }
 
+  // ── Shuffle rack ─────────────────────────────────────────
+  function shuffleRack() {
+    const shuffled = [...myPlayer.rack]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    setMyPlayer(prev => ({ ...prev, rack: shuffled }))
+    setSelected(null)
+  }
+
   // ── Forfeit ───────────────────────────────────────────────
   async function forfeitGame() {
     // Uses a SECURITY DEFINER function so it can update all players' rows
@@ -414,6 +425,17 @@ export default function GamePage({ session }) {
               }}
               myTurn={myTurn}
             />
+
+            {/* Shuffle button — available any time (pure visual reorder) */}
+            <div className="text-center">
+              <button
+                onClick={shuffleRack}
+                className="text-xs text-wordy-400 hover:text-wordy-600 transition-colors"
+                title="Shuffle your tiles"
+              >
+                🔀 Shuffle
+              </button>
+            </div>
 
             {/* Live score preview */}
             {liveScore !== null && (

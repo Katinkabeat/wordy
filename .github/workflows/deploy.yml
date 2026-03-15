@@ -6,7 +6,7 @@ on:
   workflow_dispatch:   # Also allow manual deploys from GitHub UI
 
 permissions:
-  contents: read
+  contents: hread
   pages: write
   id-token: write
 
@@ -38,7 +38,7 @@ jobs:
         env:
           VITE_SUPABASE_URL:      ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_TURNSTILE_SITE_KEY:    ${{ secrets.CLOUDFLARE_CAPTCHA }}
         run: npm run build
 
       - name: Upload build artifact

@@ -172,6 +172,7 @@ export default function GamePage({ session }) {
   // ── Submit word ───────────────────────────────────────────
   async function submitWord() {
     if (submitting || placements.length === 0) return
+    if (game.status !== 'active') return   // guard against post-forfeit submissions
     setSubmitting(true)
 
     try {
@@ -315,20 +316,12 @@ export default function GamePage({ session }) {
 
   // ── Forfeit ───────────────────────────────────────────────
   async function forfeitGame() {
-    // Mark every other player as winner
-    for (const p of players) {
-      await supabase.from('game_players').update({
-        is_winner: p.user_id !== user.id,
-      }).eq('game_id', gameId).eq('user_id', p.user_id)
-    }
-
-    await supabase.from('games').update({
-      status: 'finished',
-      finished_at: new Date().toISOString(),
-      forfeit_user_id: user.id,
-    }).eq('id', gameId)
-
-    await supabase.rpc('record_game_result', { p_game_id: gameId })
+    // Uses a SECURITY DEFINER function so it can update all players' rows
+    // regardless of RLS (which would otherwise block updating opponents' rows)
+    await supabase.rpc('forfeit_game', {
+      p_game_id: gameId,
+      p_forfeit_user_id: user.id,
+    })
     setForfeitModal(false)
   }
 
@@ -487,7 +480,7 @@ export default function GamePage({ session }) {
         <div className="bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
           <p className="font-display text-xl mb-1">
             {game.forfeit_user_id
-              ? `🏳️ ${profiles[game.forfeit_user_id] ?? '?'} forfeited — ${profiles[players.find(p => p.is_winner)?.user_id] ?? '?'} wins!`
+              ? `🏳️ ${profiles[game.forfeit_user_id] ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id] ?? '?'} wins!`
               : players.find(p => p.is_winner)
                 ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id] ?? '?'} wins!`
                 : "🏆 It's a tie!"}

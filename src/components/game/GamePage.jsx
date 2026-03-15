@@ -29,6 +29,7 @@ export default function GamePage({ session }) {
   const [exchangeMode, setExchange]   = useState(false)
   const [exchangeSel, setExchangeSel] = useState([])     // rack indices
   const [blankModal, setBlankModal]   = useState(null)   // { row, col } pending blank assignment
+  const [forfeitModal, setForfeitModal] = useState(false)
   const [profiles, setProfiles]       = useState({})
   const channelRef = useRef(null)
 
@@ -312,6 +313,25 @@ export default function GamePage({ session }) {
     toast('🔄 Tiles exchanged!')
   }
 
+  // ── Forfeit ───────────────────────────────────────────────
+  async function forfeitGame() {
+    // Mark every other player as winner
+    for (const p of players) {
+      await supabase.from('game_players').update({
+        is_winner: p.user_id !== user.id,
+      }).eq('game_id', gameId).eq('user_id', p.user_id)
+    }
+
+    await supabase.from('games').update({
+      status: 'finished',
+      finished_at: new Date().toISOString(),
+      forfeit_user_id: user.id,
+    }).eq('id', gameId)
+
+    await supabase.rpc('record_game_result', { p_game_id: gameId })
+    setForfeitModal(false)
+  }
+
   // ── Live score preview ────────────────────────────────────
   const liveScore = useMemo(() => {
     if (!board || placements.length === 0) return null
@@ -448,6 +468,16 @@ export default function GamePage({ session }) {
                 </button>
               </div>
             )}
+
+            {/* Forfeit — always visible while game is active */}
+            <div className="text-center pt-1">
+              <button
+                onClick={() => setForfeitModal(true)}
+                className="text-xs text-rose-400 hover:text-rose-600 underline transition-colors"
+              >
+                🏳️ Forfeit game
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -456,9 +486,11 @@ export default function GamePage({ session }) {
       {game.status === 'finished' && (
         <div className="bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
           <p className="font-display text-xl mb-1">
-            🏆 {players.find(p => p.is_winner)
-              ? `${profiles[players.find(p => p.is_winner)?.user_id] ?? '?'} wins!`
-              : "It's a tie!"}
+            {game.forfeit_user_id
+              ? `🏳️ ${profiles[game.forfeit_user_id] ?? '?'} forfeited — ${profiles[players.find(p => p.is_winner)?.user_id] ?? '?'} wins!`
+              : players.find(p => p.is_winner)
+                ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id] ?? '?'} wins!`
+                : "🏆 It's a tie!"}
           </p>
           <button onClick={() => navigate('/stats')} className="text-sm underline opacity-80 hover:opacity-100">
             View Stats →
@@ -469,6 +501,11 @@ export default function GamePage({ session }) {
       {/* Blank tile modal */}
       {blankModal && (
         <BlankTileModal onConfirm={confirmBlank} onCancel={() => setBlankModal(null)} />
+      )}
+
+      {/* Forfeit confirmation modal */}
+      {forfeitModal && (
+        <ForfeitModal onConfirm={forfeitGame} onCancel={() => setForfeitModal(false)} />
       )}
     </div>
   )
@@ -492,6 +529,29 @@ function BlankTileModal({ onConfirm, onCancel }) {
           ))}
         </div>
         <button onClick={onCancel} className="mt-3 w-full btn-secondary text-sm">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Forfeit confirmation ───────────────────────────────────────
+function ForfeitModal({ onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full text-center">
+        <p className="text-4xl mb-3">🏳️</p>
+        <h3 className="font-display text-xl text-wordy-700 mb-2">Forfeit this game?</h3>
+        <p className="text-sm text-wordy-400 mb-5">
+          Your opponent wins regardless of the current score.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 btn-secondary text-sm">
+            Keep Playing
+          </button>
+          <button onClick={onConfirm} className="flex-1 btn-danger text-sm">
+            Yes, Forfeit
+          </button>
+        </div>
       </div>
     </div>
   )

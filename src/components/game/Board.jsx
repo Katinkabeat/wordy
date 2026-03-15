@@ -39,6 +39,7 @@ export default function Board({ board, placements, onCellClick, myTurn }) {
             <div
               key={key}
               onClick={() => onCellClick(r, c)}
+              style={{ touchAction: 'manipulation' }}
               className={`board-cell ${bonus ? BONUS_CLASSES[bonus] : 'cell-normal'} ${myTurn && !cell ? 'cursor-pointer hover:opacity-80' : ''}`}
             >
               {bonus && (
@@ -65,6 +66,7 @@ function BoardTile({ letter, isBlank, isNew, onClick }) {
           ? 'linear-gradient(145deg, #f3e8ff, #e9d5ff)'
           : 'linear-gradient(145deg, #d8b4fe, #c084fc)',
         cursor: isNew ? 'pointer' : 'default',
+        touchAction: 'manipulation',
       }}
     >
       <div className="relative flex items-center justify-center w-full h-full">

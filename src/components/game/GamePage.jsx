@@ -105,8 +105,13 @@ export default function GamePage({ session }) {
       const newRack = [...(myPlayer.rack)]
       newRack.splice(removed.rackIdx, 0, removed.tileLetter)
       setMyPlayer(prev => ({ ...prev, rack: newRack }))
-      setPlacements(prev => prev.filter((_, i) => i !== existingIdx))
-      setSelected(null)
+setPlacements(prev => prev.filter((_, i) => i !== existingIdx))
+setBoard(prev => {
+  const newBoard = prev.map(r => [...r])
+  newBoard[row][col] = null
+  return newBoard
+})
+setSelected(null)
       return
     }
 

@@ -19,12 +19,20 @@ export default function StatsPage({ session }) {
       setProfile(prof)
 
       // Matchup stats vs each opponent
+      // Note: opponent_id FKs to auth.users, not public.profiles, so we
+      // fetch opponent usernames in a separate query to avoid a 400 error.
       const { data: mu } = await supabase
         .from('player_matchups')
-        .select('*, opponent:opponent_id ( profiles ( username ) )')
+        .select('*')
         .eq('player_id', user.id)
         .order('wins', { ascending: false })
-      setMatchups(mu ?? [])
+
+      const oppIds = (mu ?? []).map(m => m.opponent_id)
+      const { data: oppProfiles } = oppIds.length > 0
+        ? await supabase.from('profiles').select('id, username').in('id', oppIds)
+        : { data: [] }
+      const oppMap = Object.fromEntries((oppProfiles ?? []).map(p => [p.id, p.username]))
+      setMatchups((mu ?? []).map(m => ({ ...m, opponentName: oppMap[m.opponent_id] ?? 'Unknown' })))
 
       // Recent finished games I was in
       const { data: gp } = await supabase
@@ -84,7 +92,7 @@ export default function StatsPage({ session }) {
             <h2 className="font-display text-xl text-wordy-700 mb-3">🤝 Head-to-Head</h2>
             <div className="space-y-2">
               {matchups.map(m => {
-                const oppName  = m.opponent?.profiles?.username ?? 'Unknown'
+                const oppName  = m.opponentName ?? 'Unknown'
                 const total    = m.wins + m.losses
                 const pct      = total > 0 ? Math.round((m.wins / total) * 100) : 0
                 return (

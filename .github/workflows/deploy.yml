@@ -6,7 +6,7 @@ on:
   workflow_dispatch:   # Also allow manual deploys from GitHub UI
 
 permissions:
-  contents: hread
+  contents: read
   pages: write
   id-token: write
 

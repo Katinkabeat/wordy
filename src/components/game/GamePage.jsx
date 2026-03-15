@@ -79,13 +79,13 @@ export default function GamePage({ session }) {
   useEffect(() => { loadGame() }, [loadGame])
 
   // Real-time subscription
+  // Both handlers call loadGame() for a guaranteed fresh fetch.
+  // Note: game_players filters on game_id (non-PK), which requires
+  // REPLICA IDENTITY FULL on the table — set via SQL migration.
   useEffect(() => {
     channelRef.current = supabase.channel(`game-${gameId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-        payload => {
-          setGame(payload.new)
-          setBoard(deserializeBoard(payload.new.board))
-        }
+        () => loadGame()
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `game_id=eq.${gameId}` },
         () => loadGame()

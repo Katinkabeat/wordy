@@ -229,12 +229,14 @@ export default function GamePage({ session }) {
       }).eq('game_id', gameId).eq('user_id', user.id)
 
       if (over) {
-        for (const fp of finalPlayers) {
-          await supabase.from('game_players').update({
-            score: fp.score, is_winner: fp.is_winner ?? false,
-          }).eq('game_id', gameId).eq('user_id', fp.user_id)
-        }
-        await supabase.rpc('record_game_result', { p_game_id: gameId })
+        await supabase.rpc('finish_game', {
+          p_game_id: gameId,
+          p_player_results: finalPlayers.map(fp => ({
+            user_id:   fp.user_id,
+            score:     fp.score,
+            is_winner: fp.is_winner ?? false,
+          })),
+        })
       }
 
       await supabase.from('game_moves').insert({

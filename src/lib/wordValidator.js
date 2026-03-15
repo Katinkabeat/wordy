@@ -1,30 +1,43 @@
 // ────────────────────────────────────────────────────────────
-//  Word validation using the Free Dictionary API
-//  (https://dictionaryapi.dev) — no API key needed!
+//  Word validation using the Official Scrabble Players Dictionary
+//  (TWL – Tournament Word List, 173,145 words)
+//
+//  The word list lives in /public/words.txt and is loaded once
+//  on first use, then cached in a Set for O(1) lookups.
 // ────────────────────────────────────────────────────────────
 
-const cache = new Map()
+let wordSet = null          // Set<string> (uppercase) once loaded
+let loadPromise = null      // in-flight fetch — prevents duplicate requests
+
+async function loadWordList() {
+  if (wordSet) return wordSet
+  if (loadPromise) return loadPromise
+
+  loadPromise = fetch(`${import.meta.env.BASE_URL}words.txt`)
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to load word list: ${res.status}`)
+      return res.text()
+    })
+    .then(text => {
+      wordSet = new Set(text.split('\n').map(w => w.trim()).filter(Boolean))
+      return wordSet
+    })
+
+  return loadPromise
+}
 
 export async function isValidWord(word) {
-  const w = word.toUpperCase()
-  if (cache.has(w)) return cache.get(w)
+  const w = word.toUpperCase().trim()
 
-  // Single-letter "words" aren't valid in Scrabble (except I / A)
-  if (w.length === 1 && !['A','I'].includes(w)) {
-    cache.set(w, false)
-    return false
-  }
+  // Single-letter words: only A and I are valid in Scrabble
+  if (w.length === 1) return ['A', 'I'].includes(w)
 
   try {
-    const res = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${w.toLowerCase()}`
-    )
-    const valid = res.ok
-    cache.set(w, valid)
-    return valid
+    const set = await loadWordList()
+    return set.has(w)
   } catch {
-    // If the API is unreachable, we allow the word (don't punish connectivity issues)
-    cache.set(w, true)
+    // If the word list can't be loaded, allow the word
+    // (don't punish connectivity issues)
     return true
   }
 }

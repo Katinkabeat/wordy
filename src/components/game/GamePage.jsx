@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
@@ -312,6 +312,18 @@ export default function GamePage({ session }) {
     toast('🔄 Tiles exchanged!')
   }
 
+  // ── Live score preview ────────────────────────────────────
+  const liveScore = useMemo(() => {
+    if (!board || placements.length === 0) return null
+    try {
+      const words = extractWords(board, placements)
+      if (words.length === 0) return null
+      return calculateScore(board, placements, words)
+    } catch {
+      return null
+    }
+  }, [board, placements])
+
   // ── Render ────────────────────────────────────────────────
   if (!game || !board) {
     return (
@@ -389,6 +401,16 @@ export default function GamePage({ session }) {
               }}
               myTurn={myTurn}
             />
+
+            {/* Live score preview */}
+            {liveScore !== null && (
+              <div className="text-center">
+                <span className="inline-block bg-wordy-100 text-wordy-700 font-bold text-sm px-3 py-1 rounded-full">
+                  ✨ +{liveScore} pts
+                  {placements.length === 7 && <span className="ml-1 text-pink-500">🎉 Bingo!</span>}
+                </span>
+              </div>
+            )}
 
             {/* Action buttons */}
             {myTurn && !exchangeMode && (

@@ -3,7 +3,9 @@ import toast from 'react-hot-toast'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { supabase } from '../../lib/supabase.js'
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+// Site key is public (safe to commit — it's embedded in the browser bundle anyway).
+// The env var override allows using a different key in other environments.
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAACrUqndWqt4-0ExK'
 
 // The URL users are redirected to after clicking the email verification link.
 // Must match what's configured in Supabase → Authentication → URL Configuration.

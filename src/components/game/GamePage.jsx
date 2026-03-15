@@ -62,14 +62,17 @@ export default function GamePage({ session }) {
     const me = (ps ?? []).find(p => p.user_id === user.id)
     setMyPlayer(me ?? null)
 
-    // Load usernames
+    // Load usernames — only update if the query succeeds so a transient
+    // network failure on mobile doesn't wipe out already-loaded names
     const ids = (ps ?? []).map(p => p.user_id)
     if (ids.length) {
-      const { data: profs } = await supabase
+      const { data: profs, error: profsError } = await supabase
         .from('profiles').select('id, username').in('id', ids)
-      const map = {}
-      for (const p of (profs ?? [])) map[p.id] = p.username
-      setProfiles(map)
+      if (!profsError && profs) {
+        const map = {}
+        for (const p of profs) map[p.id] = p.username
+        setProfiles(map)
+      }
     }
   }, [gameId, user.id, navigate])
 
@@ -333,6 +336,8 @@ export default function GamePage({ session }) {
       p_game_id: gameId,
       p_forfeit_user_id: user.id,
     })
+    // Reload immediately so profiles/players are fresh before the banner renders
+    await loadGame()
     setForfeitModal(false)
   }
 

@@ -12,12 +12,13 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAA
 const SITE_URL = 'https://katinkabeat.github.io/wordy/'
 
 export default function AuthPage() {
-  const [mode, setMode]       = useState('login')   // 'login' | 'register'
-  const [email, setEmail]     = useState('')
-  const [password, setPass]   = useState('')
-  const [username, setUser]   = useState('')
-  const [loading, setLoading] = useState(false)
+  const [mode, setMode]           = useState('login')   // 'login' | 'register'
+  const [email, setEmail]         = useState('')
+  const [password, setPass]       = useState('')
+  const [username, setUser]       = useState('')
+  const [loading, setLoading]     = useState(false)
   const [captchaToken, setCaptchaToken] = useState(null)
+  const [registered, setRegistered] = useState(false)   // show confirmation screen
   const turnstileRef = useRef(null)
 
   async function handleSubmit(e) {
@@ -48,7 +49,7 @@ export default function AuthPage() {
           },
         })
         if (error) throw error
-        toast.success('✨ Account created! Check your email to confirm.')
+        setRegistered(true)
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email, password,
@@ -74,6 +75,35 @@ export default function AuthPage() {
   function switchMode(newMode) {
     setMode(newMode)
     resetCaptcha()
+  }
+
+  // ── Email confirmation screen ────────────────────────────
+  if (registered) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 p-4">
+        <div className="w-full max-w-sm">
+          <div className="card shadow-lg text-center space-y-4">
+            <div className="text-5xl">📧</div>
+            <h2 className="font-display text-2xl text-wordy-800">Check your email!</h2>
+            <p className="text-sm text-wordy-600 font-body">
+              We sent a confirmation link to <span className="font-bold text-wordy-700">{email}</span>.
+            </p>
+            <p className="text-sm text-wordy-500 font-body">
+              Click the link in that email to activate your account, then come back here to log in.
+            </p>
+            <p className="text-xs text-wordy-400 font-body">
+              Can't find it? Check your spam folder.
+            </p>
+            <button
+              onClick={() => { setRegistered(false); setMode('login') }}
+              className="btn-primary w-full py-3 text-base"
+            >
+              🔓 Go to log in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

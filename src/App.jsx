@@ -8,11 +8,15 @@ import GamePage  from './components/game/GamePage.jsx'
 import StatsPage from './components/stats/StatsPage.jsx'
 
 export default function App() {
-  const [session, setSession] = useState(undefined) // undefined = loading
+  const [session, setSession]     = useState(undefined) // undefined = loading
+  const [isRecovery, setIsRecovery] = useState(false)   // true when arriving via password-reset link
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
+    })
     return () => subscription.unsubscribe()
   }, [])
 
@@ -38,7 +42,11 @@ export default function App() {
         }}
       />
       <Routes>
-        <Route path="/auth"       element={!session ? <AuthPage />  : <Navigate to="/lobby" replace />} />
+        <Route path="/auth"       element={
+          (!session || isRecovery)
+            ? <AuthPage isRecovery={isRecovery} onPasswordReset={() => setIsRecovery(false)} />
+            : <Navigate to="/lobby" replace />
+        } />
         <Route path="/lobby"      element={session  ? <LobbyPage session={session} /> : <Navigate to="/auth" replace />} />
         <Route path="/game/:id"   element={session  ? <GamePage  session={session} /> : <Navigate to="/auth" replace />} />
         <Route path="/stats"      element={session  ? <StatsPage session={session} /> : <Navigate to="/auth" replace />} />

@@ -11,17 +11,22 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAA
 // Must match what's configured in Supabase → Authentication → URL Configuration.
 const SITE_URL = 'https://katinkabeat.github.io/wordy/'
 
-export default function AuthPage() {
-  const [mode, setMode]               = useState('login')   // 'login' | 'register'
+export default function AuthPage({ isRecovery = false, onPasswordReset = () => {} }) {
+  const [mode, setMode]               = useState('login')   // 'login' | 'register' | 'forgot'
   const [email, setEmail]             = useState('')
   const [password, setPass]           = useState('')
   const [confirm, setConfirm]         = useState('')
   const [username, setUser]           = useState('')
   const [loading, setLoading]         = useState(false)
   const [captchaToken, setCaptchaToken] = useState(null)
-  const [registered, setRegistered]   = useState(false)   // show confirmation screen
+  const [registered, setRegistered]   = useState(false)   // show email confirmation screen
+  const [resetSent, setResetSent]     = useState(false)   // show forgot-password confirmation screen
   const [showPass, setShowPass]       = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [newPass, setNewPass]         = useState('')
+  const [newConfirm, setNewConfirm]   = useState('')
+  const [showNewPass, setShowNewPass]     = useState(false)
+  const [showNewConfirm, setShowNewConfirm] = useState(false)
   const turnstileRef = useRef(null)
 
   async function handleSubmit(e) {
@@ -36,6 +41,15 @@ export default function AuthPage() {
     setLoading(true)
 
     try {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${SITE_URL}auth`,
+        })
+        if (error) throw error
+        setResetSent(true)
+        return
+      }
+
       if (mode === 'register') {
         if (username.length < 3) {
           toast.error('Username must be at least 3 characters.')
@@ -82,9 +96,111 @@ export default function AuthPage() {
   function switchMode(newMode) {
     setMode(newMode)
     setConfirm('')
+    setResetSent(false)
     setShowPass(false)
     setShowConfirm(false)
     resetCaptcha()
+  }
+
+  // ── Set new password screen (arrived via reset email link) ──
+  if (isRecovery) {
+    async function handleNewPassword(e) {
+      e.preventDefault()
+      if (newPass !== newConfirm) { toast.error('Passwords do not match.'); return }
+      setLoading(true)
+      try {
+        const { error } = await supabase.auth.updateUser({ password: newPass })
+        if (error) throw error
+        toast.success('Password updated! Please log in. 🟣')
+        onPasswordReset()
+      } catch (err) {
+        toast.error(err.message ?? 'Something went wrong.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 p-4">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-wordy-600 shadow-lg mb-3">
+              <span className="font-display text-4xl text-white tracking-tight">W</span>
+            </div>
+            <h1 className="font-display text-4xl text-wordy-800">Wordy</h1>
+          </div>
+          <div className="card shadow-lg">
+            <h2 className="font-display text-xl text-wordy-800 mb-5 text-center">🔑 Set a new password</h2>
+            <form onSubmit={handleNewPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-wordy-700 mb-1">New password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? 'text' : 'password'} value={newPass} onChange={e => setNewPass(e.target.value)}
+                    placeholder="••••••••" required minLength={6}
+                    className="w-full border-2 border-wordy-200 rounded-xl px-3 py-2 pr-10 text-sm font-body outline-none focus:border-wordy-400 bg-wordy-50"
+                  />
+                  <button type="button" onClick={() => setShowNewPass(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-base">
+                    {showNewPass ? '🙈' : '👁️'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-wordy-700 mb-1">Confirm new password</label>
+                <div className="relative">
+                  <input
+                    type={showNewConfirm ? 'text' : 'password'} value={newConfirm} onChange={e => setNewConfirm(e.target.value)}
+                    placeholder="••••••••" required
+                    className={`w-full border-2 rounded-xl px-3 py-2 pr-10 text-sm font-body outline-none bg-wordy-50 ${
+                      newConfirm && newConfirm !== newPass
+                        ? 'border-rose-400 focus:border-rose-500'
+                        : 'border-wordy-200 focus:border-wordy-400'
+                    }`}
+                  />
+                  <button type="button" onClick={() => setShowNewConfirm(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-base">
+                    {showNewConfirm ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {newConfirm && newConfirm !== newPass && (
+                  <p className="text-xs text-rose-500 mt-1">Passwords don't match.</p>
+                )}
+              </div>
+              <button type="submit" disabled={loading}
+                className="btn-primary w-full py-3 text-base disabled:opacity-60">
+                {loading ? '⏳ Please wait…' : '🔑 Update password'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Forgot-password confirmation screen ──────────────────
+  if (resetSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 p-4">
+        <div className="w-full max-w-sm">
+          <div className="card shadow-lg text-center space-y-4">
+            <div className="text-5xl">📧</div>
+            <h2 className="font-display text-2xl text-wordy-800">Check your email!</h2>
+            <p className="text-sm text-wordy-600 font-body">
+              We sent a password reset link to <span className="font-bold text-wordy-700">{email}</span>.
+            </p>
+            <p className="text-sm text-wordy-500 font-body">
+              Click the link in that email to choose a new password.
+            </p>
+            <p className="text-xs text-wordy-400 font-body">
+              Can't find it? Check your spam folder.
+            </p>
+            <button onClick={() => switchMode('login')} className="btn-primary w-full py-3 text-base">
+              🔓 Back to log in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // ── Email confirmation screen ────────────────────────────
@@ -150,6 +266,23 @@ export default function AuthPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Forgot password — email only */}
+            {mode === 'forgot' && (
+              <>
+                <p className="text-sm text-wordy-500 text-center font-body">
+                  Enter your email and we'll send you a reset link.
+                </p>
+                <div>
+                  <label className="block text-xs font-bold text-wordy-700 mb-1">Email</label>
+                  <input
+                    type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com" required
+                    className="w-full border-2 border-wordy-200 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-wordy-400 bg-wordy-50"
+                  />
+                </div>
+              </>
+            )}
+
             {mode === 'register' && (
               <div>
                 <label className="block text-xs font-bold text-wordy-700 mb-1">Username</label>
@@ -161,6 +294,7 @@ export default function AuthPage() {
                 />
               </div>
             )}
+            {mode !== 'forgot' && (
             <div>
               <label className="block text-xs font-bold text-wordy-700 mb-1">Email</label>
               <input
@@ -170,6 +304,8 @@ export default function AuthPage() {
                 className="w-full border-2 border-wordy-200 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-wordy-400 bg-wordy-50"
               />
             </div>
+            )}
+            {mode !== 'forgot' && (
             <div>
               <label className="block text-xs font-bold text-wordy-700 mb-1">Password</label>
               <div className="relative">
@@ -188,6 +324,17 @@ export default function AuthPage() {
                 </button>
               </div>
             </div>
+            )}
+
+            {/* Forgot password link — login tab only */}
+            {mode === 'login' && (
+              <div className="text-right -mt-2">
+                <button type="button" onClick={() => switchMode('forgot')}
+                  className="text-xs text-wordy-500 hover:text-wordy-700 underline">
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             {/* Confirm password — sign-up only */}
             {mode === 'register' && (
@@ -218,8 +365,8 @@ export default function AuthPage() {
               </div>
             )}
 
-            {/* Cloudflare Turnstile CAPTCHA */}
-            {TURNSTILE_SITE_KEY && (
+            {/* Cloudflare Turnstile CAPTCHA — not needed for password reset */}
+            {mode !== 'forgot' && TURNSTILE_SITE_KEY && (
               <div className="flex justify-center">
                 <Turnstile
                   ref={turnstileRef}
@@ -234,13 +381,25 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              disabled={loading || (TURNSTILE_SITE_KEY && !captchaToken)}
+              disabled={loading || (mode !== 'forgot' && TURNSTILE_SITE_KEY && !captchaToken)}
               className="btn-primary w-full py-3 text-base disabled:opacity-60"
             >
               {loading
                 ? '⏳ Please wait…'
-                : mode === 'login' ? '🔓 Log in' : '✨ Create account'}
+                : mode === 'login'   ? '🔓 Log in'
+                : mode === 'forgot'  ? '📧 Send reset link'
+                : '✨ Create account'}
             </button>
+
+            {/* Back to login link when in forgot mode */}
+            {mode === 'forgot' && (
+              <p className="text-center text-xs text-wordy-400">
+                <button type="button" onClick={() => switchMode('login')}
+                  className="text-wordy-600 font-bold underline">
+                  ← Back to log in
+                </button>
+              </p>
+            )}
           </form>
         </div>
 

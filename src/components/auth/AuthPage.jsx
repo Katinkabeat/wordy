@@ -32,8 +32,8 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
   async function handleSubmit(e) {
     e.preventDefault()
 
-    // Block submission until CAPTCHA is solved (login & register only)
-    if (mode !== 'forgot' && TURNSTILE_SITE_KEY && !captchaToken) {
+    // Block submission until CAPTCHA is solved (all modes)
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
       toast.error('Please complete the CAPTCHA check first.')
       return
     }
@@ -44,6 +44,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
       if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${SITE_URL}auth`,
+          ...(captchaToken ? { captchaToken } : {}),
         })
         if (error) throw error
         setResetSent(true)
@@ -365,8 +366,8 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
               </div>
             )}
 
-            {/* Cloudflare Turnstile CAPTCHA — not needed for password reset */}
-            {mode !== 'forgot' && TURNSTILE_SITE_KEY && (
+            {/* Cloudflare Turnstile CAPTCHA — required for all modes including password reset */}
+            {TURNSTILE_SITE_KEY && (
               <div className="flex justify-center">
                 <Turnstile
                   ref={turnstileRef}
@@ -381,7 +382,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
 
             <button
               type="submit"
-              disabled={loading || (mode !== 'forgot' && TURNSTILE_SITE_KEY && !captchaToken)}
+              disabled={loading || (TURNSTILE_SITE_KEY && !captchaToken)}
               className="btn-primary w-full py-3 text-base disabled:opacity-60"
             >
               {loading

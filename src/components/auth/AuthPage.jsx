@@ -12,13 +12,16 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAA
 const SITE_URL = 'https://katinkabeat.github.io/wordy/'
 
 export default function AuthPage() {
-  const [mode, setMode]           = useState('login')   // 'login' | 'register'
-  const [email, setEmail]         = useState('')
-  const [password, setPass]       = useState('')
-  const [username, setUser]       = useState('')
-  const [loading, setLoading]     = useState(false)
+  const [mode, setMode]               = useState('login')   // 'login' | 'register'
+  const [email, setEmail]             = useState('')
+  const [password, setPass]           = useState('')
+  const [confirm, setConfirm]         = useState('')
+  const [username, setUser]           = useState('')
+  const [loading, setLoading]         = useState(false)
   const [captchaToken, setCaptchaToken] = useState(null)
-  const [registered, setRegistered] = useState(false)   // show confirmation screen
+  const [registered, setRegistered]   = useState(false)   // show confirmation screen
+  const [showPass, setShowPass]       = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const turnstileRef = useRef(null)
 
   async function handleSubmit(e) {
@@ -36,6 +39,10 @@ export default function AuthPage() {
       if (mode === 'register') {
         if (username.length < 3) {
           toast.error('Username must be at least 3 characters.')
+          return
+        }
+        if (password !== confirm) {
+          toast.error('Passwords do not match.')
           return
         }
         const { error } = await supabase.auth.signUp({
@@ -74,6 +81,9 @@ export default function AuthPage() {
 
   function switchMode(newMode) {
     setMode(newMode)
+    setConfirm('')
+    setShowPass(false)
+    setShowConfirm(false)
     resetCaptcha()
   }
 
@@ -162,13 +172,51 @@ export default function AuthPage() {
             </div>
             <div>
               <label className="block text-xs font-bold text-wordy-700 mb-1">Password</label>
-              <input
-                type="password" value={password} onChange={e => setPass(e.target.value)}
-                placeholder="••••••••"
-                required minLength={6}
-                className="w-full border-2 border-wordy-200 rounded-xl px-3 py-2 text-sm font-body outline-none focus:border-wordy-400 bg-wordy-50"
-              />
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'} value={password} onChange={e => setPass(e.target.value)}
+                  placeholder="••••••••"
+                  required minLength={6}
+                  className="w-full border-2 border-wordy-200 rounded-xl px-3 py-2 pr-10 text-sm font-body outline-none focus:border-wordy-400 bg-wordy-50"
+                />
+                <button
+                  type="button" onClick={() => setShowPass(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-base"
+                  aria-label={showPass ? 'Hide password' : 'Show password'}
+                >
+                  {showPass ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
+
+            {/* Confirm password — sign-up only */}
+            {mode === 'register' && (
+              <div>
+                <label className="block text-xs font-bold text-wordy-700 mb-1">Confirm password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirm ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className={`w-full border-2 rounded-xl px-3 py-2 pr-10 text-sm font-body outline-none bg-wordy-50 ${
+                      confirm && confirm !== password
+                        ? 'border-rose-400 focus:border-rose-500'
+                        : 'border-wordy-200 focus:border-wordy-400'
+                    }`}
+                  />
+                  <button
+                    type="button" onClick={() => setShowConfirm(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-wordy-400 hover:text-wordy-700 text-base"
+                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirm ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {confirm && confirm !== password && (
+                  <p className="text-xs text-rose-500 mt-1">Passwords don't match.</p>
+                )}
+              </div>
+            )}
 
             {/* Cloudflare Turnstile CAPTCHA */}
             {TURNSTILE_SITE_KEY && (

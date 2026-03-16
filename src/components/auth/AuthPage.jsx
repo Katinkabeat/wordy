@@ -100,7 +100,13 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
     setResetSent(false)
     setShowPass(false)
     setShowConfirm(false)
-    resetCaptcha()
+    // Preserve the CAPTCHA token when switching TO forgot mode —
+    // the token from the login form is still valid and can be used
+    // for the password reset request immediately, without waiting
+    // for the widget to re-solve.
+    if (newMode !== 'forgot') {
+      resetCaptcha()
+    }
   }
 
   // ── Set new password screen (arrived via reset email link) ──

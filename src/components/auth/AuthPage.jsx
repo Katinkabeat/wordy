@@ -32,8 +32,8 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
   async function handleSubmit(e) {
     e.preventDefault()
 
-    // Block submission until CAPTCHA is solved (only when key is configured)
-    if (TURNSTILE_SITE_KEY && !captchaToken) {
+    // Block submission until CAPTCHA is solved (login & register only)
+    if (mode !== 'forgot' && TURNSTILE_SITE_KEY && !captchaToken) {
       toast.error('Please complete the CAPTCHA check first.')
       return
     }

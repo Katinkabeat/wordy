@@ -78,20 +78,43 @@ export default function GamePage({ session }) {
 
   useEffect(() => { loadGame() }, [loadGame])
 
-  // Real-time subscription
+  // Real-time subscription with auto-reconnect.
   // Both handlers call loadGame() for a guaranteed fresh fetch.
   // Note: game_players filters on game_id (non-PK), which requires
   // REPLICA IDENTITY FULL on the table — set via SQL migration.
   useEffect(() => {
-    channelRef.current = supabase.channel(`game-${gameId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-        () => loadGame()
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `game_id=eq.${gameId}` },
-        () => loadGame()
-      )
-      .subscribe()
-    return () => supabase.removeChannel(channelRef.current)
+    function subscribe() {
+      if (channelRef.current) supabase.removeChannel(channelRef.current)
+      channelRef.current = supabase.channel(`game-${gameId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
+          () => loadGame()
+        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `game_id=eq.${gameId}` },
+          () => loadGame()
+        )
+        .subscribe()
+    }
+
+    subscribe()
+
+    // When the tab/phone wakes back up, reload state and reconnect if needed.
+    // This handles the common case of taking a long time between turns.
+    function handleVisible() {
+      if (document.visibilityState !== 'visible') return
+      loadGame()
+      if (!channelRef.current || channelRef.current.state !== 'joined') {
+        subscribe()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisible)
+    window.addEventListener('focus', handleVisible)
+
+    return () => {
+      supabase.removeChannel(channelRef.current)
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.removeEventListener('focus', handleVisible)
+    }
   }, [gameId, loadGame])
 
   // ── Board cell click ──────────────────────────────────────

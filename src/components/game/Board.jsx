@@ -23,7 +23,7 @@ export default function Board({ board, placements, onCellClick, myTurn, cellSize
 
   return (
     <div
-      className="inline-grid gap-px bg-wordy-300 border-2 border-wordy-400 rounded-xl overflow-hidden shadow-lg"
+      className="inline-grid gap-px bg-wordy-300 border-2 border-wordy-400 overflow-hidden shadow-lg"
       style={{
         gridTemplateColumns: `repeat(15, ${cellSize}px)`,
         width:  totalSize,

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
 import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
+import AdminPanel from '../admin/AdminPanel.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
 
@@ -11,16 +12,24 @@ export default function LobbyPage({ session }) {
   const navigate = useNavigate()
   const user = session.user
 
-  const [profile, setProfile]     = useState(null)
-  const [games, setGames]         = useState([])
-  const [maxPlayers, setMax]      = useState(2)
-  const [creating, setCreating]   = useState(false)
-  const [joiningId, setJoiningId] = useState(null)
+  const [profile, setProfile]         = useState(null)
+  const [games, setGames]             = useState([])
+  const [maxPlayers, setMax]          = useState(2)
+  const [creating, setCreating]       = useState(false)
+  const [joiningId, setJoiningId]     = useState(null)
+  const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
+  const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
 
   // ── Load profile ──────────────────────────────────────────
   useEffect(() => {
     supabase.from('profiles').select('*').eq('id', user.id).single()
       .then(({ data }) => setProfile(data))
+  }, [user.id])
+
+  // ── Load admin status ─────────────────────────────────────
+  useEffect(() => {
+    supabase.from('admins').select('*').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setAdminRecord(data ?? null))
   }, [user.id])
 
   // ── Load available games ──────────────────────────────────
@@ -141,6 +150,18 @@ export default function LobbyPage({ session }) {
             <span className="font-display text-2xl text-wordy-700">Wordy</span>
           </div>
           <div className="flex items-center gap-3">
+            {adminRecord && (
+              <button
+                onClick={() => setLobbyTab(t => t === 'admin' ? 'lobby' : 'admin')}
+                className={`text-sm py-1.5 px-3 rounded-xl font-bold border-2 transition-all ${
+                  lobbyTab === 'admin'
+                    ? 'bg-wordy-600 text-white border-wordy-600'
+                    : 'border-wordy-200 text-wordy-600 hover:border-wordy-400'
+                }`}
+              >
+                🔐 Admin
+              </button>
+            )}
             <button onClick={() => navigate('/stats')} className="btn-secondary text-sm py-1.5 px-3">
               📊 Stats
             </button>
@@ -162,66 +183,76 @@ export default function LobbyPage({ session }) {
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Create game panel */}
-        <div className="card">
-          <h2 className="font-display text-xl text-wordy-700 mb-4">🌸 New Game</h2>
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label className="block text-xs font-bold text-wordy-600 mb-1">Players</label>
-              <div className="flex gap-2">
-                {[2, 3, 4].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setMax(n)}
-                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
-                      maxPlayers === n
-                        ? 'bg-wordy-600 text-white shadow'
-                        : 'border-2 border-wordy-200 text-wordy-500 hover:border-wordy-400'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
+        {/* Admin Panel */}
+        {lobbyTab === 'admin' && adminRecord && (
+          <AdminPanel session={session} adminRecord={adminRecord} />
+        )}
+
+        {/* Lobby content */}
+        {lobbyTab === 'lobby' && (
+          <>
+            {/* Create game panel */}
+            <div className="card">
+              <h2 className="font-display text-xl text-wordy-700 mb-4">🌸 New Game</h2>
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-wordy-600 mb-1">Players</label>
+                  <div className="flex gap-2">
+                    {[2, 3, 4].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setMax(n)}
+                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
+                          maxPlayers === n
+                            ? 'bg-wordy-600 text-white shadow'
+                            : 'border-2 border-wordy-200 text-wordy-500 hover:border-wordy-400'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={createGame} disabled={creating}
+                  className="btn-primary disabled:opacity-60"
+                >
+                  {creating ? '⏳ Creating…' : '✨ Create Game'}
+                </button>
               </div>
             </div>
-            <button
-              onClick={createGame} disabled={creating}
-              className="btn-primary disabled:opacity-60"
-            >
-              {creating ? '⏳ Creating…' : '✨ Create Game'}
-            </button>
-          </div>
-        </div>
 
-        {/* My active games */}
-        {myGames.length > 0 && (
-          <div className="card">
-            <h2 className="font-display text-xl text-wordy-700 mb-3">🎮 My Games</h2>
-            <div className="space-y-2">
-              {myGames.map(g => (
-                <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} />
-              ))}
-            </div>
-          </div>
-        )}
+            {/* My active games */}
+            {myGames.length > 0 && (
+              <div className="card">
+                <h2 className="font-display text-xl text-wordy-700 mb-3">🎮 My Games</h2>
+                <div className="space-y-2">
+                  {myGames.map(g => (
+                    <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Open games to join */}
-        {openGames.length > 0 && (
-          <div className="card">
-            <h2 className="font-display text-xl text-wordy-700 mb-3">🚪 Open Games</h2>
-            <div className="space-y-2">
-              {openGames.map(g => (
-                <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} />
-              ))}
-            </div>
-          </div>
-        )}
+            {/* Open games to join */}
+            {openGames.length > 0 && (
+              <div className="card">
+                <h2 className="font-display text-xl text-wordy-700 mb-3">🚪 Open Games</h2>
+                <div className="space-y-2">
+                  {openGames.map(g => (
+                    <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {games.length === 0 && (
-          <div className="text-center py-12 text-wordy-300">
-            <div className="text-5xl mb-3">🟣</div>
-            <p className="font-display text-xl">No games yet — be the first to create one!</p>
-          </div>
+            {games.length === 0 && (
+              <div className="text-center py-12 text-wordy-300">
+                <div className="text-5xl mb-3">🟣</div>
+                <p className="font-display text-xl">No games yet — be the first to create one!</p>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

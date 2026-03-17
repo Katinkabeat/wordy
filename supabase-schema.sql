@@ -174,3 +174,13 @@ CREATE POLICY "matchups: upsert"      ON public.player_matchups FOR ALL  USING (
 ALTER PUBLICATION supabase_realtime ADD TABLE public.games;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.game_players;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.game_moves;
+
+-- ── 8. ADMIN SYSTEM ──────────────────────────────────────────
+-- See admin-migration.sql for full setup instructions.
+-- Run admin-migration.sql AFTER this schema to set up:
+--   • public.admins table (user_id, permissions[], is_master, added_by)
+--   • RLS policies (read own row; master can read/write all)
+--   • admin_close_game(UUID) — SECURITY DEFINER function to close any game
+--   • admin_list_profiles()  — returns all profiles for admin user picker
+--   • admin_list_open_games() — returns all waiting/active games for admin panel
+--   • Seeds tracey8008@hotmail.com as master admin with close_games permission

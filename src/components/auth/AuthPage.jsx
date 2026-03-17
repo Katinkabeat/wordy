@@ -43,7 +43,9 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
     try {
       if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${SITE_URL}auth`,
+          // Use the root URL so GitHub Pages serves index.html directly
+          // (avoids the 404-redirect that would strip the #type=recovery hash)
+          redirectTo: SITE_URL,
           ...(captchaToken ? { captchaToken } : {}),
         })
         if (error) throw error

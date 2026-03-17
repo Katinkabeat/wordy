@@ -9,7 +9,11 @@ import StatsPage from './components/stats/StatsPage.jsx'
 
 export default function App() {
   const [session, setSession]     = useState(undefined) // undefined = loading
-  const [isRecovery, setIsRecovery] = useState(false)   // true when arriving via password-reset link
+  // Detect password-recovery link immediately from the URL hash — before the
+  // async getSession() resolves — so we never accidentally redirect to /lobby.
+  const [isRecovery, setIsRecovery] = useState(
+    () => window.location.hash.includes('type=recovery')
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
@@ -50,7 +54,7 @@ export default function App() {
         <Route path="/lobby"      element={session  ? <LobbyPage session={session} /> : <Navigate to="/auth" replace />} />
         <Route path="/game/:id"   element={session  ? <GamePage  session={session} /> : <Navigate to="/auth" replace />} />
         <Route path="/stats"      element={session  ? <StatsPage session={session} /> : <Navigate to="/auth" replace />} />
-        <Route path="*"           element={<Navigate to={session ? '/lobby' : '/auth'} replace />} />
+        <Route path="*"           element={<Navigate to={isRecovery ? '/auth' : session ? '/lobby' : '/auth'} replace />} />
       </Routes>
     </>
   )

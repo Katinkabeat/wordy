@@ -38,7 +38,8 @@ export default function GamePage({ session }) {
     const vw = window.innerWidth
     if (vw >= 1024) return 38                                   // desktop → 584px board
     if (vw >= 768)  return 32                                   // tablet  → 494px board
-    return Math.max(22, Math.floor((vw * 0.92 - 14) / 15))     // mobile  → fills ~92% of screen
+    // Container has p-3 (24px total) + 8px safety margin = 32px, plus 14px of gaps
+    return Math.max(20, Math.floor((vw - 46) / 15))
   }, [])
 
   // ── Helpers ───────────────────────────────────────────────

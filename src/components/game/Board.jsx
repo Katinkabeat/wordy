@@ -15,8 +15,8 @@ const BONUS_CLASSES = {
 export default function Board({ board, placements, onCellClick, myTurn, cellSize = 36 }) {
   const placedSet = new Set(placements.map(p => `${p.row},${p.col}`))
 
-  // 15 cells × cellSize + 14 one-pixel gaps + 2px outer border
-  const totalSize  = 15 * cellSize + 14
+  // 15 cells × cellSize + 14 one-pixel gaps + 4px for border-2 (2px each side)
+  const totalSize  = 15 * cellSize + 18
   const letterSize = Math.max(8,  Math.round(cellSize * 0.38))
   const valueSize  = Math.max(5,  Math.round(cellSize * 0.22))
   const bonusSize  = Math.max(6,  Math.round(cellSize * 0.26))

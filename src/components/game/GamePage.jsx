@@ -33,6 +33,29 @@ export default function GamePage({ session }) {
   const [profiles, setProfiles]       = useState({})
   const channelRef = useRef(null)
 
+  // ── Zoom / cell size ──────────────────────────────────────
+  // cellSize is the pixel width/height of each board cell.
+  // We start at a device-appropriate default and let the user zoom in/out.
+  const [cellSize, setCellSize] = useState(() => {
+    const vw = window.innerWidth
+    if (vw >= 1024) return 38                                        // desktop  → 584px board
+    if (vw >= 768)  return 32                                        // tablet   → 494px board
+    return Math.max(22, Math.floor((vw * 0.92 - 14) / 15))          // mobile   → fills ~92% of screen
+  })
+
+  const MIN_CELL  = 20   // tiny (≈300px board) — still playable
+  const MAX_CELL  = 62   // large (≈944px board) — great for desktop zoom
+  const ZOOM_STEP = 4    // px per tap
+
+  function zoomIn()    { setCellSize(s => Math.min(s + ZOOM_STEP, MAX_CELL)) }
+  function zoomOut()   { setCellSize(s => Math.max(s - ZOOM_STEP, MIN_CELL)) }
+  function zoomReset() {
+    const vw = window.innerWidth
+    if (vw >= 1024) setCellSize(38)
+    else if (vw >= 768) setCellSize(32)
+    else setCellSize(Math.max(22, Math.floor((vw * 0.92 - 14) / 15)))
+  }
+
   // ── Helpers ───────────────────────────────────────────────
   const isMyTurn = useCallback(() => {
     if (!game || !myPlayer) return false
@@ -391,9 +414,12 @@ export default function GamePage({ session }) {
   const myTurn = isMyTurn()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50 flex flex-col">
+    // h-screen + overflow-hidden keeps the rack always visible at the bottom.
+    // The board area scrolls independently when zoomed in.
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-wordy-50 to-pink-50 flex flex-col">
+
       {/* Header */}
-      <header className="bg-white border-b border-wordy-100 shadow-sm">
+      <header className="bg-white border-b border-wordy-100 shadow-sm shrink-0">
         <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between gap-3">
           <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 text-sm font-bold">
             ← Lobby
@@ -413,8 +439,10 @@ export default function GamePage({ session }) {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full p-3">
-        {/* Score panel */}
+      {/* Middle section: score + board (scrollable) */}
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-2 max-w-6xl mx-auto w-full px-3 pt-2 pb-1 min-h-0">
+
+        {/* Score panel — desktop sidebar / mobile top bar */}
         <div className="lg:w-48 shrink-0">
           <ScorePanel
             players={players}
@@ -425,14 +453,48 @@ export default function GamePage({ session }) {
           />
         </div>
 
-        {/* Board */}
-        <div className="flex-1 flex items-center justify-center">
-          <Board
-            board={board}
-            placements={placements}
-            onCellClick={handleCellClick}
-            myTurn={myTurn}
-          />
+        {/* Board area — independently scrollable */}
+        <div
+          className="flex-1 overflow-auto min-h-0"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {/* Zoom controls — always visible above the board */}
+          <div className="flex items-center justify-center gap-2 mb-2 sticky left-0">
+            <button
+              onClick={zoomOut}
+              disabled={cellSize <= MIN_CELL}
+              className="w-8 h-8 rounded-lg bg-white border-2 border-wordy-200 text-wordy-600 font-bold text-lg leading-none hover:border-wordy-400 disabled:opacity-30 transition-all flex items-center justify-center"
+              title="Zoom out"
+            >
+              −
+            </button>
+            <button
+              onClick={zoomReset}
+              className="text-xs font-bold text-wordy-400 hover:text-wordy-600 transition-colors px-1 min-w-[3rem] text-center"
+              title="Reset zoom"
+            >
+              {Math.round((cellSize / 38) * 100)}%
+            </button>
+            <button
+              onClick={zoomIn}
+              disabled={cellSize >= MAX_CELL}
+              className="w-8 h-8 rounded-lg bg-white border-2 border-wordy-200 text-wordy-600 font-bold text-lg leading-none hover:border-wordy-400 disabled:opacity-30 transition-all flex items-center justify-center"
+              title="Zoom in"
+            >
+              +
+            </button>
+          </div>
+
+          {/* Board — centred, scrolls when larger than container */}
+          <div className="flex justify-center pb-2">
+            <Board
+              board={board}
+              placements={placements}
+              onCellClick={handleCellClick}
+              myTurn={myTurn}
+              cellSize={cellSize}
+            />
+          </div>
         </div>
       </div>
 

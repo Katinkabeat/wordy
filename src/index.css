@@ -43,14 +43,16 @@ body {
 }
 
 /* ── Board cell styling ── */
+/* Note: no rounded corners or cell-level border — grid gap handles separators.
+   Removing rounded removes sub-pixel aliasing that causes the "wavy" illusion. */
 .board-cell {
-  @apply flex items-center justify-center text-center rounded transition-colors duration-150 cursor-pointer;
-  aspect-ratio: 1;
+  @apply flex items-center justify-center text-center transition-colors duration-150 cursor-pointer;
 }
 .board-cell:hover.cell-empty {
   @apply bg-purple-100;
 }
-.cell-normal  { @apply bg-purple-50  border border-purple-100; }
+/* No border on normal cells — the 1px grid gap (bg-wordy-300) is the separator */
+.cell-normal  { @apply bg-purple-50; }
 .cell-tw      { background: #dc2626; color: white; }
 .cell-dw      { background: #f97316; color: white; }
 .cell-tl      { background: #2563eb; color: white; }

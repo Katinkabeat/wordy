@@ -6,10 +6,11 @@ export default function StatsPage({ session }) {
   const navigate = useNavigate()
   const user     = session.user
 
-  const [profile,   setProfile]  = useState(null)
-  const [matchups,  setMatchups] = useState([])
-  const [history,   setHistory]  = useState([])
-  const [loading,   setLoading]  = useState(true)
+  const [profile,     setProfile]     = useState(null)
+  const [matchups,    setMatchups]    = useState([])
+  const [history,     setHistory]     = useState([])
+  const [leaderboard, setLeaderboard] = useState([])
+  const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
     async function load() {
@@ -17,6 +18,10 @@ export default function StatsPage({ session }) {
       const { data: prof } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
       setProfile(prof)
+
+      // All-time high score leaderboard (excludes 'test' usernames)
+      const { data: lb } = await supabase.rpc('get_leaderboard')
+      setLeaderboard(lb ?? [])
 
       // Matchup stats vs each opponent
       // Note: opponent_id FKs to auth.users, not public.profiles, so we
@@ -79,6 +84,59 @@ export default function StatsPage({ session }) {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+
+        {/* All-time leaderboard */}
+        {leaderboard.length > 0 && (
+          <div className="card">
+            <h2 className="font-display text-xl text-wordy-700 mb-3">🏆 All-Time High Scores</h2>
+            <div className="space-y-1.5">
+              {leaderboard.map((entry, i) => {
+                const isMe    = entry.user_id === user.id
+                const medal   = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                const rankStr = medal ?? `${i + 1}`
+
+                return (
+                  <div
+                    key={entry.user_id}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 border transition-all ${
+                      isMe
+                        ? 'bg-wordy-100 border-wordy-300'
+                        : i < 3
+                        ? 'bg-wordy-50 border-wordy-100'
+                        : 'bg-white border-wordy-50'
+                    }`}
+                  >
+                    {/* Rank */}
+                    <div className="w-8 text-center shrink-0">
+                      {medal
+                        ? <span className="text-xl">{medal}</span>
+                        : <span className="text-sm font-bold text-wordy-400">{rankStr}</span>
+                      }
+                    </div>
+
+                    {/* Username */}
+                    <span className={`flex-1 text-sm font-bold truncate ${isMe ? 'text-wordy-700' : 'text-wordy-600'}`}>
+                      {entry.username}{isMe ? ' (you)' : ''}
+                    </span>
+
+                    {/* Stats */}
+                    <div className="text-right shrink-0">
+                      <div className="font-display text-lg text-wordy-800 leading-none">
+                        {entry.best_score}
+                        <span className="text-xs font-normal text-wordy-400 ml-1">pts</span>
+                      </div>
+                      <div className="text-[10px] text-wordy-400 font-bold">
+                        {entry.total_wins}W / {entry.games_played}G
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-wordy-300 mt-3 text-right">Best single-game score · all time</p>
+          </div>
+        )}
+
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard emoji="🏆" label="Total Wins"  value={totalWins}  color="wordy" />

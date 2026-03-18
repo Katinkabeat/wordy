@@ -102,8 +102,11 @@ body {
 
 /* ── Page gradients → solid dark background ── */
 .dark .from-wordy-50  { --tw-gradient-from: #0f0a1e; }
+.dark .from-wordy-100 { --tw-gradient-from: #0f0a1e; }
 .dark .via-pink-50    { --tw-gradient-via:  #130c25; }
+.dark .via-pink-100   { --tw-gradient-via:  #130c25; }
 .dark .to-wordy-100   { --tw-gradient-to:   #0f0a1e; }
+.dark .to-wordy-200   { --tw-gradient-to:   #130c25; }
 .dark .to-pink-50     { --tw-gradient-to:   #130c25; }
 .dark .from-pink-50   { --tw-gradient-from: #130c25; }
 

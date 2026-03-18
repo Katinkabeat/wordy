@@ -89,15 +89,17 @@ function BoardTile({ letter, isBlank, isNew, onClick, letterSize, valueSize }) {
       }}
     >
       <div className="relative flex items-center justify-center w-full h-full">
+        {/* Tile text uses inline colour so dark-mode CSS overrides never touch it.
+            The tile background is always light (inline style), so text must always be dark. */}
         <span
-          style={{ fontSize: letterSize }}
-          className="font-display text-wordy-900 select-none leading-none"
+          style={{ fontSize: letterSize, color: '#3b0764' }}
+          className="font-display select-none leading-none"
         >
           {letter}
         </span>
         <span
-          style={{ fontSize: valueSize }}
-          className="absolute bottom-px right-px text-wordy-700 font-bold select-none leading-none"
+          style={{ fontSize: valueSize, color: '#6d28d9' }}
+          className="absolute bottom-px right-px font-bold select-none leading-none"
         >
           {val > 0 ? val : ''}
         </span>

@@ -457,6 +457,11 @@ export default function GamePage({ session }) {
             cellSize={cellSize}
           />
         </div>
+
+        {/* Invisible spacer — mirrors the score panel width so the board
+            stays centred relative to the full page (not just the remaining space).
+            Must always match the score panel's lg:w-48 class. */}
+        <div className="hidden lg:block lg:w-48 shrink-0" aria-hidden="true" />
       </div>
 
       {/* Bottom controls (shown only to the current player) */}

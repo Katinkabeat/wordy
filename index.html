@@ -11,6 +11,8 @@
       href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <!-- Prevent flash of wrong theme: apply dark class synchronously before React renders -->
+    <script>if(localStorage.getItem('wordy-theme')==='dark')document.documentElement.classList.add('dark')</script>
   </head>
   <body>
     <div id="root"></div>

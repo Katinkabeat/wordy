@@ -2,12 +2,23 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { supabase } from './lib/supabase.js'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
 import AuthPage  from './components/auth/AuthPage.jsx'
 import LobbyPage from './components/lobby/LobbyPage.jsx'
 import GamePage  from './components/game/GamePage.jsx'
 import StatsPage from './components/stats/StatsPage.jsx'
 
+// Wrap in ThemeProvider so every page has access to isDark / toggle
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
+  )
+}
+
+function AppInner() {
+  const { isDark } = useTheme()
   const [session, setSession]     = useState(undefined) // undefined = loading
   // Detect password-recovery link immediately from the URL hash — before the
   // async getSession() resolves — so we never accidentally redirect to /lobby.
@@ -26,10 +37,10 @@ export default function App() {
 
   if (session === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-wordy-50">
+      <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
         <div className="text-center">
           <div className="text-5xl mb-4 animate-bounce">🟣</div>
-          <p className="font-display text-2xl text-wordy-600">Loading Wordy…</p>
+          <p className="font-display text-2xl text-wordy-600 dark:text-wordy-300">Loading Wordy…</p>
         </div>
       </div>
     )
@@ -40,9 +51,18 @@ export default function App() {
       <Toaster
         position="top-center"
         toastOptions={{
-          style: { fontFamily: 'Nunito, sans-serif', borderRadius: '12px' },
-          success: { style: { background: '#f3e8ff', color: '#581c87', border: '1px solid #c084fc' } },
-          error:   { style: { background: '#fff1f2', color: '#9f1239', border: '1px solid #fda4af' } },
+          style: {
+            fontFamily: 'Nunito, sans-serif', borderRadius: '12px',
+            background: isDark ? '#1a1130' : undefined,
+            color:      isDark ? '#ede0ff' : undefined,
+            border:     isDark ? '1px solid #3d2070' : undefined,
+          },
+          success: { style: isDark
+            ? { background: '#1a1130', color: '#c4b5fd', border: '1px solid #6d28d9' }
+            : { background: '#f3e8ff', color: '#581c87', border: '1px solid #c084fc' } },
+          error: { style: isDark
+            ? { background: '#2d0a0a', color: '#fca5a5', border: '1px solid #7f1d1d' }
+            : { background: '#fff1f2', color: '#9f1239', border: '1px solid #fda4af' } },
         }}
       />
       <Routes>

@@ -5,12 +5,14 @@ import { supabase } from '../../lib/supabase.js'
 import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import AdminPanel from '../admin/AdminPanel.jsx'
+import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
 
 export default function LobbyPage({ session }) {
   const navigate = useNavigate()
   const user = session.user
+  const { isDark, toggle: toggleTheme } = useTheme()
 
   const [profile, setProfile]         = useState(null)
   const [games, setGames]             = useState([])
@@ -139,9 +141,9 @@ export default function LobbyPage({ session }) {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wordy-50 via-pink-50 to-wordy-100">
+    <div className="min-h-screen bg-gradient-to-br from-wordy-50 via-pink-50 to-wordy-100 dark:bg-[#0f0a1e] dark:bg-none">
       {/* Header */}
-      <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10">
+      <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10 dark:bg-[#130c25] dark:border-[#2d1b55]">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-xl bg-wordy-600 flex items-center justify-center">
@@ -172,8 +174,15 @@ export default function LobbyPage({ session }) {
               </span>
             </div>
             <button
+              onClick={toggleTheme}
+              className="text-lg leading-none hover:scale-110 transition-transform"
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+            <button
               onClick={() => supabase.auth.signOut()}
-              className="text-xs text-wordy-400 hover:text-wordy-600 underline"
+              className="text-xs text-wordy-400 hover:text-wordy-600 underline dark:text-wordy-500 dark:hover:text-wordy-300"
             >
               Log out
             </button>

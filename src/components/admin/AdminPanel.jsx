@@ -151,7 +151,7 @@ export default function AdminPanel({ session, adminRecord }) {
     <div className="space-y-4">
 
       {/* Tab bar */}
-      <div className="flex gap-2 border-b border-wordy-100 pb-1">
+      <div className="flex gap-2 border-b border-wordy-100 dark:border-[#2d1b55] pb-1">
         <TabButton active={view === 'games'} onClick={() => setView('games')}>
           🔒 Games
         </TabButton>
@@ -186,8 +186,8 @@ export default function AdminPanel({ session, adminRecord }) {
                     key={g.id}
                     className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
                       isOld
-                        ? 'bg-rose-50 border-rose-200'
-                        : 'bg-wordy-50 border-wordy-100'
+                        ? 'bg-rose-50 border-rose-200 dark:bg-[#2a0a0a] dark:border-[#4a1a1a]'
+                        : 'bg-wordy-50 border-wordy-100 dark:bg-[#1a1040] dark:border-[#2d1b55]'
                     }`}
                   >
                     <div>
@@ -240,7 +240,7 @@ export default function AdminPanel({ session, adminRecord }) {
                 const username = a.profiles?.username ?? 'Unknown'
 
                 return (
-                  <div key={a.user_id} className="rounded-xl border border-wordy-100 bg-wordy-50 px-3 py-3">
+                  <div key={a.user_id} className="rounded-xl border border-wordy-100 bg-wordy-50 px-3 py-3 dark:bg-[#1a1040] dark:border-[#2d1b55]">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-wordy-700 text-sm">{username}</span>
@@ -277,7 +277,7 @@ export default function AdminPanel({ session, adminRecord }) {
                               className={`text-xs px-2 py-1 rounded-lg border font-bold transition-all ${
                                 active
                                   ? 'bg-wordy-600 text-white border-wordy-600'
-                                  : 'bg-white text-wordy-400 border-wordy-200 hover:border-wordy-400'
+                                  : 'bg-white text-wordy-400 border-wordy-200 hover:border-wordy-400 dark:bg-[#130c25] dark:text-wordy-400 dark:border-[#2d1b55] dark:hover:border-wordy-500'
                               }`}
                             >
                               {active ? '✓ ' : ''}{perm.label}
@@ -338,7 +338,7 @@ export default function AdminPanel({ session, adminRecord }) {
                           className={`text-xs px-3 py-1.5 rounded-xl border font-bold transition-all ${
                             checked
                               ? 'bg-wordy-600 text-white border-wordy-600'
-                              : 'bg-white text-wordy-400 border-wordy-200 hover:border-wordy-400'
+                              : 'bg-white text-wordy-400 border-wordy-200 hover:border-wordy-400 dark:bg-[#130c25] dark:text-wordy-400 dark:border-[#2d1b55] dark:hover:border-wordy-500'
                           }`}
                         >
                           {checked ? '✓ ' : ''}{perm.label}
@@ -375,8 +375,8 @@ function TabButton({ active, onClick, children }) {
       onClick={onClick}
       className={`text-sm font-bold px-3 py-1.5 rounded-t-lg transition-all ${
         active
-          ? 'text-wordy-700 border-b-2 border-wordy-600'
-          : 'text-wordy-400 hover:text-wordy-600'
+          ? 'text-wordy-700 border-b-2 border-wordy-600 dark:text-wordy-300 dark:border-wordy-400'
+          : 'text-wordy-400 hover:text-wordy-600 dark:hover:text-wordy-300'
       }`}
     >
       {children}

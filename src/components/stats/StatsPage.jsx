@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase.js'
+import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 export default function StatsPage({ session }) {
   const navigate = useNavigate()
   const user     = session.user
+  const { isDark, toggle: toggleTheme } = useTheme()
 
   const [profile,     setProfile]     = useState(null)
   const [matchups,    setMatchups]    = useState([])
@@ -65,21 +67,30 @@ export default function StatsPage({ session }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-wordy-50">
-        <p className="font-display text-2xl text-wordy-400 animate-pulse">Loading stats… 🟣</p>
+      <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
+        <p className="font-display text-2xl text-wordy-400 animate-pulse dark:text-wordy-300">Loading stats… 🟣</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none">
       {/* Header */}
-      <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 font-bold text-sm">
-            ← Lobby
+      <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10 dark:bg-[#130c25] dark:border-[#2d1b55]">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 font-bold text-sm dark:hover:text-wordy-300">
+              ← Lobby
+            </button>
+            <span className="font-display text-xl text-wordy-700 dark:text-wordy-300">📊 Your Stats</span>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="text-lg leading-none hover:scale-110 transition-transform"
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? '☀️' : '🌙'}
           </button>
-          <span className="font-display text-xl text-wordy-700">📊 Your Stats</span>
         </div>
       </header>
 
@@ -100,10 +111,10 @@ export default function StatsPage({ session }) {
                     key={entry.user_id}
                     className={`flex items-center gap-3 rounded-xl px-3 py-2 border transition-all ${
                       isMe
-                        ? 'bg-wordy-100 border-wordy-300'
+                        ? 'bg-wordy-100 border-wordy-300 dark:bg-[#2d1b55] dark:border-wordy-700'
                         : i < 3
-                        ? 'bg-wordy-50 border-wordy-100'
-                        : 'bg-white border-wordy-50'
+                        ? 'bg-wordy-50 border-wordy-100 dark:bg-[#1a1040] dark:border-[#2d1b55]'
+                        : 'bg-white border-wordy-50 dark:bg-[#130c25] dark:border-[#1a1040]'
                     }`}
                   >
                     {/* Rank */}
@@ -115,13 +126,13 @@ export default function StatsPage({ session }) {
                     </div>
 
                     {/* Username */}
-                    <span className={`flex-1 text-sm font-bold truncate ${isMe ? 'text-wordy-700' : 'text-wordy-600'}`}>
+                    <span className={`flex-1 text-sm font-bold truncate ${isMe ? 'text-wordy-700 dark:text-wordy-200' : 'text-wordy-600 dark:text-wordy-300'}`}>
                       {entry.username}{isMe ? ' (you)' : ''}
                     </span>
 
                     {/* Stats */}
                     <div className="text-right shrink-0">
-                      <div className="font-display text-lg text-wordy-800 leading-none">
+                      <div className="font-display text-lg text-wordy-800 dark:text-wordy-200 leading-none">
                         {entry.best_score}
                         <span className="text-xs font-normal text-wordy-400 ml-1">pts</span>
                       </div>
@@ -154,7 +165,7 @@ export default function StatsPage({ session }) {
                 const total    = m.wins + m.losses
                 const pct      = total > 0 ? Math.round((m.wins / total) * 100) : 0
                 return (
-                  <div key={m.id} className="bg-wordy-50 rounded-xl px-4 py-3 border border-wordy-100">
+                  <div key={m.id} className="bg-wordy-50 rounded-xl px-4 py-3 border border-wordy-100 dark:bg-[#1a1040] dark:border-[#2d1b55]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-wordy-700 text-sm">{oppName}</span>
                       <span className="text-xs text-wordy-400 font-bold">
@@ -192,8 +203,8 @@ export default function StatsPage({ session }) {
                 return (
                   <div key={g.id} className={`rounded-xl px-4 py-2 border text-sm ${
                     gp.is_winner
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-rose-50 border-rose-200'
+                      ? 'bg-green-50 border-green-200 dark:bg-[#0a2a1a] dark:border-[#1a4a2a]'
+                      : 'bg-rose-50 border-rose-200 dark:bg-[#2a0a0a] dark:border-[#4a1a1a]'
                   }`}>
                     <div className="flex items-center justify-between">
                       <div>

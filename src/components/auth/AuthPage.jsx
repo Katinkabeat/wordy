@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { supabase } from '../../lib/supabase.js'
+import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 // Site key is public (safe to commit — it's embedded in the browser bundle anyway).
 // The env var override allows using a different key in other environments.
@@ -12,6 +13,7 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAA
 const SITE_URL = 'https://katinkabeat.github.io/wordy/'
 
 export default function AuthPage({ isRecovery = false, onPasswordReset = () => {} }) {
+  const { isDark } = useTheme()
   const [mode, setMode]               = useState('login')   // 'login' | 'register' | 'forgot'
   const [email, setEmail]             = useState('')
   const [password, setPass]           = useState('')
@@ -129,16 +131,16 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
       }
     }
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 dark:bg-[#0f0a1e] dark:bg-none p-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-wordy-600 shadow-lg mb-3">
               <span className="font-display text-4xl text-white tracking-tight">W</span>
             </div>
-            <h1 className="font-display text-4xl text-wordy-800">Wordy</h1>
+            <h1 className="font-display text-4xl text-wordy-800 dark:text-wordy-200">Wordy</h1>
           </div>
           <div className="card shadow-lg">
-            <h2 className="font-display text-xl text-wordy-800 mb-5 text-center">🔑 Set a new password</h2>
+            <h2 className="font-display text-xl text-wordy-800 mb-5 text-center dark:text-wordy-200">🔑 Set a new password</h2>
             <form onSubmit={handleNewPassword} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-wordy-700 mb-1">New password</label>
@@ -189,7 +191,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
   // ── Forgot-password confirmation screen ──────────────────
   if (resetSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 dark:bg-[#0f0a1e] dark:bg-none p-4">
         <div className="w-full max-w-sm">
           <div className="card shadow-lg text-center space-y-4">
             <div className="text-5xl">📧</div>
@@ -215,7 +217,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
   // ── Email confirmation screen ────────────────────────────
   if (registered) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wordy-100 via-pink-100 to-wordy-200 dark:bg-[#0f0a1e] dark:bg-none p-4">
         <div className="w-full max-w-sm">
           <div className="card shadow-lg text-center space-y-4">
             <div className="text-5xl">📧</div>
@@ -249,8 +251,8 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-wordy-600 shadow-lg mb-3">
             <span className="font-display text-4xl text-white tracking-tight">W</span>
           </div>
-          <h1 className="font-display text-4xl text-wordy-800">Wordy</h1>
-          <p className="text-wordy-500 font-body mt-1 text-sm">
+          <h1 className="font-display text-4xl text-wordy-800 dark:text-wordy-200">Wordy</h1>
+          <p className="text-wordy-500 font-body mt-1 text-sm dark:text-wordy-400">
             🌸 The cute word game for friends
           </p>
         </div>
@@ -383,7 +385,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
                   onSuccess={token => setCaptchaToken(token)}
                   onExpire={resetCaptcha}
                   onError={resetCaptcha}
-                  options={{ theme: 'light' }}
+                  options={{ theme: isDark ? 'dark' : 'light' }}
                 />
               </div>
             )}

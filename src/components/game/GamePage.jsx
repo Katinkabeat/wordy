@@ -12,11 +12,13 @@ import { validateWords } from '../../lib/wordValidator.js'
 import Board      from './Board.jsx'
 import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
+import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 export default function GamePage({ session }) {
   const { id: gameId } = useParams()
   const navigate        = useNavigate()
   const user            = session.user
+  const { isDark, toggle: toggleTheme } = useTheme()
 
   // ── State ─────────────────────────────────────────────────
   const [game, setGame]               = useState(null)
@@ -390,8 +392,8 @@ export default function GamePage({ session }) {
   // ── Render ────────────────────────────────────────────────
   if (!game || !board) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-wordy-50">
-        <p className="font-display text-2xl text-wordy-400 animate-pulse">Loading game… 🟣</p>
+      <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
+        <p className="font-display text-2xl text-wordy-400 animate-pulse dark:text-wordy-300">Loading game… 🟣</p>
       </div>
     )
   }
@@ -400,16 +402,16 @@ export default function GamePage({ session }) {
   const myTurn = isMyTurn()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50 flex flex-col dark:bg-[#0f0a1e] dark:bg-none">
 
       {/* Header */}
-      <header className="bg-white border-b border-wordy-100 shadow-sm">
+      <header className="bg-white border-b border-wordy-100 shadow-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
         <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between gap-3">
-          <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 text-sm font-bold">
+          <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 text-sm font-bold dark:text-wordy-400 dark:hover:text-wordy-300">
             ← Lobby
           </button>
           <div className="flex-1 text-center">
-            <span className={`font-display text-base ${myTurn ? 'text-wordy-700' : 'text-wordy-400'}`}>
+            <span className={`font-display text-base ${myTurn ? 'text-wordy-700 dark:text-wordy-300' : 'text-wordy-400'}`}>
               {game.status === 'finished'
                 ? '🏆 Game Over!'
                 : myTurn
@@ -417,9 +419,18 @@ export default function GamePage({ session }) {
                 : `⏳ ${currentPlayerName}'s turn`}
             </span>
           </div>
-          <span className="text-xs text-wordy-300 font-bold">
-            🎒 {game.tile_bag?.length ?? 0} left
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-wordy-300 font-bold">
+              🎒 {game.tile_bag?.length ?? 0} left
+            </span>
+            <button
+              onClick={toggleTheme}
+              className="text-lg leading-none hover:scale-110 transition-transform"
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -450,7 +461,7 @@ export default function GamePage({ session }) {
 
       {/* Bottom controls (shown only to the current player) */}
       {game.status === 'active' && myPlayer && (
-        <div className="bg-white border-t border-wordy-100 p-3 shadow-t-sm">
+        <div className="bg-white border-t border-wordy-100 p-3 shadow-t-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
           <div className="max-w-xl mx-auto space-y-3">
             {/* Tile rack */}
             <TileRack
@@ -482,7 +493,7 @@ export default function GamePage({ session }) {
             {/* Live score preview */}
             {liveScore !== null && (
               <div className="text-center">
-                <span className="inline-block bg-wordy-100 text-wordy-700 font-bold text-sm px-3 py-1 rounded-full">
+                <span className="inline-block bg-wordy-100 text-wordy-700 font-bold text-sm px-3 py-1 rounded-full dark:bg-[#2d1b55] dark:text-wordy-200">
                   ✨ +{liveScore} pts
                   {placements.length === 7 && <span className="ml-1 text-pink-500">🎉 Bingo!</span>}
                 </span>
@@ -573,14 +584,14 @@ function BlankTileModal({ onConfirm, onCancel }) {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full">
-        <h3 className="font-display text-xl text-wordy-700 mb-3 text-center">
+      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full dark:bg-[#1a1130] dark:border dark:border-[#2d1b55]">
+        <h3 className="font-display text-xl text-wordy-700 mb-3 text-center dark:text-wordy-300">
           🃏 Choose a letter for your blank tile
         </h3>
         <div className="grid grid-cols-9 gap-1">
           {letters.map(l => (
             <button key={l} onClick={() => onConfirm(l)}
-              className="h-8 w-8 rounded-lg bg-wordy-100 hover:bg-wordy-300 text-wordy-800 font-bold text-xs transition-colors">
+              className="h-8 w-8 rounded-lg bg-wordy-100 hover:bg-wordy-300 text-wordy-800 font-bold text-xs transition-colors dark:bg-[#2d1b55] dark:hover:bg-wordy-700 dark:text-wordy-200">
               {l}
             </button>
           ))}
@@ -595,10 +606,10 @@ function BlankTileModal({ onConfirm, onCancel }) {
 function ForfeitModal({ onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full text-center">
+      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full text-center dark:bg-[#1a1130] dark:border dark:border-[#2d1b55]">
         <p className="text-4xl mb-3">🏳️</p>
-        <h3 className="font-display text-xl text-wordy-700 mb-2">Forfeit this game?</h3>
-        <p className="text-sm text-wordy-400 mb-5">
+        <h3 className="font-display text-xl text-wordy-700 mb-2 dark:text-wordy-300">Forfeit this game?</h3>
+        <p className="text-sm text-wordy-400 mb-5 dark:text-wordy-500">
           Your opponent wins regardless of the current score.
         </p>
         <div className="flex gap-3">

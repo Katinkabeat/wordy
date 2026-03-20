@@ -27,12 +27,25 @@ function AppInner() {
   )
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
+    // Safety timeout: if getSession() hangs (e.g. orphaned navigator.locks),
+    // fall back to the auth page after 5 seconds instead of spinning forever.
+    const timeout = setTimeout(() => {
+      setSession(s => (s === undefined ? null : s))
+    }, 5000)
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
+      setSession(session)
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      clearTimeout(timeout)
       setSession(s)
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
     })
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   if (session === undefined) {

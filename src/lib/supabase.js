@@ -11,4 +11,14 @@ if (!supabaseUrl || !supabaseKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    // Use localStorage instead of the default navigator.locks-based storage.
+    // navigator.locks can get orphaned (tab crash, SW conflict, etc.) and
+    // cause getSession() to hang forever — which shows an infinite
+    // "Loading Wordy…" spinner.  localStorage is simpler and reliable
+    // for a single-tab PWA like Wordy.
+    lock: { enabled: false },
+    storageKey: 'sb-yyhewndblruwxsrqzart-auth-token',
+  },
+})

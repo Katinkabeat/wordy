@@ -56,63 +56,74 @@ export default function GamePage({ session }) {
     ? board.every(row => row.every(cell => cell === null))
     : true
 
+  const [loadError, setLoadError] = useState(null)
+
   // ── Load game data ────────────────────────────────────────
   const loadGame = useCallback(async () => {
-    const { data: g } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', gameId).single()
-    if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
-    setGame(g)
-    setBoard(deserializeBoard(g.board))
+    try {
+      const { data: g, error: gErr } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', gameId).single()
+      if (gErr) throw gErr
+      if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
+      setGame(g)
+      setBoard(deserializeBoard(g.board))
+      setLoadError(null)
 
-    const { data: ps } = await supabase
-      .from('game_players')
-      .select('*')
-      .eq('game_id', gameId)
-      .order('player_index')
-    setPlayers(ps ?? [])
-    const me = (ps ?? []).find(p => p.user_id === user.id)
-    setMyPlayer(me ?? null)
+      const { data: ps, error: psErr } = await supabase
+        .from('game_players')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('player_index')
+      if (psErr) throw psErr
+      setPlayers(ps ?? [])
+      const me = (ps ?? []).find(p => p.user_id === user.id)
+      setMyPlayer(me ?? null)
 
-    // Load the last move so we can highlight those tiles on the board
-    const { data: lastMoves } = await supabase
-      .from('game_moves')
-      .select('tiles_placed')
-      .eq('game_id', gameId)
-      .eq('move_type', 'place')
-      .order('created_at', { ascending: false })
-      .limit(1)
-    setLastMoveTiles(lastMoves?.[0]?.tiles_placed ?? [])
+      // Load the last move so we can highlight those tiles on the board
+      const { data: lastMoves } = await supabase
+        .from('game_moves')
+        .select('tiles_placed')
+        .eq('game_id', gameId)
+        .eq('move_type', 'place')
+        .order('created_at', { ascending: false })
+        .limit(1)
+      setLastMoveTiles(lastMoves?.[0]?.tiles_placed ?? [])
 
-    // Load each player's last move score
-    const playerIds = (ps ?? []).map(p => p.user_id)
-    if (playerIds.length) {
-      const scoreMap = {}
-      for (const pid of playerIds) {
-        const { data: moves } = await supabase
-          .from('game_moves')
-          .select('score')
-          .eq('game_id', gameId)
-          .eq('user_id', pid)
-          .order('created_at', { ascending: false })
-          .limit(1)
-        if (moves?.[0]?.score != null) scoreMap[pid] = moves[0].score
+      // Load each player's last move score (parallel, not sequential)
+      const playerIds = (ps ?? []).map(p => p.user_id)
+      if (playerIds.length) {
+        const results = await Promise.all(
+          playerIds.map(pid =>
+            supabase.from('game_moves').select('score, user_id')
+              .eq('game_id', gameId).eq('user_id', pid)
+              .order('created_at', { ascending: false }).limit(1)
+              .then(({ data }) => data?.[0] ?? null)
+          )
+        )
+        const scoreMap = {}
+        for (const r of results) {
+          if (r?.score != null) scoreMap[r.user_id] = r.score
+        }
+        setLastMoveScores(scoreMap)
       }
-      setLastMoveScores(scoreMap)
-    }
 
-    // Load usernames — only update if the query succeeds so a transient
-    // network failure on mobile doesn't wipe out already-loaded names
-    const ids = (ps ?? []).map(p => p.user_id)
-    if (ids.length) {
-      const { data: profs, error: profsError } = await supabase
-        .from('profiles').select('id, username').in('id', ids)
-      if (!profsError && profs) {
-        const map = {}
-        for (const p of profs) map[p.id] = p.username
-        setProfiles(map)
+      // Load usernames — only update if the query succeeds so a transient
+      // network failure on mobile doesn't wipe out already-loaded names
+      const ids = (ps ?? []).map(p => p.user_id)
+      if (ids.length) {
+        const { data: profs, error: profsError } = await supabase
+          .from('profiles').select('id, username').in('id', ids)
+        if (!profsError && profs) {
+          const map = {}
+          for (const p of profs) map[p.id] = p.username
+          setProfiles(map)
+        }
       }
+    } catch (err) {
+      console.error('loadGame failed:', err)
+      setLoadError(err.message ?? 'Failed to load game')
     }
   }, [gameId, user.id, navigate])
 
@@ -422,7 +433,19 @@ export default function GamePage({ session }) {
   if (!game || !board) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
-        <p className="font-display text-2xl text-wordy-400 animate-pulse dark:text-wordy-300">Loading game… 🟣</p>
+        {loadError ? (
+          <div className="text-center space-y-3">
+            <p className="text-4xl">😵</p>
+            <p className="font-display text-xl text-wordy-600 dark:text-wordy-300">Couldn't load game</p>
+            <p className="text-sm text-wordy-400 dark:text-wordy-500">{loadError}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={loadGame} className="btn-primary text-sm">🔄 Retry</button>
+              <button onClick={() => navigate('/lobby')} className="btn-secondary text-sm">← Lobby</button>
+            </div>
+          </div>
+        ) : (
+          <p className="font-display text-2xl text-wordy-400 animate-pulse dark:text-wordy-300">Loading game… 🟣</p>
+        )}
       </div>
     )
   }

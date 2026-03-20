@@ -1,0 +1,19 @@
+{
+  "name": "Wordy – Play With Friends!",
+  "short_name": "Wordy",
+  "description": "Multiplayer Scrabble word game",
+  "start_url": "/wordy/",
+  "scope": "/wordy/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#7c3aed",
+  "background_color": "#faf5ff",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase.js'
 import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import AdminPanel from '../admin/AdminPanel.jsx'
+import NotificationBanner from './NotificationBanner.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
@@ -200,6 +201,9 @@ export default function LobbyPage({ session }) {
         {/* Lobby content */}
         {lobbyTab === 'lobby' && (
           <>
+            {/* Push notification opt-in */}
+            <NotificationBanner userId={user.id} />
+
             {/* Create game panel */}
             <div className="card">
               <h2 className="font-display text-xl text-wordy-700 mb-4">🌸 New Game</h2>

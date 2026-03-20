@@ -6,6 +6,7 @@ import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import AdminPanel from '../admin/AdminPanel.jsx'
 import NotificationBanner from './NotificationBanner.jsx'
+import IOSInstallPrompt from './IOSInstallPrompt.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
@@ -201,6 +202,9 @@ export default function LobbyPage({ session }) {
         {/* Lobby content */}
         {lobbyTab === 'lobby' && (
           <>
+            {/* iOS: guide user to install PWA for push support */}
+            <IOSInstallPrompt />
+
             {/* Push notification opt-in */}
             <NotificationBanner userId={user.id} />
 

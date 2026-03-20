@@ -12,8 +12,9 @@ const BONUS_CLASSES = {
 
 // cellSize = each cell's width/height in pixels.
 // Fonts scale proportionally so the board looks great at any zoom level.
-export default function Board({ board, placements, onCellClick, myTurn, cellSize = 36 }) {
-  const placedSet = new Set(placements.map(p => `${p.row},${p.col}`))
+export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36 }) {
+  const placedSet   = new Set(placements.map(p => `${p.row},${p.col}`))
+  const lastMoveSet = new Set(lastMoveTiles.map(t => `${t.row},${t.col}`))
 
   // 15 cells × cellSize + 14 one-pixel gaps + 4px for border-2 (2px each side)
   const totalSize  = 15 * cellSize + 18
@@ -34,8 +35,9 @@ export default function Board({ board, placements, onCellClick, myTurn, cellSize
         Array.from({ length: 15 }, (_, c) => {
           const cell  = board[r][c]
           const bonus = getBonusType(r, c)
-          const isNew = placedSet.has(`${r},${c}`)
-          const key   = `${r}-${c}`
+          const isNew      = placedSet.has(`${r},${c}`)
+          const isLastMove = !isNew && lastMoveSet.has(`${r},${c}`)
+          const key        = `${r}-${c}`
 
           if (cell) {
             return (
@@ -44,6 +46,7 @@ export default function Board({ board, placements, onCellClick, myTurn, cellSize
                 letter={cell.letter}
                 isBlank={cell.isBlank}
                 isNew={isNew}
+                isLastMove={isLastMove}
                 onClick={() => onCellClick(r, c)}
                 letterSize={letterSize}
                 valueSize={valueSize}
@@ -74,16 +77,21 @@ export default function Board({ board, placements, onCellClick, myTurn, cellSize
   )
 }
 
-function BoardTile({ letter, isBlank, isNew, onClick, letterSize, valueSize }) {
+function BoardTile({ letter, isBlank, isNew, isLastMove, onClick, letterSize, valueSize }) {
   const val = isBlank ? 0 : (TILE_VALUES[letter] ?? 0)
+
+  const bg = isNew
+    ? 'linear-gradient(145deg, #f3e8ff, #e9d5ff)'       // current turn — lightest
+    : isLastMove
+    ? 'linear-gradient(145deg, #e9d5ff, #d8b4fe)'       // last move — brighter purple
+    : 'linear-gradient(145deg, #d8b4fe, #c084fc)'       // older tiles — standard purple
+
   return (
     <div
       onClick={onClick}
-      className={`board-cell cell-occupied ${isNew ? 'ring-1 ring-pink-400' : ''}`}
+      className={`board-cell cell-occupied ${isNew ? 'ring-1 ring-pink-400' : ''} ${isLastMove ? 'ring-1 ring-purple-300' : ''}`}
       style={{
-        background: isNew
-          ? 'linear-gradient(145deg, #f3e8ff, #e9d5ff)'
-          : 'linear-gradient(145deg, #d8b4fe, #c084fc)',
+        background: bg,
         cursor: isNew ? 'pointer' : 'default',
         touchAction: 'manipulation',
       }}

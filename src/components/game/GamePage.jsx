@@ -33,6 +33,7 @@ export default function GamePage({ session }) {
   const [blankModal, setBlankModal]   = useState(null)   // { row, col } pending blank assignment
   const [forfeitModal, setForfeitModal] = useState(false)
   const [profiles, setProfiles]       = useState({})
+  const [lastMoveTiles, setLastMoveTiles] = useState([]) // tiles from the most recent move
   const channelRef = useRef(null)
 
   // ── Cell size — fixed, device-appropriate ─────────────────
@@ -72,6 +73,16 @@ export default function GamePage({ session }) {
     setPlayers(ps ?? [])
     const me = (ps ?? []).find(p => p.user_id === user.id)
     setMyPlayer(me ?? null)
+
+    // Load the last move so we can highlight those tiles on the board
+    const { data: lastMoves } = await supabase
+      .from('game_moves')
+      .select('tiles_placed')
+      .eq('game_id', gameId)
+      .eq('move_type', 'place')
+      .order('created_at', { ascending: false })
+      .limit(1)
+    setLastMoveTiles(lastMoves?.[0]?.tiles_placed ?? [])
 
     // Load usernames — only update if the query succeeds so a transient
     // network failure on mobile doesn't wipe out already-loaded names
@@ -452,6 +463,7 @@ export default function GamePage({ session }) {
           <Board
             board={board}
             placements={placements}
+            lastMoveTiles={lastMoveTiles}
             onCellClick={handleCellClick}
             myTurn={myTurn}
             cellSize={cellSize}

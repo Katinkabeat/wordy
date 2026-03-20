@@ -35,11 +35,12 @@ function AppInner() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(timeout)
-      setSession(session)
+      // Treat sessions with no user data as invalid
+      setSession(session?.user ? session : null)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       clearTimeout(timeout)
-      setSession(s)
+      setSession(s?.user ? s : null)
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
     })
     return () => {

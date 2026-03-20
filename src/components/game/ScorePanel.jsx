@@ -28,10 +28,10 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
+                <span className="font-display text-lg text-wordy-800">{p.score}</span>
                 {lastMoveScores[p.user_id] != null && lastMoveScores[p.user_id] > 0 && (
                   <span className="text-xs font-bold text-green-500">+{lastMoveScores[p.user_id]}</span>
                 )}
-                <span className="font-display text-lg text-wordy-800">{p.score}</span>
               </div>
             </div>
           )
@@ -57,10 +57,10 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
               {isCurrent && <span>✨</span>}
               {isWinner  && <span>🏆</span>}
               <span>{name}{isMe ? ' (you)' : ''}</span>
+              <span className="font-display text-sm text-wordy-800">{p.score}</span>
               {lastMoveScores[p.user_id] != null && lastMoveScores[p.user_id] > 0 && (
                 <span className="text-xs font-bold text-green-500">+{lastMoveScores[p.user_id]}</span>
               )}
-              <span className="font-display text-sm text-wordy-800">{p.score}</span>
             </div>
           )
         })}

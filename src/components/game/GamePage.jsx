@@ -466,7 +466,7 @@ export default function GamePage({ session }) {
       <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full p-3">
 
         {/* Score panel — desktop sidebar / mobile top bar */}
-        <div className="lg:w-48 shrink-0">
+        <div className="lg:w-56 shrink-0">
           <ScorePanel
             players={players}
             profiles={profiles}
@@ -491,8 +491,8 @@ export default function GamePage({ session }) {
 
         {/* Invisible spacer — mirrors the score panel width so the board
             stays centred relative to the full page (not just the remaining space).
-            Must always match the score panel's lg:w-48 class. */}
-        <div className="hidden lg:block lg:w-48 shrink-0" aria-hidden="true" />
+            Must always match the score panel's lg:w-56 class. */}
+        <div className="hidden lg:block lg:w-56 shrink-0" aria-hidden="true" />
       </div>
 
       {/* Bottom controls (shown only to the current player) */}

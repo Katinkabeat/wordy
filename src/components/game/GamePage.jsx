@@ -34,6 +34,7 @@ export default function GamePage({ session }) {
   const [forfeitModal, setForfeitModal] = useState(false)
   const [profiles, setProfiles]       = useState({})
   const [lastMoveTiles, setLastMoveTiles] = useState([]) // tiles from the most recent move
+  const [lastMoveScores, setLastMoveScores] = useState({}) // user_id → last move score
   const channelRef = useRef(null)
 
   // ── Cell size — fixed, device-appropriate ─────────────────
@@ -83,6 +84,23 @@ export default function GamePage({ session }) {
       .order('created_at', { ascending: false })
       .limit(1)
     setLastMoveTiles(lastMoves?.[0]?.tiles_placed ?? [])
+
+    // Load each player's last move score
+    const playerIds = (ps ?? []).map(p => p.user_id)
+    if (playerIds.length) {
+      const scoreMap = {}
+      for (const pid of playerIds) {
+        const { data: moves } = await supabase
+          .from('game_moves')
+          .select('score')
+          .eq('game_id', gameId)
+          .eq('user_id', pid)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        if (moves?.[0]?.score != null) scoreMap[pid] = moves[0].score
+      }
+      setLastMoveScores(scoreMap)
+    }
 
     // Load usernames — only update if the query succeeds so a transient
     // network failure on mobile doesn't wipe out already-loaded names
@@ -455,6 +473,7 @@ export default function GamePage({ session }) {
             currentIdx={game.current_player_idx}
             userId={user.id}
             status={game.status}
+            lastMoveScores={lastMoveScores}
           />
         </div>
 

@@ -1,6 +1,6 @@
 // On mobile: renders as a compact horizontal row of score chips (saves vertical space).
 // On desktop (lg+): renders as a vertical sidebar card with full player rows.
-export default function ScorePanel({ players, profiles, currentIdx, userId, status }) {
+export default function ScorePanel({ players, profiles, currentIdx, userId, status, lastMoveScores = {} }) {
   return (
     <>
       {/* ── Desktop: vertical sidebar card ─────────────────── */}
@@ -27,7 +27,12 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
                   {name}{isMe ? ' (you)' : ''}
                 </span>
               </div>
-              <span className="font-display text-lg text-wordy-800">{p.score}</span>
+              <div className="flex items-center gap-1.5">
+                {lastMoveScores[p.user_id] != null && lastMoveScores[p.user_id] > 0 && (
+                  <span className="text-xs font-bold text-green-500">+{lastMoveScores[p.user_id]}</span>
+                )}
+                <span className="font-display text-lg text-wordy-800">{p.score}</span>
+              </div>
             </div>
           )
         })}
@@ -52,6 +57,9 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
               {isCurrent && <span>✨</span>}
               {isWinner  && <span>🏆</span>}
               <span>{name}{isMe ? ' (you)' : ''}</span>
+              {lastMoveScores[p.user_id] != null && lastMoveScores[p.user_id] > 0 && (
+                <span className="text-xs font-bold text-green-500">+{lastMoveScores[p.user_id]}</span>
+              )}
               <span className="font-display text-sm text-wordy-800">{p.score}</span>
             </div>
           )

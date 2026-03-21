@@ -27,15 +27,17 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // If a Wordy tab is already open, focus it and navigate
+      // If a Wordy tab is already open, focus it and tell it to navigate
       for (const client of windowClients) {
         if (client.url.includes('/wordy/') && 'focus' in client) {
-          client.focus()
-          client.navigate(targetUrl)
-          return
+          return client.focus().then((focusedClient) => {
+            // Use postMessage so the React app can navigate via React Router
+            // instead of a full page reload (which breaks on GitHub Pages SPA)
+            focusedClient.postMessage({ type: 'NAVIGATE', url: targetUrl })
+          })
         }
       }
-      // Otherwise open a new tab
+      // Otherwise open a new tab with the full URL
       return clients.openWindow(targetUrl)
     })
   )

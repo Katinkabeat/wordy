@@ -14,9 +14,9 @@ export default function TileRack({ rack, selected, onSelect, myTurn, exchangeMod
             onClick={() => onSelect(letter, idx)}
             disabled={!myTurn}
             style={isExchanged ? {
-              background: 'linear-gradient(145deg, #fb7185, #e11d48)',
-              boxShadow: '0 0 0 3px #fb7185',
-              borderColor: '#fb7185',
+              background: 'linear-gradient(145deg, #a855f7, #7c3aed)',
+              boxShadow: '0 0 0 3px #a855f7',
+              borderColor: '#a855f7',
               transform: 'translateY(-2px)',
             } : undefined}
             className={`
@@ -26,7 +26,7 @@ export default function TileRack({ rack, selected, onSelect, myTurn, exchangeMod
               ${!myTurn     ? 'tile-disabled' : ''}
             `}
           >
-            <span className="font-display">{letter === '?' ? '\u{1f0cf}' : letter}</span>
+            <span className="font-display">{letter === '?' ? '🃏' : letter}</span>
             <span className="tile-value">{val > 0 ? val : ''}</span>
           </button>
         )

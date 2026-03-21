@@ -127,9 +127,17 @@ export default function LobbyPage({ session }) {
       }
 
       // Notify the game creator that someone joined (fire-and-forget)
-      supabase.functions.invoke('Push-Notification', {
-        body: { type: 'player_joined', game_id: game.id, joiner_name: profile?.username },
-      }).catch(() => {})
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/Push-Notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ type: 'player_joined', game_id: game.id, joiner_name: profile?.username }),
+      })
+        .then(r => r.json().then(d => console.log('[push-notify]', r.status, d)))
+        .catch(e => console.warn('[push-notify] failed:', e))
 
       toast.success('🟣 Joined! Good luck!')
       navigate(`/game/${game.id}`)

@@ -344,4 +344,3 @@ function Avatar({ hue, name, size = 8 }) {
     </div>
   )
 }
-

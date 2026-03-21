@@ -126,6 +126,11 @@ export default function LobbyPage({ session }) {
         await supabase.from('games').update({ status: 'active' }).eq('id', game.id)
       }
 
+      // Notify the game creator that someone joined (fire-and-forget)
+      supabase.functions.invoke('push-notification', {
+        body: { type: 'player_joined', game_id: game.id, joiner_name: profile?.username },
+      }).catch(() => {})
+
       toast.success('🟣 Joined! Good luck!')
       navigate(`/game/${game.id}`)
     } catch (err) {
@@ -339,3 +344,4 @@ function Avatar({ hue, name, size = 8 }) {
     </div>
   )
 }
+

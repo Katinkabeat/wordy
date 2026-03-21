@@ -1,6 +1,7 @@
 // Supabase Edge Function: push-notification
-// Triggered by a database webhook when games.current_player_idx changes.
-// Sends a Web Push notification to the player whose turn it now is.
+// Handles two event types:
+//   1. Turn change (triggered by database webhook when games.current_player_idx changes)
+//   2. Player joined (triggered by client when someone joins a waiting game)
 //
 // Uses the battle-tested `web-push` npm library via Deno's npm: specifier
 // to handle all the VAPID signing + payload encryption correctly.
@@ -21,11 +22,74 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
 
+/** Helper: send a push notification and clean up expired subscriptions */
+async function sendPush(
+  supabase: any,
+  targetUserId: string,
+  pushPayload: string,
+) {
+  const { data: sub, error: subErr } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, keys_p256dh, keys_auth')
+    .eq('user_id', targetUserId)
+    .single()
+
+  if (subErr || !sub) {
+    return { skipped: 'no push subscription' }
+  }
+
+  const pushSubscription = {
+    endpoint: sub.endpoint,
+    keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
+  }
+
+  try {
+    await webpush.sendNotification(pushSubscription, pushPayload, { TTL: 86400 })
+    return { sent: true }
+  } catch (pushErr: any) {
+    if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+      await supabase.from('push_subscriptions').delete().eq('user_id', targetUserId)
+      return { cleaned: 'expired subscription removed' }
+    }
+    throw pushErr
+  }
+}
+
 serve(async (req: Request) => {
   try {
     const payload = await req.json()
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-    // The webhook sends the full row as `record` and previous as `old_record`
+    // ── Player joined notification (called from client) ──────────
+    if (payload.type === 'player_joined') {
+      const { game_id, joiner_name } = payload
+      if (!game_id) {
+        return new Response(JSON.stringify({ skipped: 'missing game_id' }), { status: 200 })
+      }
+
+      // Find the game creator
+      const { data: game, error: gameErr } = await supabase
+        .from('games')
+        .select('created_by')
+        .eq('id', game_id)
+        .single()
+
+      if (gameErr || !game) {
+        return new Response(JSON.stringify({ skipped: 'game not found' }), { status: 200 })
+      }
+
+      const pushPayload = JSON.stringify({
+        title: 'Wordy — Player joined!',
+        body: `${joiner_name || 'Someone'} joined your game! 🟣`,
+        tag: `wordy-join-${game_id}`,
+        url: `/wordy/game/${game_id}`,
+      })
+
+      const result = await sendPush(supabase, game.created_by, pushPayload)
+      return new Response(JSON.stringify(result), { status: 200 })
+    }
+
+    // ── Turn change notification (called from database webhook) ──
     const { record, old_record } = payload
 
     // Only proceed if:
@@ -41,9 +105,6 @@ serve(async (req: Request) => {
     const gameId           = record.id
     const currentPlayerIdx = record.current_player_idx
 
-    // Use the service role key to bypass RLS
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
     // Find the player whose turn it is
     const { data: currentPlayer, error: playerErr } = await supabase
       .from('game_players')
@@ -57,17 +118,6 @@ serve(async (req: Request) => {
     }
 
     const targetUserId = currentPlayer.user_id
-
-    // Get their push subscription
-    const { data: sub, error: subErr } = await supabase
-      .from('push_subscriptions')
-      .select('endpoint, keys_p256dh, keys_auth')
-      .eq('user_id', targetUserId)
-      .single()
-
-    if (subErr || !sub) {
-      return new Response(JSON.stringify({ skipped: 'no push subscription' }), { status: 200 })
-    }
 
     // Get the username of the player who just moved (for the notification body)
     let moverName = 'Your opponent'
@@ -97,23 +147,8 @@ serve(async (req: Request) => {
       url: `/wordy/game/${gameId}`,
     })
 
-    // Send via web-push library (handles VAPID + encryption correctly)
-    const pushSubscription = {
-      endpoint: sub.endpoint,
-      keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-    }
-
-    try {
-      await webpush.sendNotification(pushSubscription, pushPayload, { TTL: 86400 })
-      return new Response(JSON.stringify({ sent: true }), { status: 200 })
-    } catch (pushErr: any) {
-      // 410 Gone or 404 = subscription expired — clean it up
-      if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-        await supabase.from('push_subscriptions').delete().eq('user_id', targetUserId)
-        return new Response(JSON.stringify({ cleaned: 'expired subscription removed' }), { status: 200 })
-      }
-      throw pushErr
-    }
+    const result = await sendPush(supabase, targetUserId, pushPayload)
+    return new Response(JSON.stringify(result), { status: 200 })
   } catch (err: any) {
     console.error('Push notification error:', err)
     return new Response(JSON.stringify({ error: err.message }), { status: 500 })

@@ -21,17 +21,21 @@ export function validatePlacement(board, placements, isFirstMove) {
   const sameCol = minC === maxC
   if (!sameRow && !sameCol) return { valid: false, error: 'Tiles must be in a straight line.' }
 
+  // Build a set of newly placed cells so we can distinguish them
+  // from tiles that were already on the board before this turn.
+  const newCells = new Set(placements.map(p => `${p.row},${p.col}`))
+
   // Check continuity (no gaps not filled by existing tiles)
   if (sameRow) {
     for (let c = minC; c <= maxC; c++) {
       const hasNew = placements.some(p => p.row === minR && p.col === c)
-      const hasOld = board[minR][c] !== null
+      const hasOld = board[minR][c] !== null && !newCells.has(`${minR},${c}`)
       if (!hasNew && !hasOld) return { valid: false, error: 'Tiles must be continuous (no gaps).' }
     }
   } else {
     for (let r = minR; r <= maxR; r++) {
       const hasNew = placements.some(p => p.row === r && p.col === minC)
-      const hasOld = board[r][minC] !== null
+      const hasOld = board[r][minC] !== null && !newCells.has(`${r},${minC}`)
       if (!hasNew && !hasOld) return { valid: false, error: 'Tiles must be continuous (no gaps).' }
     }
   }
@@ -41,14 +45,15 @@ export function validatePlacement(board, placements, isFirstMove) {
     const coversCentre = placements.some(p => p.row === 7 && p.col === 7)
     if (!coversCentre) return { valid: false, error: 'First word must cover the centre star ⭐.' }
   } else {
-    // Must connect to an existing tile
+    // Must connect to at least one PRE-EXISTING tile (not one we just placed)
     const touches = placements.some(p => {
       const adjacent = [
         [p.row-1, p.col], [p.row+1, p.col],
         [p.row, p.col-1], [p.row, p.col+1],
       ]
       return adjacent.some(([r,c]) =>
-        r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] !== null
+        r >= 0 && r < 15 && c >= 0 && c < 15 &&
+        board[r][c] !== null && !newCells.has(`${r},${c}`)
       )
     })
     if (!touches) return { valid: false, error: 'Word must connect to existing tiles.' }

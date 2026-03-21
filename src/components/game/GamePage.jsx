@@ -52,8 +52,13 @@ export default function GamePage({ session }) {
     return game.current_player_idx === myPlayer.player_index && game.status === 'active'
   }, [game, myPlayer])
 
+  // Check if the board was empty before current placements.
+  // board state already includes tiles placed this turn, so we
+  // must exclude them to correctly detect the very first move.
   const isFirstMove = board
-    ? board.every(row => row.every(cell => cell === null))
+    ? board.every((row, r) => row.every((cell, c) =>
+        cell === null || placements.some(p => p.row === r && p.col === c)
+      ))
     : true
 
   const [loadError, setLoadError] = useState(null)

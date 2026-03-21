@@ -55,7 +55,17 @@ async function sendPush(
   }
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const payload = await req.json()
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -64,7 +74,7 @@ serve(async (req: Request) => {
     if (payload.type === 'player_joined') {
       const { game_id, joiner_name } = payload
       if (!game_id) {
-        return new Response(JSON.stringify({ skipped: 'missing game_id' }), { status: 200 })
+        return new Response(JSON.stringify({ skipped: 'missing game_id' }), { status: 200, headers: corsHeaders })
       }
 
       // Find the game creator
@@ -75,7 +85,7 @@ serve(async (req: Request) => {
         .single()
 
       if (gameErr || !game) {
-        return new Response(JSON.stringify({ skipped: 'game not found' }), { status: 200 })
+        return new Response(JSON.stringify({ skipped: 'game not found' }), { status: 200, headers: corsHeaders })
       }
 
       const pushPayload = JSON.stringify({
@@ -86,7 +96,7 @@ serve(async (req: Request) => {
       })
 
       const result = await sendPush(supabase, game.created_by, pushPayload)
-      return new Response(JSON.stringify(result), { status: 200 })
+      return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
     }
 
     // ── Turn change notification (called from database webhook) ──
@@ -96,10 +106,10 @@ serve(async (req: Request) => {
     //  1. The game is active (not finished/waiting)
     //  2. The current_player_idx actually changed (a turn happened)
     if (!record || record.status !== 'active') {
-      return new Response(JSON.stringify({ skipped: 'game not active' }), { status: 200 })
+      return new Response(JSON.stringify({ skipped: 'game not active' }), { status: 200, headers: corsHeaders })
     }
     if (old_record && record.current_player_idx === old_record.current_player_idx) {
-      return new Response(JSON.stringify({ skipped: 'turn did not change' }), { status: 200 })
+      return new Response(JSON.stringify({ skipped: 'turn did not change' }), { status: 200, headers: corsHeaders })
     }
 
     const gameId           = record.id
@@ -114,7 +124,7 @@ serve(async (req: Request) => {
       .single()
 
     if (playerErr || !currentPlayer) {
-      return new Response(JSON.stringify({ skipped: 'player not found' }), { status: 200 })
+      return new Response(JSON.stringify({ skipped: 'player not found' }), { status: 200, headers: corsHeaders })
     }
 
     const targetUserId = currentPlayer.user_id
@@ -148,9 +158,9 @@ serve(async (req: Request) => {
     })
 
     const result = await sendPush(supabase, targetUserId, pushPayload)
-    return new Response(JSON.stringify(result), { status: 200 })
+    return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
   } catch (err: any) {
     console.error('Push notification error:', err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
   }
 })

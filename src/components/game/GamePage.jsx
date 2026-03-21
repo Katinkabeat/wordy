@@ -76,6 +76,16 @@ export default function GamePage({ session }) {
       setBoard(deserializeBoard(g.board))
       setLoadError(null)
 
+      // Clear any in-progress placement state so it doesn't go stale.
+      // Without this, a refresh or real-time update would restore the
+      // full rack from the server while placements still reference
+      // tiles that were removed from the local rack — causing tile
+      // duplication if the player interacts with the stale placements.
+      setPlacements([])
+      setSelected(null)
+      setExchange(false)
+      setExchangeSel([])
+
       const { data: ps, error: psErr } = await supabase
         .from('game_players')
         .select('*')

@@ -127,7 +127,7 @@ export default function LobbyPage({ session }) {
       }
 
       // Notify the game creator that someone joined (fire-and-forget)
-      supabase.functions.invoke('push-notification', {
+      supabase.functions.invoke('Push-Notification', {
         body: { type: 'player_joined', game_id: game.id, joiner_name: profile?.username },
       }).catch(() => {})
 

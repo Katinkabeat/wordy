@@ -11,6 +11,15 @@ if ('serviceWorker' in navigator) {
       // SW registration failed — push won't work but game still loads fine
     })
   })
+
+  // Listen for navigation messages from the service worker.
+  // When a push notification is tapped, the SW sends { type: 'NAVIGATE', url }
+  // so we can route to the game without a full page reload.
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'NAVIGATE' && event.data.url) {
+      window.location.href = event.data.url
+    }
+  })
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

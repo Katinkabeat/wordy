@@ -23,8 +23,8 @@ body {
   transform: translateY(-1px);
 }
 .tile.tile-selected {
-  @apply ring-2 ring-pink-400;
-  box-shadow: 0 0 0 3px #f472b6;
+  @apply ring-2 ring-purple-400;
+  box-shadow: 0 0 0 3px #a855f7;
   transform: translateY(-3px);
 }
 .tile.tile-placed {
@@ -153,7 +153,7 @@ body {
   box-shadow: 3px 4px 0px rgba(124, 58, 237, 0.6);
 }
 .dark .tile.tile-selected {
-  box-shadow: 0 0 0 3px #f472b6;
+  box-shadow: 0 0 0 3px #a855f7;
 }
 .dark .tile.tile-placed {
   background: linear-gradient(145deg, #3b1a5e, #2d1b4e);
@@ -224,3 +224,4 @@ body {
 /* Scrollbar in dark */
 .dark ::-webkit-scrollbar-track { background: #1a1130; }
 .dark ::-webkit-scrollbar-thumb { background: #6d28d9; }
+

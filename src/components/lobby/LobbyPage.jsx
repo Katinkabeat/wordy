@@ -320,11 +320,11 @@ function GameRow({ game, userId, onJoin, joiningId }) {
                 key={p.user_id}
                 className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                   isCurrentTurn
-                    ? 'text-white bg-wordy-600 ring-2 ring-wordy-300 ring-offset-1'
+                    ? 'text-white bg-wordy-500'
                     : 'text-wordy-700 bg-wordy-200'
                 }`}
               >
-                {isCurrentTurn && '✨ '}{p.profiles?.username ?? '?'}
+                {p.profiles?.username ?? '?'}
               </span>
             )
           })}

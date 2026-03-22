@@ -41,8 +41,8 @@ export default function LobbyPage({ session }) {
     const { data } = await supabase
       .from('games')
       .select(`
-        id, status, max_players, created_at,
-        game_players ( user_id, score, profiles ( username ) )
+        id, status, max_players, created_at, current_player_idx,
+        game_players ( user_id, player_index, score, profiles ( username ) )
       `)
       .in('status', ['waiting', 'active'])
       .order('created_at', { ascending: false })
@@ -313,11 +313,21 @@ function GameRow({ game, userId, onJoin, joiningId }) {
     <div className="flex items-center justify-between bg-wordy-50 rounded-xl px-3 py-2 border border-wordy-100">
       <div>
         <div className="flex items-center gap-1.5">
-          {players.map(p => (
-            <span key={p.user_id} className="text-xs font-bold text-wordy-700 bg-wordy-200 px-2 py-0.5 rounded-full">
-              {p.profiles?.username ?? '?'}
-            </span>
-          ))}
+          {players.map(p => {
+            const isCurrentTurn = game.status === 'active' && p.player_index === game.current_player_idx
+            return (
+              <span
+                key={p.user_id}
+                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  isCurrentTurn
+                    ? 'text-white bg-wordy-600 ring-2 ring-wordy-300 ring-offset-1'
+                    : 'text-wordy-700 bg-wordy-200'
+                }`}
+              >
+                {isCurrentTurn && '✨ '}{p.profiles?.username ?? '?'}
+              </span>
+            )
+          })}
           <span className="text-xs text-wordy-400">
             ({players.length}/{game.max_players})
           </span>

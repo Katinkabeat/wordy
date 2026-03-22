@@ -52,13 +52,8 @@ export default function GamePage({ session }) {
     return game.current_player_idx === myPlayer.player_index && game.status === 'active'
   }, [game, myPlayer])
 
-  // Check if the board was empty before current placements.
-  // board state already includes tiles placed this turn, so we
-  // must exclude them to correctly detect the very first move.
   const isFirstMove = board
-    ? board.every((row, r) => row.every((cell, c) =>
-        cell === null || placements.some(p => p.row === r && p.col === c)
-      ))
+    ? board.every(row => row.every(cell => cell === null))
     : true
 
   const [loadError, setLoadError] = useState(null)
@@ -75,16 +70,6 @@ export default function GamePage({ session }) {
       setGame(g)
       setBoard(deserializeBoard(g.board))
       setLoadError(null)
-
-      // Clear any in-progress placement state so it doesn't go stale.
-      // Without this, a refresh or real-time update would restore the
-      // full rack from the server while placements still reference
-      // tiles that were removed from the local rack — causing tile
-      // duplication if the player interacts with the stale placements.
-      setPlacements([])
-      setSelected(null)
-      setExchange(false)
-      setExchangeSel([])
 
       const { data: ps, error: psErr } = await supabase
         .from('game_players')
@@ -546,6 +531,17 @@ export default function GamePage({ session }) {
               onSelect={(letter, idx) => {
                 if (exchangeMode) { toggleExchangeSelect(idx); return }
                 if (!myTurn) return
+                // Tap-to-swap: if a tile is already selected and we tap a different tile, swap them
+                if (selectedTile && selectedTile.rackIdx !== idx) {
+                  setMyPlayer(prev => {
+                    const newRack = [...prev.rack]
+                    const i = selectedTile.rackIdx
+                    ;[newRack[i], newRack[idx]] = [newRack[idx], newRack[i]]
+                    return { ...prev, rack: newRack }
+                  })
+                  setSelected(null)
+                  return
+                }
                 setSelected(prev =>
                   prev?.rackIdx === idx ? null : { letter, rackIdx: idx }
                 )

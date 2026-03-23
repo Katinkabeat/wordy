@@ -52,9 +52,9 @@ export default function GamePage({ session }) {
     return game.current_player_idx === myPlayer.player_index && game.status === 'active'
   }, [game, myPlayer])
 
-  const isFirstMove = board
-    ? board.every(row => row.every(cell => cell === null))
-    : true
+  // Derive from the DB board (game.board), not the live working board,
+  // because the live board includes tiles placed this turn.
+  const isFirstMove = !game?.board || game.board.length === 0
 
   const [loadError, setLoadError] = useState(null)
 

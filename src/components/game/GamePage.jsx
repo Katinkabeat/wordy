@@ -36,6 +36,7 @@ export default function GamePage({ session }) {
   const [lastMoveTiles, setLastMoveTiles] = useState([]) // tiles from the most recent move
   const [lastMoveScores, setLastMoveScores] = useState({}) // user_id → last move score
   const channelRef = useRef(null)
+  const mutatingRef = useRef(false)  // suppress real-time reloads during DB writes
 
   // ── Cell size — fixed, device-appropriate ─────────────────
   const cellSize = useMemo(() => {
@@ -59,7 +60,10 @@ export default function GamePage({ session }) {
   const [loadError, setLoadError] = useState(null)
 
   // ── Load game data ────────────────────────────────────────
-  const loadGame = useCallback(async () => {
+  const loadGame = useCallback(async ({ force = false } = {}) => {
+    // Skip real-time-triggered reloads while a mutation (submit/exchange/pass)
+    // is in progress — the mutation will call loadGame({ force: true }) when done.
+    if (mutatingRef.current && !force) return
     try {
       const { data: g, error: gErr } = await supabase
         .from('games')
@@ -251,6 +255,7 @@ export default function GamePage({ session }) {
     if (submitting || placements.length === 0) return
     if (game.status !== 'active') return   // guard against post-forfeit submissions
     setSubmitting(true)
+    mutatingRef.current = true   // suppress real-time reloads until all writes finish
 
     try {
       const validation = validatePlacement(board, placements, isFirstMove)
@@ -288,22 +293,24 @@ export default function GamePage({ session }) {
         finalPlayers   = finalPlayers.map(p => ({ ...p, is_winner: p.score === maxScore }))
       }
 
-      // Persist to Supabase (best-effort in sequence)
-      await supabase.from('games').update({
+      // Persist to Supabase — check each write for errors
+      const { error: gameErr } = await supabase.from('games').update({
         board: newBoardFlat,
         tile_bag: newBag,
         current_player_idx: nextIdx,
         consecutive_passes: 0,
         ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
       }).eq('id', gameId)
+      if (gameErr) { console.error('games update failed:', gameErr); toast.error('Failed to save move — please retry.'); return }
 
-      await supabase.from('game_players').update({
+      const { error: playerErr } = await supabase.from('game_players').update({
         score: newScore,
         rack:  newRack,
       }).eq('game_id', gameId).eq('user_id', user.id)
+      if (playerErr) { console.error('game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); return }
 
       if (over) {
-        await supabase.rpc('finish_game', {
+        const { error: rpcErr } = await supabase.rpc('finish_game', {
           p_game_id: gameId,
           p_player_results: finalPlayers.map(fp => ({
             user_id:   fp.user_id,
@@ -311,9 +318,10 @@ export default function GamePage({ session }) {
             is_winner: fp.is_winner ?? false,
           })),
         })
+        if (rpcErr) console.error('finish_game RPC failed:', rpcErr)
       }
 
-      await supabase.from('game_moves').insert({
+      const { error: moveErr } = await supabase.from('game_moves').insert({
         game_id: gameId, user_id: user.id,
         move_type: 'place',
         tiles_placed: placements,
@@ -321,12 +329,16 @@ export default function GamePage({ session }) {
         score: turnScore,
         rack_after: newRack,
       })
+      if (moveErr) console.error('game_moves insert failed:', moveErr)
 
       setPlacements([])
       toast.success(`+${turnScore} pts ✨  [${words.map(w => w.word).join(', ')}]`)
       if (over) toast('🏆 Game over!')
     } finally {
       setSubmitting(false)
+      mutatingRef.current = false
+      // Reload from DB now that ALL writes have completed, so state is consistent
+      loadGame({ force: true })
     }
   }
 
@@ -334,20 +346,28 @@ export default function GamePage({ session }) {
   async function passTurn() {
     if (!isMyTurn()) return
     recall()
+    mutatingRef.current = true
     const nextIdx = (myPlayer.player_index + 1) % players.length
     const newPasses = (game.consecutive_passes ?? 0) + 1
 
-    await supabase.from('games').update({
-      current_player_idx: nextIdx,
-      consecutive_passes: newPasses,
-    }).eq('id', gameId)
+    try {
+      const { error: gameErr } = await supabase.from('games').update({
+        current_player_idx: nextIdx,
+        consecutive_passes: newPasses,
+      }).eq('id', gameId)
+      if (gameErr) { console.error('pass: games update failed:', gameErr); toast.error('Failed to pass — please retry.'); return }
 
-    await supabase.from('game_moves').insert({
-      game_id: gameId, user_id: user.id,
-      move_type: 'pass', score: 0, rack_after: myPlayer.rack,
-    })
+      const { error: moveErr } = await supabase.from('game_moves').insert({
+        game_id: gameId, user_id: user.id,
+        move_type: 'pass', score: 0, rack_after: myPlayer.rack,
+      })
+      if (moveErr) console.error('pass: game_moves insert failed:', moveErr)
 
-    toast('⏩ Turn passed.')
+      toast('⏩ Turn passed.')
+    } finally {
+      mutatingRef.current = false
+      loadGame({ force: true })
+    }
   }
 
   // ── Exchange tiles ────────────────────────────────────────
@@ -363,34 +383,43 @@ export default function GamePage({ session }) {
       toast.error('Not enough tiles in the bag to exchange.')
       return
     }
+    mutatingRef.current = true
 
-    const newRack   = [...myPlayer.rack]
-    const returned  = exchangeSel.map(i => newRack[i])
-    const remaining = newRack.filter((_, i) => !exchangeSel.includes(i))
-    let   bag       = [...(game.tile_bag)]
+    try {
+      const newRack   = [...myPlayer.rack]
+      const returned  = exchangeSel.map(i => newRack[i])
+      const remaining = newRack.filter((_, i) => !exchangeSel.includes(i))
+      let   bag       = [...(game.tile_bag)]
 
-    let { rack: refilled, bag: newBag } = refillRack(remaining, bag)
-    newBag = [...newBag, ...returned]
+      let { rack: refilled, bag: newBag } = refillRack(remaining, bag)
+      newBag = [...newBag, ...returned]
 
-    const nextIdx  = (myPlayer.player_index + 1) % players.length
+      const nextIdx  = (myPlayer.player_index + 1) % players.length
 
-    await supabase.from('games').update({
-      tile_bag: newBag,
-      current_player_idx: nextIdx,
-      consecutive_passes: (game.consecutive_passes ?? 0) + 1,
-    }).eq('id', gameId)
+      const { error: gameErr } = await supabase.from('games').update({
+        tile_bag: newBag,
+        current_player_idx: nextIdx,
+        consecutive_passes: (game.consecutive_passes ?? 0) + 1,
+      }).eq('id', gameId)
+      if (gameErr) { console.error('exchange: games update failed:', gameErr); toast.error('Failed to exchange — please retry.'); return }
 
-    await supabase.from('game_players').update({ rack: refilled })
-      .eq('game_id', gameId).eq('user_id', user.id)
+      const { error: playerErr } = await supabase.from('game_players').update({ rack: refilled })
+        .eq('game_id', gameId).eq('user_id', user.id)
+      if (playerErr) { console.error('exchange: game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); return }
 
-    await supabase.from('game_moves').insert({
-      game_id: gameId, user_id: user.id,
-      move_type: 'exchange', score: 0, rack_after: refilled,
-    })
+      const { error: moveErr } = await supabase.from('game_moves').insert({
+        game_id: gameId, user_id: user.id,
+        move_type: 'exchange', score: 0, rack_after: refilled,
+      })
+      if (moveErr) console.error('exchange: game_moves insert failed:', moveErr)
 
-    setExchange(false)
-    setExchangeSel([])
-    toast('🔄 Tiles exchanged!')
+      setExchange(false)
+      setExchangeSel([])
+      toast('🔄 Tiles exchanged!')
+    } finally {
+      mutatingRef.current = false
+      loadGame({ force: true })
+    }
   }
 
   // ── Shuffle rack ─────────────────────────────────────────

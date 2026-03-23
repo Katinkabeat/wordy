@@ -73,6 +73,7 @@ export default function GamePage({ session }) {
       if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
       setGame(g)
       setBoard(deserializeBoard(g.board))
+      setPlacements([])  // clear stale placements — DB board is the source of truth
       setLoadError(null)
 
       const { data: ps, error: psErr } = await supabase
@@ -255,9 +256,11 @@ export default function GamePage({ session }) {
     if (submitting || placements.length === 0) return
     if (game.status !== 'active') return   // guard against post-forfeit submissions
     setSubmitting(true)
-    mutatingRef.current = true   // suppress real-time reloads until all writes finish
 
     try {
+      // ── Validation phase ──────────────────────────────────
+      // No mutation guard here — if validation fails, local state is correct
+      // (tiles on board, removed from rack, tracked by placements).
       const validation = validatePlacement(board, placements, isFirstMove)
       if (!validation.valid) { toast.error(validation.error); return }
 
@@ -293,52 +296,57 @@ export default function GamePage({ session }) {
         finalPlayers   = finalPlayers.map(p => ({ ...p, is_winner: p.score === maxScore }))
       }
 
-      // Persist to Supabase — check each write for errors
-      const { error: gameErr } = await supabase.from('games').update({
-        board: newBoardFlat,
-        tile_bag: newBag,
-        current_player_idx: nextIdx,
-        consecutive_passes: 0,
-        ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
-      }).eq('id', gameId)
-      if (gameErr) { console.error('games update failed:', gameErr); toast.error('Failed to save move — please retry.'); return }
+      // ── DB write phase ────────────────────────────────────
+      // Suppress real-time reloads while sequential writes are in progress.
+      mutatingRef.current = true
+      try {
+        const { error: gameErr } = await supabase.from('games').update({
+          board: newBoardFlat,
+          tile_bag: newBag,
+          current_player_idx: nextIdx,
+          consecutive_passes: 0,
+          ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
+        }).eq('id', gameId)
+        if (gameErr) { console.error('games update failed:', gameErr); toast.error('Failed to save move — please retry.'); recall(); return }
 
-      const { error: playerErr } = await supabase.from('game_players').update({
-        score: newScore,
-        rack:  newRack,
-      }).eq('game_id', gameId).eq('user_id', user.id)
-      if (playerErr) { console.error('game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); return }
+        const { error: playerErr } = await supabase.from('game_players').update({
+          score: newScore,
+          rack:  newRack,
+        }).eq('game_id', gameId).eq('user_id', user.id)
+        if (playerErr) { console.error('game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); recall(); return }
 
-      if (over) {
-        const { error: rpcErr } = await supabase.rpc('finish_game', {
-          p_game_id: gameId,
-          p_player_results: finalPlayers.map(fp => ({
-            user_id:   fp.user_id,
-            score:     fp.score,
-            is_winner: fp.is_winner ?? false,
-          })),
+        if (over) {
+          const { error: rpcErr } = await supabase.rpc('finish_game', {
+            p_game_id: gameId,
+            p_player_results: finalPlayers.map(fp => ({
+              user_id:   fp.user_id,
+              score:     fp.score,
+              is_winner: fp.is_winner ?? false,
+            })),
+          })
+          if (rpcErr) console.error('finish_game RPC failed:', rpcErr)
+        }
+
+        const { error: moveErr } = await supabase.from('game_moves').insert({
+          game_id: gameId, user_id: user.id,
+          move_type: 'place',
+          tiles_placed: placements,
+          words_formed: words.map(w => w.word),
+          score: turnScore,
+          rack_after: newRack,
         })
-        if (rpcErr) console.error('finish_game RPC failed:', rpcErr)
+        if (moveErr) console.error('game_moves insert failed:', moveErr)
+
+        setPlacements([])
+        toast.success(`+${turnScore} pts ✨  [${words.map(w => w.word).join(', ')}]`)
+        if (over) toast('🏆 Game over!')
+      } finally {
+        mutatingRef.current = false
+        // Reload from DB now that ALL writes have completed, so state is consistent
+        loadGame({ force: true })
       }
-
-      const { error: moveErr } = await supabase.from('game_moves').insert({
-        game_id: gameId, user_id: user.id,
-        move_type: 'place',
-        tiles_placed: placements,
-        words_formed: words.map(w => w.word),
-        score: turnScore,
-        rack_after: newRack,
-      })
-      if (moveErr) console.error('game_moves insert failed:', moveErr)
-
-      setPlacements([])
-      toast.success(`+${turnScore} pts ✨  [${words.map(w => w.word).join(', ')}]`)
-      if (over) toast('🏆 Game over!')
     } finally {
       setSubmitting(false)
-      mutatingRef.current = false
-      // Reload from DB now that ALL writes have completed, so state is consistent
-      loadGame({ force: true })
     }
   }
 

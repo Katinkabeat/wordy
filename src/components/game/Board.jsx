@@ -1,5 +1,6 @@
 import { getBonusType } from '../../lib/boardData.js'
 import { TILE_VALUES }  from '../../lib/tileData.js'
+import { boardTileStyle, DEFAULT_TILE_HUE } from '../../lib/tileColors.js'
 
 const BONUS_LABELS = { TW: 'TW', DW: 'DW', TL: 'TL', DL: 'DL', CT: '★' }
 const BONUS_CLASSES = {
@@ -12,7 +13,7 @@ const BONUS_CLASSES = {
 
 // cellSize = each cell's width/height in pixels.
 // Fonts scale proportionally so the board looks great at any zoom level.
-export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36 }) {
+export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36, isDark = false }) {
   const placedSet   = new Set(placements.map(p => `${p.row},${p.col}`))
   const lastMoveSet = new Set(lastMoveTiles.map(t => `${t.row},${t.col}`))
 
@@ -45,8 +46,10 @@ export default function Board({ board, placements, lastMoveTiles = [], onCellCli
                 key={key}
                 letter={cell.letter}
                 isBlank={cell.isBlank}
+                hue={cell.hue ?? DEFAULT_TILE_HUE}
                 isNew={isNew}
                 isLastMove={isLastMove}
+                isDark={isDark}
                 onClick={() => onCellClick(r, c)}
                 letterSize={letterSize}
                 valueSize={valueSize}
@@ -77,36 +80,30 @@ export default function Board({ board, placements, lastMoveTiles = [], onCellCli
   )
 }
 
-function BoardTile({ letter, isBlank, isNew, isLastMove, onClick, letterSize, valueSize }) {
+function BoardTile({ letter, isBlank, hue, isNew, isLastMove, isDark, onClick, letterSize, valueSize }) {
   const val = isBlank ? 0 : (TILE_VALUES[letter] ?? 0)
-
-  const bg = isNew
-    ? 'linear-gradient(145deg, #f3e8ff, #e9d5ff)'       // current turn — lightest
-    : isLastMove
-    ? 'linear-gradient(145deg, #e9d5ff, #d8b4fe)'       // last move — brighter purple
-    : 'linear-gradient(145deg, #d8b4fe, #c084fc)'       // older tiles — standard purple
+  const age = isNew ? 'new' : isLastMove ? 'lastMove' : 'old'
+  const s   = boardTileStyle(hue, age, isDark)
 
   return (
     <div
       onClick={onClick}
       className={`board-cell cell-occupied ${isNew ? 'ring-1 ring-pink-400' : ''} ${isLastMove ? 'ring-1 ring-purple-300' : ''}`}
       style={{
-        background: bg,
+        background: s.bg,
         cursor: isNew ? 'pointer' : 'default',
         touchAction: 'manipulation',
       }}
     >
       <div className="relative flex items-center justify-center w-full h-full">
-        {/* Tile text uses inline colour so dark-mode CSS overrides never touch it.
-            The tile background is always light (inline style), so text must always be dark. */}
         <span
-          style={{ fontSize: letterSize, color: '#3b0764' }}
+          style={{ fontSize: letterSize, color: s.color }}
           className="font-display select-none leading-none"
         >
           {letter}
         </span>
         <span
-          style={{ fontSize: valueSize, color: '#6d28d9' }}
+          style={{ fontSize: valueSize, color: s.valColor }}
           className="absolute bottom-px right-px font-bold select-none leading-none"
         >
           {val > 0 ? val : ''}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
+import { TILE_COLOR_OPTIONS, DEFAULT_TILE_HUE, tileStyle } from '../../lib/tileColors.js'
+import TileColorPicker from './TileColorPicker.jsx'
 
 const PW_RULES = { number: /\d/, special: /[^A-Za-z0-9]/ }
 
@@ -8,6 +10,7 @@ export default function SettingsDropdown({ profile, onClose, onProfileUpdate, is
   const [newName, setNewName]   = useState(profile?.username ?? '')
   const [editing, setEditing]   = useState(false)
   const [saving, setSaving]     = useState(false)
+  const [showColorPicker, setShowColorPicker] = useState(false)
   const dropdownRef             = useRef(null)
   const inputRef                = useRef(null)
 
@@ -279,6 +282,25 @@ export default function SettingsDropdown({ profile, onClose, onProfileUpdate, is
         )}
       </div>
 
+      {/* Tiles */}
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Tiles</span>
+        <button
+          onClick={() => setShowColorPicker(true)}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors flex items-center gap-1.5"
+        >
+          <span
+            className="inline-block w-4 h-5 rounded"
+            style={{
+              background: tileStyle(profile?.tile_hue ?? DEFAULT_TILE_HUE, isDark).bg,
+              border: `1px solid ${tileStyle(profile?.tile_hue ?? DEFAULT_TILE_HUE, isDark).border}`,
+            }}
+          />
+          {TILE_COLOR_OPTIONS.find(o => o.hue === (profile?.tile_hue ?? DEFAULT_TILE_HUE))?.name ?? 'Purple'}
+          <span className="text-xs text-wordy-400">✏️</span>
+        </button>
+      </div>
+
       {/* Theme */}
       <div className="settings-row">
         <span className="text-sm font-bold text-wordy-600">Theme</span>
@@ -316,6 +338,16 @@ export default function SettingsDropdown({ profile, onClose, onProfileUpdate, is
           Log out
         </button>
       </div>
+
+      {/* Tile color picker popup */}
+      {showColorPicker && (
+        <TileColorPicker
+          profile={profile}
+          isDark={isDark}
+          onClose={() => setShowColorPicker(false)}
+          onProfileUpdate={onProfileUpdate}
+        />
+      )}
     </div>
   )
 }

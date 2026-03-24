@@ -13,6 +13,7 @@ import Board      from './Board.jsx'
 import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
+import { DEFAULT_TILE_HUE } from '../../lib/tileColors.js'
 
 export default function GamePage({ session }) {
   const { id: gameId } = useParams()
@@ -119,10 +120,10 @@ export default function GamePage({ session }) {
       const ids = (ps ?? []).map(p => p.user_id)
       if (ids.length) {
         const { data: profs, error: profsError } = await supabase
-          .from('profiles').select('id, username').in('id', ids)
+          .from('profiles').select('id, username, tile_hue').in('id', ids)
         if (!profsError && profs) {
           const map = {}
-          for (const p of profs) map[p.id] = p.username
+          for (const p of profs) map[p.id] = { username: p.username, tile_hue: p.tile_hue ?? DEFAULT_TILE_HUE }
           setProfiles(map)
         }
       }
@@ -210,8 +211,9 @@ export default function GamePage({ session }) {
   }
 
   function placeTile(row, col, letter, isBlank) {
+    const myHue = profiles[user.id]?.tile_hue ?? DEFAULT_TILE_HUE
     const newBoard = board.map(r => [...r])
-    newBoard[row][col] = { letter, isBlank }
+    newBoard[row][col] = { letter, isBlank, hue: myHue }
     setBoard(newBoard)
 
     // Remove from rack
@@ -487,7 +489,7 @@ export default function GamePage({ session }) {
     )
   }
 
-  const currentPlayerName = profiles[players[game.current_player_idx]?.user_id] ?? '?'
+  const currentPlayerName = profiles[players[game.current_player_idx]?.user_id]?.username ?? '?'
   const myTurn = isMyTurn()
 
   return (
@@ -546,6 +548,7 @@ export default function GamePage({ session }) {
             onCellClick={handleCellClick}
             myTurn={myTurn}
             cellSize={cellSize}
+            isDark={isDark}
           />
         </div>
 
@@ -565,6 +568,8 @@ export default function GamePage({ session }) {
               selected={selectedTile}
               exchangeMode={exchangeMode}
               exchangeSel={exchangeSel}
+              tileHue={profiles[user.id]?.tile_hue ?? DEFAULT_TILE_HUE}
+              isDark={isDark}
               onSelect={(letter, idx) => {
                 if (exchangeMode) { toggleExchangeSelect(idx); return }
                 if (!myTurn) return
@@ -662,9 +667,9 @@ export default function GamePage({ session }) {
         <div className="bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
           <p className="font-display text-xl mb-1">
             {game.forfeit_user_id
-              ? `🏳️ ${profiles[game.forfeit_user_id] ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id] ?? '?'} wins!`
+              ? `🏳️ ${profiles[game.forfeit_user_id]?.username ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id]?.username ?? '?'} wins!`
               : players.find(p => p.is_winner)
-                ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id] ?? '?'} wins!`
+                ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id]?.username ?? '?'} wins!`
                 : "🏆 It's a tie!"}
           </p>
           <button onClick={() => navigate('/stats')} className="text-sm underline opacity-80 hover:opacity-100">

@@ -48,10 +48,14 @@ export function createEmptyBoard() {
 /** Convert the flat JSONB board stored in Supabase back to 2-D array */
 export function deserializeBoard(flat) {
   if (!flat || flat.length === 0) return createEmptyBoard()
-  // Stored as array of {row,col,letter,isBlank}
+  // Stored as array of {row,col,letter,isBlank,hue?}
   const board = createEmptyBoard()
   for (const cell of flat) {
-    board[cell.row][cell.col] = { letter: cell.letter, isBlank: cell.isBlank ?? false }
+    board[cell.row][cell.col] = {
+      letter: cell.letter,
+      isBlank: cell.isBlank ?? false,
+      ...(cell.hue != null ? { hue: cell.hue } : {}),
+    }
   }
   return board
 }

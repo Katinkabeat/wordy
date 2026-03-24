@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id          UUID    PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username    TEXT    UNIQUE NOT NULL,
   avatar_hue  INT     DEFAULT 270,   -- HSL hue for avatar colour (270 = purple)
+  tile_hue    INT     DEFAULT 270,   -- HSL hue for tile colour (270 = purple)
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 

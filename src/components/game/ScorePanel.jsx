@@ -7,7 +7,7 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
       <div className="card space-y-2 hidden lg:block">
         <h3 className="font-display text-lg text-wordy-700 mb-1">🏅 Scores</h3>
         {players.map((p, i) => {
-          const name      = profiles[p.user_id] ?? '?'
+          const name      = profiles[p.user_id]?.username ?? '?'
           const isMe      = p.user_id === userId
           const isCurrent = i === currentIdx && status === 'active'
           const isWinner  = p.is_winner && status === 'finished'
@@ -41,7 +41,7 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
       {/* ── Mobile: compact horizontal score bar ────────────── */}
       <div className="flex lg:hidden gap-2 flex-wrap px-1">
         {players.map((p, i) => {
-          const name      = profiles[p.user_id] ?? '?'
+          const name      = profiles[p.user_id]?.username ?? '?'
           const isMe      = p.user_id === userId
           const isCurrent = i === currentIdx && status === 'active'
           const isWinner  = p.is_winner && status === 'finished'

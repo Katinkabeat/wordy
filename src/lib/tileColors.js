@@ -23,10 +23,10 @@ export const DEFAULT_TILE_HUE = 270
 export function tileStyle(hue = DEFAULT_TILE_HUE, dark = false) {
   if (dark) {
     return {
-      bg:       `linear-gradient(145deg, hsl(${hue},40%,20%), hsl(${hue},35%,14%))`,
-      border:   `hsl(${hue},55%,45%)`,
-      shadow:   `2px 3px 0px hsla(${hue},55%,40%,0.5)`,
-      color:    `hsl(${hue},60%,88%)`,
+      bg:       `linear-gradient(145deg, hsl(${hue},45%,42%), hsl(${hue},40%,34%))`,
+      border:   `hsl(${hue},50%,50%)`,
+      shadow:   `2px 3px 0px hsla(${hue},50%,20%,0.6)`,
+      color:    `hsl(${hue},90%,92%)`,
       valColor: `hsl(${hue},50%,75%)`,
     }
   }
@@ -47,10 +47,10 @@ export function tileStyle(hue = DEFAULT_TILE_HUE, dark = false) {
  */
 export function boardTileStyle(hue = DEFAULT_TILE_HUE, age = 'old', dark = false) {
   if (dark) {
-    const l = age === 'new' ? [25, 18] : age === 'lastMove' ? [22, 16] : [20, 14]
+    const l = age === 'new' ? [45, 38] : age === 'lastMove' ? [40, 33] : [35, 28]
     return {
-      bg:       `linear-gradient(145deg, hsl(${hue},40%,${l[0]}%), hsl(${hue},35%,${l[1]}%))`,
-      color:    `hsl(${hue},60%,88%)`,
+      bg:       `linear-gradient(145deg, hsl(${hue},45%,${l[0]}%), hsl(${hue},40%,${l[1]}%))`,
+      color:    `hsl(${hue},90%,92%)`,
       valColor: `hsl(${hue},50%,75%)`,
     }
   }

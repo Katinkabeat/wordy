@@ -259,22 +259,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
 
         {/* Card */}
         <div className="card shadow-lg">
-          {/* Tab switcher */}
-          <div className="flex rounded-xl bg-wordy-50 p-1 mb-5 border border-wordy-100">
-            {['login', 'register'].map(m => (
-              <button
-                key={m}
-                onClick={() => switchMode(m)}
-                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                  mode === m
-                    ? 'bg-wordy-600 text-white shadow'
-                    : 'text-wordy-500 hover:text-wordy-700'
-                }`}
-              >
-                {m === 'login' ? '🔓 Log in' : '✨ Sign up'}
-              </button>
-            ))}
-          </div>
+          <h2 className="font-display text-xl text-wordy-800 mb-5 text-center dark:text-wordy-200">🔓 Log in</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Forgot password — email only */}
@@ -414,17 +399,7 @@ export default function AuthPage({ isRecovery = false, onPasswordReset = () => {
           </form>
         </div>
 
-        <p className="text-center text-xs text-wordy-400 mt-4">
-          {mode === 'login'
-            ? "Don't have an account? "
-            : 'Already have an account? '}
-          <button
-            onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
-            className="text-wordy-600 font-bold underline"
-          >
-            {mode === 'login' ? 'Sign up!' : 'Log in!'}
-          </button>
-        </p>
+        {/* Registration is currently closed */}
       </div>
     </div>
   )

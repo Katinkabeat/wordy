@@ -23,8 +23,8 @@ body {
   transform: translateY(-1px);
 }
 .tile.tile-selected {
-  @apply ring-2 ring-purple-400;
-  box-shadow: 0 0 0 3px #a855f7;
+  @apply ring-2 ring-pink-400;
+  box-shadow: 0 0 0 3px #f472b6;
   transform: translateY(-3px);
 }
 .tile.tile-placed {
@@ -82,6 +82,21 @@ body {
 /* ── Card / panel ── */
 .card {
   @apply bg-white rounded-2xl shadow-md border border-purple-100 p-4;
+}
+
+/* ── Settings modal ── */
+.settings-backdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: rgba(59, 7, 100, 0.4);
+  backdrop-filter: blur(4px);
+}
+.settings-modal {
+  @apply w-full max-w-sm mx-4;
+  animation: settings-pop 0.15s ease-out;
+}
+@keyframes settings-pop {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── Scrollbar ── */
@@ -153,7 +168,7 @@ body {
   box-shadow: 3px 4px 0px rgba(124, 58, 237, 0.6);
 }
 .dark .tile.tile-selected {
-  box-shadow: 0 0 0 3px #a855f7;
+  box-shadow: 0 0 0 3px #f472b6;
 }
 .dark .tile.tile-placed {
   background: linear-gradient(145deg, #3b1a5e, #2d1b4e);
@@ -221,7 +236,11 @@ body {
 .dark .from-indigo-400  { --tw-gradient-from: #3730a3; }
 .dark .to-indigo-500    { --tw-gradient-to:   #4338ca; }
 
+/* Settings modal in dark */
+.dark .settings-backdrop {
+  background: rgba(15, 10, 30, 0.6);
+}
+
 /* Scrollbar in dark */
 .dark ::-webkit-scrollbar-track { background: #1a1130; }
 .dark ::-webkit-scrollbar-thumb { background: #6d28d9; }
-

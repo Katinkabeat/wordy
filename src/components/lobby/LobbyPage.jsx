@@ -7,6 +7,7 @@ import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import AdminPanel from '../admin/AdminPanel.jsx'
 import NotificationBanner from './NotificationBanner.jsx'
 import IOSInstallPrompt from './IOSInstallPrompt.jsx'
+import SettingsModal from './SettingsModal.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
@@ -23,6 +24,7 @@ export default function LobbyPage({ session }) {
   const [joiningId, setJoiningId]     = useState(null)
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
   const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
+  const [showSettings, setShowSettings] = useState(false)
 
   // ── Load profile ──────────────────────────────────────────
   useEffect(() => {
@@ -189,6 +191,13 @@ export default function LobbyPage({ session }) {
               </span>
             </div>
             <button
+              onClick={() => setShowSettings(true)}
+              className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
+              title="Settings"
+            >
+              ⚙️
+            </button>
+            <button
               onClick={toggleTheme}
               className="text-lg leading-none hover:scale-110 transition-transform"
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -293,6 +302,15 @@ export default function LobbyPage({ session }) {
           </>
         )}
       </main>
+
+      {/* Settings modal */}
+      {showSettings && profile && (
+        <SettingsModal
+          profile={profile}
+          onClose={() => setShowSettings(false)}
+          onProfileUpdate={updated => setProfile(updated)}
+        />
+      )}
     </div>
   )
 }

@@ -213,7 +213,7 @@ export default function GamePage({ session }) {
   function placeTile(row, col, letter, isBlank) {
     const myHue = profiles[user.id]?.tile_hue ?? DEFAULT_TILE_HUE
     const newBoard = board.map(r => [...r])
-    newBoard[row][col] = { letter, isBlank, hue: myHue }
+    newBoard[row][col] = { letter, isBlank, hue: myHue, uid: user.id }
     setBoard(newBoard)
 
     // Remove from rack
@@ -549,6 +549,7 @@ export default function GamePage({ session }) {
             myTurn={myTurn}
             cellSize={cellSize}
             isDark={isDark}
+            profiles={profiles}
           />
         </div>
 

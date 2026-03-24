@@ -9,12 +9,11 @@ export const TILE_COLOR_OPTIONS = [
   { name: 'Purple',  hue: 270 },
   { name: 'Pink',    hue: 330 },
   { name: 'Blue',    hue: 220 },
-  { name: 'Teal',    hue: 175 },
-  { name: 'Green',   hue: 145 },
-  { name: 'Orange',  hue: 25  },
-  { name: 'Red',     hue: 0   },
-  { name: 'Gold',    hue: 45  },
+  { name: 'Grey',    hue: -1 },
 ]
+
+// Grey uses hue -1 as a sentinel; style functions map it to desaturated tones.
+export const GREY_HUE = -1
 
 export const DEFAULT_TILE_HUE = 270
 
@@ -24,21 +23,23 @@ export const DEFAULT_TILE_HUE = 270
  * @param {boolean} dark – dark mode?
  */
 export function tileStyle(hue = DEFAULT_TILE_HUE, dark = false) {
+  const isGrey = hue === GREY_HUE
+  const h = isGrey ? 0 : hue
   if (dark) {
     return {
-      bg:       `linear-gradient(145deg, hsl(${hue},70%,78%), hsl(${hue},60%,68%))`,
-      border:   `hsl(${hue},60%,58%)`,
-      shadow:   `2px 3px 0px hsla(${hue},60%,15%,0.5), 0 0 8px hsla(${hue},70%,60%,0.3)`,
-      color:    `hsl(${hue},80%,12%)`,
-      valColor: `hsl(${hue},70%,30%)`,
+      bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : 70}%,78%), hsl(${h},${isGrey ? 0 : 60}%,68%))`,
+      border:   `hsl(${h},${isGrey ? 0 : 60}%,58%)`,
+      shadow:   `2px 3px 0px hsla(${h},${isGrey ? 0 : 60}%,15%,0.5), 0 0 8px hsla(${h},${isGrey ? 0 : 70}%,60%,0.3)`,
+      color:    `hsl(${h},${isGrey ? 0 : 80}%,12%)`,
+      valColor: `hsl(${h},${isGrey ? 0 : 70}%,30%)`,
     }
   }
   return {
-    bg:       `linear-gradient(145deg, hsl(${hue},80%,93%), hsl(${hue},70%,87%))`,
-    border:   `hsl(${hue},55%,68%)`,
-    shadow:   `2px 3px 0px hsla(${hue},70%,25%,0.4)`,
-    color:    `hsl(${hue},80%,15%)`,
-    valColor: `hsl(${hue},65%,40%)`,
+    bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : 80}%,93%), hsl(${h},${isGrey ? 0 : 70}%,87%))`,
+    border:   `hsl(${h},${isGrey ? 0 : 55}%,68%)`,
+    shadow:   `2px 3px 0px hsla(${h},${isGrey ? 0 : 70}%,25%,0.4)`,
+    color:    `hsl(${h},${isGrey ? 0 : 80}%,15%)`,
+    valColor: `hsl(${h},${isGrey ? 0 : 65}%,40%)`,
   }
 }
 
@@ -56,23 +57,25 @@ export function tileStyle(hue = DEFAULT_TILE_HUE, dark = false) {
  * @param {boolean} dark
  */
 export function boardTileStyle(hue = DEFAULT_TILE_HUE, age = 'old', dark = false) {
+  const isGrey = hue === GREY_HUE
+  const h = isGrey ? 0 : hue
   if (dark) {
     // Bright pastel tiles with glow — dark text for readability
     const l = age === 'new' ? [92, 85] : age === 'lastMove' ? [85, 75] : [78, 68]
     const s = age === 'new' ? [90, 80] : age === 'lastMove' ? [80, 70] : [70, 60]
     const glowStrength = age === 'new' ? 0.5 : age === 'lastMove' ? 0.4 : 0.3
     return {
-      bg:       `linear-gradient(145deg, hsl(${hue},${s[0]}%,${l[0]}%), hsl(${hue},${s[1]}%,${l[1]}%))`,
-      color:    `hsl(${hue},80%,12%)`,
-      valColor: `hsl(${hue},70%,30%)`,
-      glow:     `0 0 6px hsla(${hue},80%,65%,${glowStrength})`,
+      bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,
+      color:    `hsl(${h},${isGrey ? 0 : 80}%,12%)`,
+      valColor: `hsl(${h},${isGrey ? 0 : 70}%,30%)`,
+      glow:     `0 0 6px hsla(${h},${isGrey ? 0 : 80}%,65%,${glowStrength})`,
     }
   }
   const l = age === 'new' ? [93, 87] : age === 'lastMove' ? [87, 78] : [78, 65]
   return {
-    bg:       `linear-gradient(145deg, hsl(${hue},70%,${l[0]}%), hsl(${hue},60%,${l[1]}%))`,
-    color:    `hsl(${hue},80%,15%)`,
-    valColor: `hsl(${hue},65%,40%)`,
+    bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : 70}%,${l[0]}%), hsl(${h},${isGrey ? 0 : 60}%,${l[1]}%))`,
+    color:    `hsl(${h},${isGrey ? 0 : 80}%,15%)`,
+    valColor: `hsl(${h},${isGrey ? 0 : 65}%,40%)`,
     glow:     'none',
   }
 }

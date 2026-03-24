@@ -19,8 +19,8 @@ export default function Board({ board, placements, lastMoveTiles = [], onCellCli
 
   // 15 cells × cellSize + 14 one-pixel gaps + 4px for border-2 (2px each side)
   const totalSize  = 15 * cellSize + 18
-  const letterSize = Math.max(8,  Math.round(cellSize * 0.38))
-  const valueSize  = Math.max(5,  Math.round(cellSize * 0.22))
+  const letterSize = Math.max(10, Math.round(cellSize * 0.48))
+  const valueSize  = Math.max(6,  Math.round(cellSize * 0.26))
   const bonusSize  = Math.max(6,  Math.round(cellSize * 0.26))
 
   return (

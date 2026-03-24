@@ -1,20 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
 
-export default function SettingsModal({ profile, onClose, onProfileUpdate, isDark, toggleTheme }) {
-  const [newName, setNewName] = useState(profile?.username ?? '')
-  const [saving, setSaving]   = useState(false)
+export default function SettingsDropdown({ profile, onClose, onProfileUpdate, isDark, toggleTheme }) {
+  const [newName, setNewName]   = useState(profile?.username ?? '')
+  const [editing, setEditing]   = useState(false)
+  const [saving, setSaving]     = useState(false)
+  const dropdownRef             = useRef(null)
+  const inputRef                = useRef(null)
 
-  const nameChanged = newName.trim() !== (profile?.username ?? '')
+  // Close on click outside
+  useEffect(() => {
+    function handleClick(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
+  // Close on Escape
+  useEffect(() => {
+    function handleKey(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  // Auto-focus input when editing
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus()
+  }, [editing])
 
   async function handleSave() {
     const trimmed = newName.trim()
-    if (!trimmed) {
-      toast.error('Name cannot be empty')
-      return
-    }
-    if (trimmed.length < 2) {
+    if (!trimmed || trimmed.length < 2) {
       toast.error('Name must be at least 2 characters')
       return
     }
@@ -22,8 +42,8 @@ export default function SettingsModal({ profile, onClose, onProfileUpdate, isDar
       toast.error('Name must be 20 characters or less')
       return
     }
-    if (!nameChanged) {
-      onClose()
+    if (trimmed === profile?.username) {
+      setEditing(false)
       return
     }
 
@@ -34,16 +54,13 @@ export default function SettingsModal({ profile, onClose, onProfileUpdate, isDar
         .update({ username: trimmed })
         .eq('id', profile.id)
       if (error) {
-        if (error.code === '23505') {
-          toast.error('That name is already taken!')
-        } else {
-          throw error
-        }
+        if (error.code === '23505') toast.error('That name is already taken!')
+        else throw error
         return
       }
       toast.success('Name updated!')
       onProfileUpdate({ ...profile, username: trimmed })
-      onClose()
+      setEditing(false)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -51,68 +68,66 @@ export default function SettingsModal({ profile, onClose, onProfileUpdate, isDar
     }
   }
 
+  function cancelEdit() {
+    setNewName(profile?.username ?? '')
+    setEditing(false)
+  }
+
   return (
-    <div className="settings-backdrop" onClick={onClose}>
-      <div
-        className="settings-modal card"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-xl text-wordy-700">⚙️ Settings</h2>
+    <div ref={dropdownRef} className="settings-dropdown card">
+
+      {/* Display Name */}
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Name</span>
+        {!editing ? (
           <button
-            onClick={onClose}
-            className="text-wordy-400 hover:text-wordy-600 text-xl leading-none"
+            onClick={() => setEditing(true)}
+            className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors flex items-center gap-1"
           >
-            ✕
+            {profile?.username ?? '…'}
+            <span className="text-xs text-wordy-400">✏️</span>
           </button>
-        </div>
-
-        {/* ── Display Name ── */}
-        <div className="mb-5">
-          <h3 className="text-sm font-bold text-wordy-600 mb-2">Display Name</h3>
-          <input
-            type="text"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            maxLength={20}
-            className="w-full px-3 py-2 rounded-xl border-2 border-wordy-200 text-sm font-bold text-wordy-700
-                       focus:border-wordy-400 focus:outline-none transition-colors"
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-          />
-          <p className="text-xs text-wordy-400 mt-1">
-            {newName.trim().length}/20 characters
-          </p>
-        </div>
-
-        {/* ── Appearance ── */}
-        <div className="mb-5">
-          <h3 className="text-sm font-bold text-wordy-600 mb-2">Appearance</h3>
-          <div className="flex items-center justify-between bg-wordy-50 rounded-xl px-3 py-2.5 border border-wordy-100">
-            <span className="text-sm text-wordy-700 font-bold">Theme</span>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <input
+              ref={inputRef}
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              maxLength={20}
+              className="w-28 px-2 py-1 rounded-lg border-2 border-wordy-200 text-sm font-bold text-wordy-700
+                         focus:border-wordy-400 focus:outline-none transition-colors"
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleSave()
+                if (e.key === 'Escape') cancelEdit()
+              }}
+            />
             <button
-              onClick={toggleTheme}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-wordy-200 text-sm font-bold
-                         text-wordy-600 hover:border-wordy-400 transition-all active:scale-95"
+              onClick={handleSave}
+              disabled={saving}
+              className="text-xs font-bold text-white bg-wordy-600 px-2 py-1 rounded-lg hover:bg-wordy-500 transition-colors disabled:opacity-60"
             >
-              {isDark ? '☀️ Light' : '🌙 Dark'}
+              {saving ? '…' : '✓'}
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="text-xs font-bold text-wordy-400 hover:text-wordy-600 px-1 py-1 transition-colors"
+            >
+              ✕
             </button>
           </div>
-        </div>
+        )}
+      </div>
 
-        {/* ── Actions ── */}
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="btn-secondary text-sm py-1.5 px-4">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !nameChanged}
-            className="btn-primary text-sm py-1.5 px-4 disabled:opacity-60"
-          >
-            {saving ? '⏳ Saving…' : '💾 Save'}
-          </button>
-        </div>
+      {/* Theme */}
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">Theme</span>
+        <button
+          onClick={toggleTheme}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+        >
+          {isDark ? '☀️ Light' : '🌙 Dark'}
+        </button>
       </div>
     </div>
   )

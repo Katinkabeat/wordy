@@ -84,19 +84,20 @@ body {
   @apply bg-white rounded-2xl shadow-md border border-purple-100 p-4;
 }
 
-/* ── Settings modal ── */
-.settings-backdrop {
-  @apply fixed inset-0 z-50 flex items-center justify-center;
-  background: rgba(59, 7, 100, 0.4);
-  backdrop-filter: blur(4px);
+/* ── Settings dropdown ── */
+.settings-dropdown {
+  @apply absolute right-0 z-50 w-56 mt-2 py-1 px-0;
+  animation: settings-slide 0.12s ease-out;
 }
-.settings-modal {
-  @apply w-full max-w-sm mx-4;
-  animation: settings-pop 0.15s ease-out;
+.settings-dropdown .settings-row {
+  @apply flex items-center justify-between px-4 py-2.5;
 }
-@keyframes settings-pop {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
+.settings-dropdown .settings-row + .settings-row {
+  @apply border-t border-purple-100;
+}
+@keyframes settings-slide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Scrollbar ── */
@@ -236,9 +237,9 @@ body {
 .dark .from-indigo-400  { --tw-gradient-from: #3730a3; }
 .dark .to-indigo-500    { --tw-gradient-to:   #4338ca; }
 
-/* Settings modal in dark */
-.dark .settings-backdrop {
-  background: rgba(15, 10, 30, 0.6);
+/* Settings dropdown in dark */
+.dark .settings-dropdown .settings-row + .settings-row {
+  border-color: #2d1b55;
 }
 
 /* Scrollbar in dark */

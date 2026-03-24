@@ -7,7 +7,7 @@ import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import AdminPanel from '../admin/AdminPanel.jsx'
 import NotificationBanner from './NotificationBanner.jsx'
 import IOSInstallPrompt from './IOSInstallPrompt.jsx'
-import SettingsModal from './SettingsModal.jsx'
+import SettingsDropdown from './SettingsModal.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
@@ -190,13 +190,24 @@ export default function LobbyPage({ session }) {
                 {profile?.username ?? '…'}
               </span>
             </div>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
-              title="Settings"
-            >
-              ⚙️
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowSettings(s => !s)}
+                className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
+                title="Settings"
+              >
+                ⚙️
+              </button>
+              {showSettings && profile && (
+                <SettingsDropdown
+                  profile={profile}
+                  onClose={() => setShowSettings(false)}
+                  onProfileUpdate={updated => setProfile(updated)}
+                  isDark={isDark}
+                  toggleTheme={toggleTheme}
+                />
+              )}
+            </div>
             <button
               onClick={async () => {
                 try { await supabase.auth.signOut() } catch {}
@@ -296,16 +307,6 @@ export default function LobbyPage({ session }) {
         )}
       </main>
 
-      {/* Settings modal */}
-      {showSettings && profile && (
-        <SettingsModal
-          profile={profile}
-          onClose={() => setShowSettings(false)}
-          onProfileUpdate={updated => setProfile(updated)}
-          isDark={isDark}
-          toggleTheme={toggleTheme}
-        />
-      )}
     </div>
   )
 }

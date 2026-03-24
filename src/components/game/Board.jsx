@@ -91,6 +91,7 @@ function BoardTile({ letter, isBlank, hue, isNew, isLastMove, isDark, onClick, l
       className={`board-cell cell-occupied ${isNew ? 'ring-1 ring-pink-400' : ''} ${isLastMove ? 'ring-1 ring-purple-300' : ''}`}
       style={{
         background: s.bg,
+        boxShadow: s.glow,
         cursor: isNew ? 'pointer' : 'default',
         touchAction: 'manipulation',
       }}

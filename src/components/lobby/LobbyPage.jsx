@@ -123,9 +123,10 @@ export default function LobbyPage({ session }) {
       // Update the tile bag
       await supabase.from('games').update({ tile_bag: bag }).eq('id', game.id)
 
-      // If we now have enough players, start the game
+      // If we now have enough players, start the game with a random first player
       if (playerIndex + 1 === game.max_players) {
-        await supabase.from('games').update({ status: 'active' }).eq('id', game.id)
+        const randomFirst = Math.floor(Math.random() * game.max_players)
+        await supabase.from('games').update({ status: 'active', current_player_idx: randomFirst }).eq('id', game.id)
       }
 
       // Notify the game creator that someone joined (fire-and-forget)

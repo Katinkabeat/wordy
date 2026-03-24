@@ -169,18 +169,6 @@ export default function LobbyPage({ session }) {
             <span className="font-display text-2xl text-wordy-700">Wordy</span>
           </div>
           <div className="flex items-center gap-3">
-            {adminRecord && (
-              <button
-                onClick={() => setLobbyTab(t => t === 'admin' ? 'lobby' : 'admin')}
-                className={`text-sm py-1.5 px-3 rounded-xl font-bold border-2 transition-all ${
-                  lobbyTab === 'admin'
-                    ? 'bg-wordy-600 text-white border-wordy-600'
-                    : 'border-wordy-200 text-wordy-600 hover:border-wordy-400'
-                }`}
-              >
-                🔐 Admin
-              </button>
-            )}
             <button onClick={() => navigate('/stats')} className="btn-secondary text-sm py-1.5 px-3">
               📊 Stats
             </button>
@@ -205,6 +193,9 @@ export default function LobbyPage({ session }) {
                   onProfileUpdate={updated => setProfile(updated)}
                   isDark={isDark}
                   toggleTheme={toggleTheme}
+                  isAdmin={!!adminRecord}
+                  lobbyTab={lobbyTab}
+                  onToggleAdmin={() => { setLobbyTab(t => t === 'admin' ? 'lobby' : 'admin'); setShowSettings(false) }}
                   onLogout={async () => {
                     try { await supabase.auth.signOut() } catch {}
                     // Fallback: nuke auth tokens from localStorage so even

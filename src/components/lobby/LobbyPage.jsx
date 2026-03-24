@@ -205,23 +205,18 @@ export default function LobbyPage({ session }) {
                   onProfileUpdate={updated => setProfile(updated)}
                   isDark={isDark}
                   toggleTheme={toggleTheme}
+                  onLogout={async () => {
+                    try { await supabase.auth.signOut() } catch {}
+                    // Fallback: nuke auth tokens from localStorage so even
+                    // a corrupt session gets cleared and we return to login
+                    Object.keys(localStorage).forEach(k => {
+                      if (k.startsWith('sb-')) localStorage.removeItem(k)
+                    })
+                    window.location.replace('/wordy/auth')
+                  }}
                 />
               )}
             </div>
-            <button
-              onClick={async () => {
-                try { await supabase.auth.signOut() } catch {}
-                // Fallback: nuke auth tokens from localStorage so even
-                // a corrupt session gets cleared and we return to login
-                Object.keys(localStorage).forEach(k => {
-                  if (k.startsWith('sb-')) localStorage.removeItem(k)
-                })
-                window.location.replace('/wordy/auth')
-              }}
-              className="text-xs text-wordy-400 hover:text-wordy-600 underline dark:text-wordy-500 dark:hover:text-wordy-300"
-            >
-              Log out
-            </button>
           </div>
         </div>
       </header>

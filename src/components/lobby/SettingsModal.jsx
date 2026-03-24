@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
 
-export default function SettingsDropdown({ profile, onClose, onProfileUpdate, isDark, toggleTheme }) {
+export default function SettingsDropdown({ profile, onClose, onProfileUpdate, isDark, toggleTheme, onLogout }) {
   const [newName, setNewName]   = useState(profile?.username ?? '')
   const [editing, setEditing]   = useState(false)
   const [saving, setSaving]     = useState(false)
@@ -127,6 +127,16 @@ export default function SettingsDropdown({ profile, onClose, onProfileUpdate, is
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
           {isDark ? '☀️ Light' : '🌙 Dark'}
+        </button>
+      </div>
+
+      {/* Log out */}
+      <div className="settings-row">
+        <button
+          onClick={onLogout}
+          className="text-sm font-bold text-rose-500 hover:text-rose-700 transition-colors"
+        >
+          Log out
         </button>
       </div>
     </div>

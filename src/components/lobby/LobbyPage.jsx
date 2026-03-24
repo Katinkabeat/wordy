@@ -198,13 +198,6 @@ export default function LobbyPage({ session }) {
               ⚙️
             </button>
             <button
-              onClick={toggleTheme}
-              className="text-lg leading-none hover:scale-110 transition-transform"
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDark ? '☀️' : '🌙'}
-            </button>
-            <button
               onClick={async () => {
                 try { await supabase.auth.signOut() } catch {}
                 // Fallback: nuke auth tokens from localStorage so even
@@ -309,6 +302,8 @@ export default function LobbyPage({ session }) {
           profile={profile}
           onClose={() => setShowSettings(false)}
           onProfileUpdate={updated => setProfile(updated)}
+          isDark={isDark}
+          toggleTheme={toggleTheme}
         />
       )}
     </div>

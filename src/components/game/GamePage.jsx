@@ -120,10 +120,10 @@ export default function GamePage({ session }) {
       const ids = (ps ?? []).map(p => p.user_id)
       if (ids.length) {
         const { data: profs, error: profsError } = await supabase
-          .from('profiles').select('id, username, tile_hue').in('id', ids)
+          .from('profiles').select('id, username').in('id', ids)
         if (!profsError && profs) {
           const map = {}
-          for (const p of profs) map[p.id] = { username: p.username, tile_hue: p.tile_hue ?? DEFAULT_TILE_HUE }
+          for (const p of profs) map[p.id] = { username: p.username }
           setProfiles(map)
         }
       }
@@ -211,7 +211,7 @@ export default function GamePage({ session }) {
   }
 
   function placeTile(row, col, letter, isBlank) {
-    const myHue = profiles[user.id]?.tile_hue ?? DEFAULT_TILE_HUE
+    const myHue = DEFAULT_TILE_HUE
     const newBoard = board.map(r => [...r])
     newBoard[row][col] = { letter, isBlank, hue: myHue, uid: user.id }
     setBoard(newBoard)
@@ -549,7 +549,6 @@ export default function GamePage({ session }) {
             myTurn={myTurn}
             cellSize={cellSize}
             isDark={isDark}
-            profiles={profiles}
           />
         </div>
 
@@ -569,7 +568,6 @@ export default function GamePage({ session }) {
               selected={selectedTile}
               exchangeMode={exchangeMode}
               exchangeSel={exchangeSel}
-              tileHue={profiles[user.id]?.tile_hue ?? DEFAULT_TILE_HUE}
               isDark={isDark}
               onSelect={(letter, idx) => {
                 if (exchangeMode) { toggleExchangeSelect(idx); return }

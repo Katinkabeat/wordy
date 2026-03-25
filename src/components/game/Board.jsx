@@ -13,7 +13,7 @@ const BONUS_CLASSES = {
 
 // cellSize = each cell's width/height in pixels.
 // Fonts scale proportionally so the board looks great at any zoom level.
-export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36, isDark = false, profiles = {} }) {
+export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36, isDark = false }) {
   const placedSet   = new Set(placements.map(p => `${p.row},${p.col}`))
   const lastMoveSet = new Set(lastMoveTiles.map(t => `${t.row},${t.col}`))
 
@@ -41,17 +41,12 @@ export default function Board({ board, placements, lastMoveTiles = [], onCellCli
           const key        = `${r}-${c}`
 
           if (cell) {
-            // If the cell has a uid, use the player's live profile hue
-            // so colour changes during a game are reflected immediately.
-            const liveHue = cell.uid && profiles[cell.uid]?.tile_hue != null
-              ? profiles[cell.uid].tile_hue
-              : (cell.hue ?? DEFAULT_TILE_HUE)
             return (
               <BoardTile
                 key={key}
                 letter={cell.letter}
                 isBlank={cell.isBlank}
-                hue={liveHue}
+                hue={DEFAULT_TILE_HUE}
                 isNew={isNew}
                 isLastMove={isLastMove}
                 isDark={isDark}

@@ -61,21 +61,27 @@ export function boardTileStyle(hue = DEFAULT_TILE_HUE, age = 'old', dark = false
   const h = isGrey ? 0 : hue
   if (dark) {
     // Bright pastel tiles with glow — dark text for readability
-    const l = age === 'new' ? [92, 85] : age === 'lastMove' ? [85, 75] : [78, 68]
-    const s = age === 'new' ? [90, 80] : age === 'lastMove' ? [80, 70] : [70, 60]
-    const glowStrength = age === 'new' ? 0.5 : age === 'lastMove' ? 0.4 : 0.3
+    const l = age === 'new' ? [92, 85] : age === 'lastMove' ? [90, 80] : [78, 68]
+    const s = age === 'new' ? [90, 80] : age === 'lastMove' ? [95, 85] : [70, 60]
+    const glowStrength = age === 'new' ? 0.5 : age === 'lastMove' ? 0.8 : 0.3
+    const glowSize = age === 'lastMove' ? '10px' : '6px'
     return {
       bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,
       color:    `hsl(${h},${isGrey ? 0 : 80}%,12%)`,
       valColor: `hsl(${h},${isGrey ? 0 : 70}%,30%)`,
-      glow:     `0 0 6px hsla(${h},${isGrey ? 0 : 80}%,65%,${glowStrength})`,
+      glow:     `0 0 ${glowSize} hsla(${h},${isGrey ? 0 : 90}%,70%,${glowStrength})`,
     }
   }
-  const l = age === 'new' ? [93, 87] : age === 'lastMove' ? [87, 78] : [78, 65]
+  // Light mode — lastMove gets much higher saturation so it pops against older tiles
+  const l = age === 'new' ? [93, 87] : age === 'lastMove' ? [91, 83] : [78, 65]
+  const s = age === 'lastMove' ? [92, 82] : [70, 60]
+  const glow = age === 'lastMove'
+    ? `0 0 6px hsla(${h},${isGrey ? 0 : 85}%,55%,0.5)`
+    : 'none'
   return {
-    bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : 70}%,${l[0]}%), hsl(${h},${isGrey ? 0 : 60}%,${l[1]}%))`,
+    bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,
     color:    `hsl(${h},${isGrey ? 0 : 80}%,15%)`,
     valColor: `hsl(${h},${isGrey ? 0 : 65}%,40%)`,
-    glow:     'none',
+    glow,
   }
 }

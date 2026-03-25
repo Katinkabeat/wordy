@@ -88,7 +88,7 @@ function BoardTile({ letter, isBlank, hue, isNew, isLastMove, isDark, onClick, l
   return (
     <div
       onClick={onClick}
-      className={`board-cell cell-occupied ${isNew ? 'ring-1 ring-pink-400' : ''} ${isLastMove ? 'ring-2 ring-purple-500' : ''}`}
+      className={`board-cell cell-occupied ${isNew ? 'ring-1 ring-pink-400' : ''}`}
       style={{
         background: s.bg,
         boxShadow: s.glow,

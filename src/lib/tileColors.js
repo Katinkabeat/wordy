@@ -61,22 +61,25 @@ export function boardTileStyle(hue = DEFAULT_TILE_HUE, age = 'old', dark = false
   const h = isGrey ? 0 : hue
   if (dark) {
     // Bright pastel tiles with glow — dark text for readability
-    const l = age === 'new' ? [92, 85] : age === 'lastMove' ? [90, 80] : [78, 68]
-    const s = age === 'new' ? [90, 80] : age === 'lastMove' ? [95, 85] : [70, 60]
-    const glowStrength = age === 'new' ? 0.5 : age === 'lastMove' ? 0.8 : 0.3
-    const glowSize = age === 'lastMove' ? '10px' : '6px'
+    const l = age === 'new' ? [92, 85] : age === 'lastMove' ? [94, 87] : [78, 68]
+    const s = age === 'new' ? [90, 80] : age === 'lastMove' ? [100, 92] : [70, 60]
+    const glow = age === 'lastMove'
+      ? `0 0 0 2px #c084fc, 0 0 16px hsla(${h},${isGrey ? 0 : 100}%,75%,1.0)`
+      : age === 'new'
+        ? `0 0 6px hsla(${h},${isGrey ? 0 : 80}%,65%,0.5)`
+        : `0 0 6px hsla(${h},${isGrey ? 0 : 80}%,65%,0.3)`
     return {
       bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,
       color:    `hsl(${h},${isGrey ? 0 : 80}%,12%)`,
       valColor: `hsl(${h},${isGrey ? 0 : 70}%,30%)`,
-      glow:     `0 0 ${glowSize} hsla(${h},${isGrey ? 0 : 90}%,70%,${glowStrength})`,
+      glow,
     }
   }
-  // Light mode — lastMove gets much higher saturation so it pops against older tiles
-  const l = age === 'new' ? [93, 87] : age === 'lastMove' ? [91, 83] : [78, 65]
-  const s = age === 'lastMove' ? [92, 82] : [70, 60]
+  // Light mode — lastMove: near-white, fully saturated, with ring + glow combined in one boxShadow
+  const l = age === 'new' ? [93, 87] : age === 'lastMove' ? [96, 90] : [78, 65]
+  const s = age === 'lastMove' ? [100, 95] : [70, 60]
   const glow = age === 'lastMove'
-    ? `0 0 6px hsla(${h},${isGrey ? 0 : 85}%,55%,0.5)`
+    ? `0 0 0 2px #a855f7, 0 0 10px hsla(${h},${isGrey ? 0 : 90}%,60%,0.8)`
     : 'none'
   return {
     bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,

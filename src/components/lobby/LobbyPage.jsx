@@ -25,6 +25,7 @@ export default function LobbyPage({ session }) {
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
   const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
   const [showSettings, setShowSettings] = useState(false)
+  const [unseenResults, setUnseenResults] = useState([]) // finished games not yet acknowledged
 
   // ── Load profile ──────────────────────────────────────────
   useEffect(() => {
@@ -53,6 +54,32 @@ export default function LobbyPage({ session }) {
   }, [])
 
   useEffect(() => { loadGames() }, [loadGames])
+
+  // On mount: show a banner for any recently finished game the user hasn't dismissed yet
+  const seenKey = `wordy_seen_results_${user.id}`
+  useEffect(() => {
+    async function loadUnseenResults() {
+      const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
+      const { data: gps } = await supabase
+        .from('game_players')
+        .select('game_id, is_winner, games(id, status, finished_at, forfeit_user_id, game_players(user_id, is_winner, profiles(username)))')
+        .eq('user_id', user.id)
+        .order('games(finished_at)', { ascending: false })
+        .limit(20)
+      const unseen = (gps ?? [])
+        .filter(gp => gp.games?.status === 'finished' && !seen.has(gp.game_id))
+        .map(gp => ({ gameId: gp.game_id, isWinner: gp.is_winner, game: gp.games }))
+      setUnseenResults(unseen)
+    }
+    loadUnseenResults()
+  }, [user.id, seenKey])
+
+  function dismissResult(gameId) {
+    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
+    seen.add(gameId)
+    localStorage.setItem(seenKey, JSON.stringify([...seen]))
+    setUnseenResults(prev => prev.filter(r => r.gameId !== gameId))
+  }
 
   // Track which game IDs the user is currently in so the real-time handler can detect finishes
   const myGameIdsRef = useRef(new Set())
@@ -83,7 +110,7 @@ export default function LobbyPage({ session }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontWeight: 'bold' }}>{headline}</span>
             <button
-              onClick={() => { navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
+              onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
               style={{ fontSize: 12, textDecoration: 'underline', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               View final board →
@@ -254,6 +281,42 @@ export default function LobbyPage({ session }) {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+
+        {/* Unseen game results — shown until dismissed */}
+        {unseenResults.map(({ gameId, isWinner, game: g }) => {
+          const winner   = g?.game_players?.find(p => p.is_winner)
+          const name     = winner?.profiles?.username ?? '?'
+          const headline = g?.forfeit_user_id
+            ? '🏳️ Opponent forfeited!'
+            : isWinner ? '🏆 You won!' : `🏆 ${name} wins!`
+          const opponents = (g?.game_players ?? [])
+            .filter(p => p.user_id !== user.id)
+            .map(p => p.profiles?.username ?? '?')
+            .join(' & ')
+          return (
+            <div key={gameId} className="flex items-center justify-between gap-3 bg-gradient-to-r from-wordy-600 to-pink-500 text-white rounded-2xl px-4 py-3 shadow">
+              <div>
+                <p className="font-display text-base leading-tight">{headline}</p>
+                {opponents && <p className="text-xs opacity-80 mt-0.5">vs {opponents}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`) }}
+                  className="text-xs font-bold underline opacity-90 hover:opacity-100 whitespace-nowrap"
+                >
+                  View board →
+                </button>
+                <button
+                  onClick={() => dismissResult(gameId)}
+                  className="text-white opacity-70 hover:opacity-100 text-lg leading-none font-bold"
+                  title="Dismiss"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )
+        })}
 
         {/* Admin Panel */}
         {lobbyTab === 'admin' && adminRecord && (

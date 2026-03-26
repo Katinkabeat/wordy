@@ -380,14 +380,19 @@ export default function LobbyPage({ session }) {
 
             {/* Unseen game results — shown until dismissed */}
             {unseenResults.map(({ gameId, isWinner, game: g, winnerName, allPlayerNames }) => {
-              const headline = g?.forfeit_user_id
-                ? '🏳️ Opponent forfeited!'
-                : `🏆 ${winnerName} wins!`
+              const isForfeit = !!g?.forfeit_user_id
               return (
                 <div key={gameId} className="flex items-center justify-between gap-3 bg-wordy-600 text-white rounded-2xl px-4 py-3 shadow">
-                  <div>
-                    <p className="font-display text-base leading-tight">{headline}</p>
-                    {allPlayerNames && <p className="text-xs opacity-80 mt-0.5">{allPlayerNames}</p>}
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-display text-base leading-tight shrink-0">
+                      {isForfeit ? '🏳️' : '🏆'}
+                    </span>
+                    <div>
+                      <p className="font-display text-base leading-tight">
+                        {isForfeit ? 'Opponent forfeited!' : `${winnerName} wins!`}
+                      </p>
+                      <p className="text-xs opacity-80 mt-0.5" style={{ marginLeft: '1.5rem' }}>{allPlayerNames}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button

@@ -388,7 +388,7 @@ export default function LobbyPage({ session }) {
                 ? '🏳️ Opponent forfeited!'
                 : isWinner ? '🏆 You won!' : `🏆 ${winnerName} wins!`
               return (
-                <div key={gameId} className="flex items-center justify-between gap-3 bg-gradient-to-r from-wordy-600 to-pink-500 text-white rounded-2xl px-4 py-3 shadow">
+                <div key={gameId} className="flex items-center justify-between gap-3 bg-wordy-600 text-white rounded-2xl px-4 py-3 shadow">
                   <div>
                     <p className="font-display text-base leading-tight">{headline}</p>
                     {opponents && <p className="text-xs opacity-80 mt-0.5">vs {opponents}</p>}

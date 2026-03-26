@@ -60,16 +60,39 @@ export default function LobbyPage({ session }) {
   useEffect(() => {
     async function loadUnseenResults() {
       const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
+
+      // Fetch finished games — no nested profiles join to avoid deep-join issues
       const { data: gps } = await supabase
         .from('game_players')
-        .select('game_id, is_winner, games(id, status, finished_at, forfeit_user_id, game_players(user_id, is_winner, profiles(username)))')
+        .select('game_id, is_winner, games(id, status, finished_at, forfeit_user_id, game_players(user_id, is_winner, profiles(id, username), score))')
         .eq('user_id', user.id)
         .order('games(finished_at)', { ascending: false })
         .limit(20)
-      const unseen = (gps ?? [])
-        .filter(gp => gp.games?.status === 'finished' && !seen.has(gp.game_id))
-        .map(gp => ({ gameId: gp.game_id, isWinner: gp.is_winner, game: gp.games }))
-      setUnseenResults(unseen)
+
+      const unseen = (gps ?? []).filter(gp => gp.games?.status === 'finished' && !seen.has(gp.game_id))
+      if (unseen.length === 0) { setUnseenResults([]); return }
+
+      // Batch-fetch all usernames in one query (same pattern used throughout the app)
+      const allIds = [...new Set(unseen.flatMap(gp => (gp.games?.game_players ?? []).map(p => p.user_id))])
+      const { data: profs } = await supabase.from('profiles').select('id, username').in('id', allIds)
+      const profileMap = Object.fromEntries((profs ?? []).map(p => [p.id, p.username]))
+
+      setUnseenResults(unseen.map(gp => {
+        const allPlayers = gp.games?.game_players ?? []
+        // Prefer is_winner flag; fall back to highest score if RPC didn't set it
+        const winnerPlayer = allPlayers.find(p => p.is_winner)
+          ?? allPlayers.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
+        return {
+          gameId:     gp.game_id,
+          isWinner:   gp.is_winner,
+          game:       gp.games,
+          winnerName: profileMap[winnerPlayer?.user_id] ?? '?',
+          opponents:  allPlayers
+            .filter(p => p.user_id !== user.id)
+            .map(p => profileMap[p.user_id] ?? '?')
+            .join(' & '),
+        }
+      }))
     }
     loadUnseenResults()
   }, [user.id, seenKey])
@@ -97,11 +120,13 @@ export default function LobbyPage({ session }) {
       const gameId = payload.new.id
       const { data: gps } = await supabase
         .from('game_players')
-        .select('user_id, is_winner, profiles(username)')
+        .select('user_id, is_winner, score, profiles(id, username)')
         .eq('game_id', gameId)
-      const winner   = gps?.find(p => p.is_winner)
-      const isMe     = winner?.user_id === user.id
-      const name     = winner?.profiles?.username ?? '?'
+      // Prefer is_winner flag; fall back to highest score if RPC didn't set it
+      const winnerPlayer = gps?.find(p => p.is_winner)
+        ?? gps?.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
+      const isMe = winnerPlayer?.user_id === user.id
+      const name = winnerPlayer?.profiles?.username ?? '?'
       const headline = payload.new.forfeit_user_id
         ? '🏳️ Opponent forfeited!'
         : isMe ? '🏆 You won!' : `🏆 ${name} wins!`
@@ -340,16 +365,10 @@ export default function LobbyPage({ session }) {
             )}
 
             {/* Unseen game results — shown until dismissed */}
-            {unseenResults.map(({ gameId, isWinner, game: g }) => {
-              const winner   = g?.game_players?.find(p => p.is_winner)
-              const name     = winner?.profiles?.username ?? '?'
+            {unseenResults.map(({ gameId, isWinner, game: g, winnerName, opponents }) => {
               const headline = g?.forfeit_user_id
                 ? '🏳️ Opponent forfeited!'
-                : isWinner ? '🏆 You won!' : `🏆 ${name} wins!`
-              const opponents = (g?.game_players ?? [])
-                .filter(p => p.user_id !== user.id)
-                .map(p => p.profiles?.username ?? '?')
-                .join(' & ')
+                : isWinner ? '🏆 You won!' : `🏆 ${winnerName} wins!`
               return (
                 <div key={gameId} className="flex items-center justify-between gap-3 bg-gradient-to-r from-wordy-600 to-pink-500 text-white rounded-2xl px-4 py-3 shadow">
                   <div>

@@ -136,24 +136,23 @@ export default function LobbyPage({ session }) {
       // Prefer is_winner flag; fall back to highest score if RPC didn't set it
       const winnerPlayer = gps?.find(p => p.is_winner)
         ?? gps?.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
-      const isMe = winnerPlayer?.user_id === user.id
       let name = '?'
-      if (winnerPlayer && !isMe) {
+      if (winnerPlayer) {
         const { data: prof } = await supabase.from('profiles').select('username').eq('id', winnerPlayer.user_id).single()
         name = prof?.username ?? '?'
       }
       const headline = payload.new.forfeit_user_id
         ? '🏳️ Opponent forfeited!'
-        : isMe ? '🏆 You won!' : `🏆 ${name} wins!`
+        : `🏆 ${name} wins!`
       toast(
         (t) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontWeight: 'bold' }}>{headline}</span>
             <button
               onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
-              style={{ fontSize: 12, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 'bold' }}
+              style={{ fontSize: 12, textDecoration: 'underline', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
-              View final board
+              View final board →
             </button>
           </div>
         ),
@@ -383,7 +382,7 @@ export default function LobbyPage({ session }) {
             {unseenResults.map(({ gameId, isWinner, game: g, winnerName, allPlayerNames }) => {
               const headline = g?.forfeit_user_id
                 ? '🏳️ Opponent forfeited!'
-                : isWinner ? '🏆 You won!' : `🏆 ${winnerName} wins!`
+                : `🏆 ${winnerName} wins!`
               return (
                 <div key={gameId} className="flex items-center justify-between gap-3 bg-wordy-600 text-white rounded-2xl px-4 py-3 shadow">
                   <div>

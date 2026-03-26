@@ -51,10 +51,9 @@ export default function StatsPage({ session }) {
           )
         `)
         .eq('user_id', user.id)
-        .eq('games.status', 'finished')
         .order('games(finished_at)', { ascending: false })
-        .limit(10)
-      setHistory((gp ?? []).filter(g => g.games?.status === 'finished'))
+        .limit(100)
+      setHistory((gp ?? []).filter(g => g.games?.status === 'finished').slice(0, 10))
 
       setLoading(false)
     }

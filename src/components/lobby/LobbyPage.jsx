@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
@@ -54,14 +54,54 @@ export default function LobbyPage({ session }) {
 
   useEffect(() => { loadGames() }, [loadGames])
 
-  // Real-time: refresh list when a game changes
+  // Track which game IDs the user is currently in so the real-time handler can detect finishes
+  const myGameIdsRef = useRef(new Set())
+  useEffect(() => {
+    myGameIdsRef.current = new Set(
+      games.filter(g => g.game_players.some(p => p.user_id === user.id)).map(g => g.id)
+    )
+  }, [games, user.id])
+
+  // Real-time: refresh list when a game changes.
+  // Also watch for a game the user is in finishing and show a winner notification.
+  const handleGameChange = useCallback(async (payload) => {
+    loadGames()
+    if (payload.new?.status === 'finished' && myGameIdsRef.current.has(payload.new.id)) {
+      const gameId = payload.new.id
+      const { data: gps } = await supabase
+        .from('game_players')
+        .select('user_id, is_winner, profiles(username)')
+        .eq('game_id', gameId)
+      const winner   = gps?.find(p => p.is_winner)
+      const isMe     = winner?.user_id === user.id
+      const name     = winner?.profiles?.username ?? '?'
+      const headline = payload.new.forfeit_user_id
+        ? '🏳️ Opponent forfeited!'
+        : isMe ? '🏆 You won!' : `🏆 ${name} wins!`
+      toast(
+        (t) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontWeight: 'bold' }}>{headline}</span>
+            <button
+              onClick={() => { navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
+              style={{ fontSize: 12, textDecoration: 'underline', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              View final board →
+            </button>
+          </div>
+        ),
+        { duration: 15000 }
+      )
+    }
+  }, [loadGames, navigate, user.id])
+
   useEffect(() => {
     const channel = supabase.channel('lobby-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, loadGames)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, handleGameChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players' }, loadGames)
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [loadGames])
+  }, [loadGames, handleGameChange])
 
   // ── Create a new game ─────────────────────────────────────
   async function createGame() {

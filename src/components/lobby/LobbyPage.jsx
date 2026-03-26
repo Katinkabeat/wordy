@@ -100,11 +100,8 @@ export default function LobbyPage({ session }) {
           gameId:     gp.game_id,
           isWinner:   gp.is_winner,
           game:       gp.games,
-          winnerName: profileMap[winnerPlayer?.user_id] ?? '?',
-          opponents:  allPlayers
-            .filter(p => p.user_id !== user.id)
-            .map(p => profileMap[p.user_id] ?? '?')
-            .join(' & '),
+          winnerName:     profileMap[winnerPlayer?.user_id] ?? '?',
+          allPlayerNames: allPlayers.map(p => profileMap[p.user_id] ?? '?').join(' · '),
         }
       }))
     }
@@ -154,9 +151,9 @@ export default function LobbyPage({ session }) {
             <span style={{ fontWeight: 'bold' }}>{headline}</span>
             <button
               onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
-              style={{ fontSize: 12, textDecoration: 'underline', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              style={{ fontSize: 12, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 'bold' }}
             >
-              View final board →
+              View final board
             </button>
           </div>
         ),
@@ -383,7 +380,7 @@ export default function LobbyPage({ session }) {
             )}
 
             {/* Unseen game results — shown until dismissed */}
-            {unseenResults.map(({ gameId, isWinner, game: g, winnerName, opponents }) => {
+            {unseenResults.map(({ gameId, isWinner, game: g, winnerName, allPlayerNames }) => {
               const headline = g?.forfeit_user_id
                 ? '🏳️ Opponent forfeited!'
                 : isWinner ? '🏆 You won!' : `🏆 ${winnerName} wins!`
@@ -391,18 +388,18 @@ export default function LobbyPage({ session }) {
                 <div key={gameId} className="flex items-center justify-between gap-3 bg-wordy-600 text-white rounded-2xl px-4 py-3 shadow">
                   <div>
                     <p className="font-display text-base leading-tight">{headline}</p>
-                    {opponents && <p className="text-xs opacity-80 mt-0.5">vs {opponents}</p>}
+                    {allPlayerNames && <p className="text-xs opacity-80 mt-0.5">{allPlayerNames}</p>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`) }}
-                      className="text-xs font-bold underline opacity-90 hover:opacity-100 whitespace-nowrap"
+                      className="text-sm font-bold opacity-90 hover:opacity-100 whitespace-nowrap"
                     >
-                      View board →
+                      View board
                     </button>
                     <button
                       onClick={() => dismissResult(gameId)}
-                      className="text-white opacity-70 hover:opacity-100 text-lg leading-none font-bold"
+                      className="text-white opacity-70 hover:opacity-100 text-2xl leading-none font-bold"
                       title="Dismiss"
                     >
                       ×

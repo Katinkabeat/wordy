@@ -27,7 +27,7 @@ export default function LobbyPage({ session }) {
   const [showSettings, setShowSettings] = useState(false)
   const [unseenResults, setUnseenResults] = useState([]) // finished games not yet acknowledged
 
-  // ── Load profile ───────────────────────────────────────────
+  // ── Load profile ──────────────────────────────────────────
   useEffect(() => {
     supabase.from('profiles').select('*').eq('id', user.id).single()
       .then(({ data }) => setProfile(data))
@@ -124,7 +124,7 @@ export default function LobbyPage({ session }) {
   }, [games, user.id])
 
   // Real-time: refresh list when a game changes.
-  // Also watch for a game the user is in finishing and show a winner rotification.
+  // Also watch for a game the user is in finishing and show a winner notification.
   const handleGameChange = useCallback(async (payload) => {
     loadGames()
     if (payload.new?.status === 'finished' && myGameIdsRef.current.has(payload.new.id)) {
@@ -176,7 +176,7 @@ export default function LobbyPage({ session }) {
       // Build the initial tile bag
       let bag  = createTileBag()
       let rack = []
-     ;({ rack, bag } = refillRack(rack, bag))
+      ;({ rack, bag } = refillRack(rack, bag))
 
       const board = serializeBoard(createEmptyBoard())
 
@@ -191,7 +191,7 @@ export default function LobbyPage({ session }) {
         .insert({ game_id: game.id, user_id: user.id, player_index: 0, rack })
       if (playerErr) throw playerErr
 
-      toast.success('🎉 Game created! Waiting for friends to join …')
+      toast.success('🎉 Game created! Waiting for friends to join…')
       navigate(`/game/${game.id}`)
     } catch (err) {
       toast.error(err.message)
@@ -383,11 +383,17 @@ export default function LobbyPage({ session }) {
               const isForfeit = !!g?.forfeit_user_id
               return (
                 <div key={gameId} className="flex items-center justify-between gap-3 bg-wordy-600 text-white rounded-2xl px-4 py-3 shadow">
-                  <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: '5px' }}>
+                    <span className="font-display text-base leading-tight">
+                      {isForfeit ? '🏳️' : '🏆'}
+                    </span>
                     <p className="font-display text-base leading-tight">
-                      {isForfeit ? '🏳️ Opponent forfeited!' : `🏆 ${winnerName} wins!`}
+                      {isForfeit ? 'Opponent forfeited!' : `${winnerName} wins!`}
                     </p>
-                    {allPlayerNames && <p className="text-xs opacity-80 mt-0.5 pl-6">{allPlayerNames}</p>}
+                    {allPlayerNames && <>
+                      <span />{/* keeps emoji column occupied on row 2 */}
+                      <p className="text-xs opacity-80 mt-0.5">{allPlayerNames}</p>
+                    </>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
@@ -497,9 +503,5 @@ function Avatar({ hue, name, size = 8 }) {
     >
       {initials}
     </div>
-  
-  
- "�div>
-  �J 
+  )
 }
-

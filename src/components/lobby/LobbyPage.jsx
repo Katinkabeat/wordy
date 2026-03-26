@@ -282,42 +282,6 @@ export default function LobbyPage({ session }) {
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Unseen game results — shown until dismissed */}
-        {unseenResults.map(({ gameId, isWinner, game: g }) => {
-          const winner   = g?.game_players?.find(p => p.is_winner)
-          const name     = winner?.profiles?.username ?? '?'
-          const headline = g?.forfeit_user_id
-            ? '🏳️ Opponent forfeited!'
-            : isWinner ? '🏆 You won!' : `🏆 ${name} wins!`
-          const opponents = (g?.game_players ?? [])
-            .filter(p => p.user_id !== user.id)
-            .map(p => p.profiles?.username ?? '?')
-            .join(' & ')
-          return (
-            <div key={gameId} className="flex items-center justify-between gap-3 bg-gradient-to-r from-wordy-600 to-pink-500 text-white rounded-2xl px-4 py-3 shadow">
-              <div>
-                <p className="font-display text-base leading-tight">{headline}</p>
-                {opponents && <p className="text-xs opacity-80 mt-0.5">vs {opponents}</p>}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`) }}
-                  className="text-xs font-bold underline opacity-90 hover:opacity-100 whitespace-nowrap"
-                >
-                  View board →
-                </button>
-                <button
-                  onClick={() => dismissResult(gameId)}
-                  className="text-white opacity-70 hover:opacity-100 text-lg leading-none font-bold"
-                  title="Dismiss"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          )
-        })}
-
         {/* Admin Panel */}
         {lobbyTab === 'admin' && adminRecord && (
           <AdminPanel session={session} adminRecord={adminRecord} />
@@ -374,6 +338,42 @@ export default function LobbyPage({ session }) {
                 </div>
               </div>
             )}
+
+            {/* Unseen game results — shown until dismissed */}
+            {unseenResults.map(({ gameId, isWinner, game: g }) => {
+              const winner   = g?.game_players?.find(p => p.is_winner)
+              const name     = winner?.profiles?.username ?? '?'
+              const headline = g?.forfeit_user_id
+                ? '🏳️ Opponent forfeited!'
+                : isWinner ? '🏆 You won!' : `🏆 ${name} wins!`
+              const opponents = (g?.game_players ?? [])
+                .filter(p => p.user_id !== user.id)
+                .map(p => p.profiles?.username ?? '?')
+                .join(' & ')
+              return (
+                <div key={gameId} className="flex items-center justify-between gap-3 bg-gradient-to-r from-wordy-600 to-pink-500 text-white rounded-2xl px-4 py-3 shadow">
+                  <div>
+                    <p className="font-display text-base leading-tight">{headline}</p>
+                    {opponents && <p className="text-xs opacity-80 mt-0.5">vs {opponents}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`) }}
+                      className="text-xs font-bold underline opacity-90 hover:opacity-100 whitespace-nowrap"
+                    >
+                      View board →
+                    </button>
+                    <button
+                      onClick={() => dismissResult(gameId)}
+                      className="text-white opacity-70 hover:opacity-100 text-lg leading-none font-bold"
+                      title="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
 
             {/* Open games to join */}
             {openGames.length > 0 && (

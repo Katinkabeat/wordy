@@ -61,10 +61,10 @@ export default function LobbyPage({ session }) {
     async function loadUnseenResults() {
       const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
 
-      // Fetch finished games — no nested profiles join to avoid deep-join issues
+      // Fetch the user's finished game records (no nested joins — avoids RLS/circular-join issues)
       const { data: gps } = await supabase
         .from('game_players')
-        .select('game_id, is_winner, games(id, status, finished_at, forfeit_user_id, game_players(user_id, is_winner, profiles(id, username), score))')
+        .select('game_id, is_winner, games(id, status, finished_at, forfeit_user_id)')
         .eq('user_id', user.id)
         .order('games(finished_at)', { ascending: false })
         .limit(20)
@@ -72,13 +72,27 @@ export default function LobbyPage({ session }) {
       const unseen = (gps ?? []).filter(gp => gp.games?.status === 'finished' && !seen.has(gp.game_id))
       if (unseen.length === 0) { setUnseenResults([]); return }
 
-      // Batch-fetch all usernames in one query (same pattern used throughout the app)
-      const allIds = [...new Set(unseen.flatMap(gp => (gp.games?.game_players ?? []).map(p => p.user_id))])
-      const { data: profs } = await supabase.from('profiles').select('id, username').in('id', allIds)
+      // Fetch ALL players for those games in a flat separate query (avoids RLS blocking nested join)
+      const gameIds = unseen.map(gp => gp.game_id)
+      const { data: allGamePlayers } = await supabase
+        .from('game_players')
+        .select('game_id, user_id, is_winner, score')
+        .in('game_id', gameIds)
+
+      // Batch-fetch all usernames
+      const allUserIds = [...new Set((allGamePlayers ?? []).map(p => p.user_id))]
+      const { data: profs } = await supabase.from('profiles').select('id, username').in('id', allUserIds)
       const profileMap = Object.fromEntries((profs ?? []).map(p => [p.id, p.username]))
 
+      // Group players by game_id
+      const playersByGame = {}
+      for (const p of (allGamePlayers ?? [])) {
+        if (!playersByGame[p.game_id]) playersByGame[p.game_id] = []
+        playersByGame[p.game_id].push(p)
+      }
+
       setUnseenResults(unseen.map(gp => {
-        const allPlayers = gp.games?.game_players ?? []
+        const allPlayers = playersByGame[gp.game_id] ?? []
         // Prefer is_winner flag; fall back to highest score if RPC didn't set it
         const winnerPlayer = allPlayers.find(p => p.is_winner)
           ?? allPlayers.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
@@ -120,13 +134,17 @@ export default function LobbyPage({ session }) {
       const gameId = payload.new.id
       const { data: gps } = await supabase
         .from('game_players')
-        .select('user_id, is_winner, score, profiles(id, username)')
+        .select('user_id, is_winner, score')
         .eq('game_id', gameId)
       // Prefer is_winner flag; fall back to highest score if RPC didn't set it
       const winnerPlayer = gps?.find(p => p.is_winner)
         ?? gps?.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
       const isMe = winnerPlayer?.user_id === user.id
-      const name = winnerPlayer?.profiles?.username ?? '?'
+      let name = '?'
+      if (winnerPlayer && !isMe) {
+        const { data: prof } = await supabase.from('profiles').select('username').eq('id', winnerPlayer.user_id).single()
+        name = prof?.username ?? '?'
+      }
       const headline = payload.new.forfeit_user_id
         ? '🏳️ Opponent forfeited!'
         : isMe ? '🏆 You won!' : `🏆 ${name} wins!`

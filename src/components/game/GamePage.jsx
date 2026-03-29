@@ -39,6 +39,7 @@ export default function GamePage({ session }) {
   const channelRef = useRef(null)
   const mutatingRef = useRef(false)  // suppress real-time reloads during DB writes
   const placementsRef = useRef([])   // mirror of placements state for polling guard
+  const localRackRef = useRef(null)  // preserve local rack order across polls
 
   // ── Cell size — fixed, device-appropriate ─────────────────
   const cellSize = useMemo(() => {
@@ -50,6 +51,14 @@ export default function GamePage({ session }) {
   }, [])
 
   // ── Helpers ───────────────────────────────────────────────
+  // Check if two racks have the same tiles (ignoring order).
+  // Used to preserve the user's local shuffle across poll refreshes.
+  function sameRackContents(a, b) {
+    if (!a || !b || a.length !== b.length) return false
+    const sorted = arr => [...arr].sort().join(',')
+    return sorted(a) === sorted(b)
+  }
+
   const isMyTurn = useCallback(() => {
     if (!game || !myPlayer) return false
     return game.current_player_idx === myPlayer.player_index && game.status === 'active'
@@ -86,6 +95,12 @@ export default function GamePage({ session }) {
       if (psErr) throw psErr
       setPlayers(ps ?? [])
       const me = (ps ?? []).find(p => p.user_id === user.id)
+      // Preserve the user's local rack order (from shuffle / tile swaps)
+      // if the DB rack has the same tiles — just possibly in different order.
+      if (me && localRackRef.current && sameRackContents(me.rack, localRackRef.current)) {
+        me.rack = localRackRef.current
+      }
+      if (me) localRackRef.current = me.rack
       setMyPlayer(me ?? null)
 
       // Load the last move so we can highlight those tiles on the board
@@ -500,6 +515,7 @@ export default function GamePage({ session }) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
+    localRackRef.current = shuffled
     setMyPlayer(prev => ({ ...prev, rack: shuffled }))
     setSelected(null)
   }
@@ -639,6 +655,7 @@ export default function GamePage({ session }) {
                     const newRack = [...prev.rack]
                     const i = selectedTile.rackIdx
                     ;[newRack[i], newRack[idx]] = [newRack[idx], newRack[i]]
+                    localRackRef.current = newRack
                     return { ...prev, rack: newRack }
                   })
                   setSelected(null)

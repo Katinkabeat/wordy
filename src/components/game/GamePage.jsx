@@ -164,10 +164,10 @@ export default function GamePage({ session }) {
       if (channelRef.current) supabase.removeChannel(channelRef.current)
       channelRef.current = supabase.channel(`game-${gameId}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-          () => loadGame()
+          () => { if (placementsRef.current.length === 0) loadGame() }
         )
         .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `game_id=eq.${gameId}` },
-          () => loadGame()
+          () => { if (placementsRef.current.length === 0) loadGame() }
         )
         .subscribe()
     }
@@ -186,7 +186,9 @@ export default function GamePage({ session }) {
     // This handles the common case of taking a long time between turns.
     function handleVisible() {
       if (document.visibilityState !== 'visible') return
-      loadGame()
+      // Only auto-reload if the user has no tiles placed on the board —
+      // otherwise switching apps and back would wipe their in-progress word.
+      if (placementsRef.current.length === 0) loadGame()
       if (!channelRef.current || channelRef.current.state !== 'joined') {
         subscribe()
       }

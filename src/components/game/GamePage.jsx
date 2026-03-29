@@ -154,6 +154,12 @@ export default function GamePage({ session }) {
 
     subscribe()
 
+    // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
+    // the game view still refreshes every 10 seconds while visible.
+    const poll = setInterval(() => {
+      if (document.visibilityState === 'visible') loadGame()
+    }, 10_000)
+
     // When the tab/phone wakes back up, reload state and reconnect if needed.
     // This handles the common case of taking a long time between turns.
     function handleVisible() {
@@ -169,6 +175,7 @@ export default function GamePage({ session }) {
 
     return () => {
       supabase.removeChannel(channelRef.current)
+      clearInterval(poll)
       document.removeEventListener('visibilitychange', handleVisible)
       window.removeEventListener('focus', handleVisible)
     }

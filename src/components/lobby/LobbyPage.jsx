@@ -179,8 +179,29 @@ export default function LobbyPage({ session }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, handleGameChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players' }, loadGames)
       .subscribe()
-    return () => supabase.removeChannel(channel)
-  }, [loadGames, handleGameChange])
+
+    // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
+    // the lobby still refreshes every 10 seconds while visible.
+    const poll = setInterval(() => {
+      if (document.visibilityState === 'visible') loadGames()
+    }, 10_000)
+
+    // Also refresh immediately when the tab/phone wakes back up.
+    function handleVisible() {
+      if (document.visibilityState !== 'visible') return
+      loadGames()
+      loadUnseenResults()
+    }
+    document.addEventListener('visibilitychange', handleVisible)
+    window.addEventListener('focus', handleVisible)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(poll)
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.removeEventListener('focus', handleVisible)
+    }
+  }, [loadGames, loadUnseenResults, handleGameChange])
 
   // ── Create a new game ─────────────────────────────────────
   async function createGame() {

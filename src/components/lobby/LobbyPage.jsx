@@ -62,29 +62,23 @@ export default function LobbyPage({ session }) {
   const loadUnseenResults = useCallback(async () => {
     const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
 
-    // Fetch the user's recently finished games via a flat query (avoids RLS/circular-join issues)
-    const { data: finishedGames, error: gErr } = await supabase
-      .from('games')
-      .select('id, status, finished_at, forfeit_user_id')
-      .eq('status', 'finished')
-      .order('finished_at', { ascending: false })
-      .limit(20)
-    if (gErr) { console.error('loadUnseenResults: games query failed:', gErr); return }
-
-    // Get the user's game_players rows for those finished games
-    const finishedIds = (finishedGames ?? []).map(g => g.id)
-    if (finishedIds.length === 0) { setUnseenResults([]); return }
-
-    const { data: myGPs, error: gpErr } = await supabase
+    // Query game_players first (user-scoped) then join games — guarantees we only
+    // fetch THIS user's records regardless of how many total games exist.
+    // NOTE: avoid .order() on foreign table columns — supabase-js v2 can silently
+    // fail with certain syntaxes.  Sort client-side instead.
+    const { data: gps, error: gpErr } = await supabase
       .from('game_players')
-      .select('game_id, is_winner')
+      .select('game_id, is_winner, games!inner(id, status, finished_at, forfeit_user_id)')
       .eq('user_id', user.id)
-      .in('game_id', finishedIds)
-    if (gpErr) { console.error('loadUnseenResults: game_players query failed:', gpErr); return }
+      .eq('games.status', 'finished')
+      .limit(50)
+    if (gpErr) { console.error('loadUnseenResults: query failed:', gpErr); return }
 
-    const gameMap = Object.fromEntries((finishedGames ?? []).map(g => [g.id, g]))
-    const unseen = (myGPs ?? []).filter(gp => !seen.has(gp.game_id))
+    const unseen = (gps ?? []).filter(gp => !seen.has(gp.game_id))
     if (unseen.length === 0) { setUnseenResults([]); return }
+
+    // Sort newest-first client-side
+    unseen.sort((a, b) => (b.games?.finished_at ?? '').localeCompare(a.games?.finished_at ?? ''))
 
     // Fetch ALL players for those games in a flat separate query (avoids RLS blocking nested join)
     const gameIds = unseen.map(gp => gp.game_id)
@@ -113,7 +107,7 @@ export default function LobbyPage({ session }) {
       return {
         gameId:     gp.game_id,
         isWinner:   gp.is_winner,
-        game:       gameMap[gp.game_id],
+        game:       gp.games,
         winnerName:     profileMap[winnerPlayer?.user_id] ?? '?',
         allPlayerNames: allPlayers.map(p => profileMap[p.user_id] ?? '?').join(' · '),
       }

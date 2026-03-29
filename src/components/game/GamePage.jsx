@@ -38,6 +38,7 @@ export default function GamePage({ session }) {
   const [lastMoveScores, setLastMoveScores] = useState({}) // user_id → last move score
   const channelRef = useRef(null)
   const mutatingRef = useRef(false)  // suppress real-time reloads during DB writes
+  const placementsRef = useRef([])   // mirror of placements state for polling guard
 
   // ── Cell size — fixed, device-appropriate ─────────────────
   const cellSize = useMemo(() => {
@@ -135,6 +136,10 @@ export default function GamePage({ session }) {
 
   useEffect(() => { loadGame() }, [loadGame])
 
+  // Keep placementsRef in sync so the polling guard can read it without
+  // being in the interval's closure / dependency array.
+  useEffect(() => { placementsRef.current = placements }, [placements])
+
   // Real-time subscription with auto-reconnect.
   // Both handlers call loadGame() for a guaranteed fresh fetch.
   // Note: game_players filters on game_id (non-PK), which requires
@@ -156,8 +161,10 @@ export default function GamePage({ session }) {
 
     // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
     // the game view still refreshes every 10 seconds while visible.
+    // IMPORTANT: skip when the user has tiles on the board — reloading would
+    // wipe their in-progress placement and return tiles to the rack.
     const poll = setInterval(() => {
-      if (document.visibilityState === 'visible') loadGame()
+      if (document.visibilityState === 'visible' && placementsRef.current.length === 0) loadGame()
     }, 10_000)
 
     // When the tab/phone wakes back up, reload state and reconnect if needed.

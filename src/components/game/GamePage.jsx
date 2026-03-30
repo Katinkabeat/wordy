@@ -33,6 +33,8 @@ export default function GamePage({ session }) {
   const [exchangeSel, setExchangeSel] = useState([])     // rack indices
   const [blankModal, setBlankModal]   = useState(null)   // { row, col } pending blank assignment
   const [forfeitModal, setForfeitModal] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsRef = useRef(null)
   const [profiles, setProfiles]       = useState({})
   const [lastMoveTiles, setLastMoveTiles] = useState([]) // tiles from the most recent move
   const [lastMoveScores, setLastMoveScores] = useState({}) // user_id → last move score
@@ -40,6 +42,18 @@ export default function GamePage({ session }) {
   const mutatingRef = useRef(false)  // suppress real-time reloads during DB writes
   const placementsRef = useRef([])   // mirror of placements state for polling guard
   const localRackRef = useRef(null)  // preserve local rack order across polls
+
+  // ── Close settings menu on outside click ──────────────────
+  useEffect(() => {
+    if (!settingsOpen) return
+    function handleClick(e) {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        setSettingsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [settingsOpen])
 
   // ── Cell size — fixed, device-appropriate ─────────────────
   const cellSize = useMemo(() => {
@@ -593,13 +607,33 @@ export default function GamePage({ session }) {
             <span className="text-xs text-wordy-300 font-bold">
               🎒 {game.tile_bag?.length ?? 0} left
             </span>
-            <button
-              onClick={toggleTheme}
-              className="text-lg leading-none hover:scale-110 transition-transform"
-              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDark ? '☀️' : '🌙'}
-            </button>
+            <div className="relative" ref={settingsRef}>
+              <button
+                onClick={() => setSettingsOpen(o => !o)}
+                className="text-lg leading-none hover:scale-110 transition-transform"
+                title="Settings"
+              >
+                ⚙️
+              </button>
+              {settingsOpen && (
+                <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#1a1130] border border-wordy-100 dark:border-[#2d1b55] rounded-xl shadow-lg z-50 py-1 text-sm">
+                  <button
+                    onClick={() => { toggleTheme(); setSettingsOpen(false) }}
+                    className="w-full text-left px-4 py-2 hover:bg-wordy-50 dark:hover:bg-[#2d1b55] text-wordy-600 dark:text-wordy-300 transition-colors"
+                  >
+                    {isDark ? '☀️ Light mode' : '🌙 Dark mode'}
+                  </button>
+                  {game.status === 'active' && myPlayer && (
+                    <button
+                      onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
+                      className="w-full text-left px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 transition-colors"
+                    >
+                      🏳️ Forfeit game
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -670,8 +704,8 @@ export default function GamePage({ session }) {
               myTurn={myTurn}
             />
 
-            {/* Shuffle button — available any time (pure visual reorder) */}
-            <div className="text-center">
+            {/* Shuffle + live score preview (fixed height row) */}
+            <div className="flex items-center justify-center gap-3 h-7">
               <button
                 onClick={shuffleRack}
                 className="text-xs text-wordy-400 hover:text-wordy-600 transition-colors"
@@ -679,17 +713,13 @@ export default function GamePage({ session }) {
               >
                 🔀 Shuffle
               </button>
-            </div>
-
-            {/* Live score preview */}
-            {liveScore !== null && (
-              <div className="text-center">
-                <span className="inline-block bg-wordy-100 text-wordy-700 font-bold text-sm px-3 py-1 rounded-full dark:bg-[#2d1b55] dark:text-wordy-200">
+              {liveScore !== null && (
+                <span className="inline-block bg-wordy-100 text-wordy-700 font-bold text-sm px-3 py-0.5 rounded-full dark:bg-[#2d1b55] dark:text-wordy-200">
                   ✨ +{liveScore} pts
                   {placements.length === 7 && <span className="ml-1 text-pink-500">🎉 Bingo!</span>}
                 </span>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Action buttons */}
             {myTurn && !exchangeMode && (
@@ -728,15 +758,6 @@ export default function GamePage({ session }) {
               </div>
             )}
 
-            {/* Forfeit — always visible while game is active */}
-            <div className="text-center pt-1">
-              <button
-                onClick={() => setForfeitModal(true)}
-                className="text-xs text-rose-400 hover:text-rose-600 underline transition-colors"
-              >
-                🏳️ Forfeit game
-              </button>
-            </div>
           </div>
         </div>
       )}

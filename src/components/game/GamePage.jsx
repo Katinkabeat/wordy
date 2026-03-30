@@ -96,9 +96,14 @@ export default function GamePage({ session }) {
         .eq('id', gameId).single()
       if (gErr) throw gErr
       if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
+      // Double-check: if tiles were placed on the board between the poll/RT
+      // trigger and the async fetch completing, bail out to avoid wiping them.
+      if (placementsRef.current.length > 0 && !force) return
+
       setGame(g)
       setBoard(deserializeBoard(g.board))
       setPlacements([])  // clear stale placements — DB board is the source of truth
+      placementsRef.current = []
       setLoadError(null)
 
       const { data: ps, error: psErr } = await supabase
@@ -266,11 +271,14 @@ export default function GamePage({ session }) {
     newRack.splice(selectedTile.rackIdx, 1)
     setMyPlayer(prev => ({ ...prev, rack: newRack }))
 
-    setPlacements(prev => [...prev, {
+    const newPlacement = {
       row, col, letter, isBlank,
       rackIdx: selectedTile.rackIdx,
       tileLetter: selectedTile.letter,
-    }])
+    }
+    // Sync ref IMMEDIATELY so polling/RT guards see it before React batches
+    placementsRef.current = [...placementsRef.current, newPlacement]
+    setPlacements(prev => [...prev, newPlacement])
     setSelected(null)
   }
 
@@ -294,6 +302,8 @@ export default function GamePage({ session }) {
     for (const t of restoredTiles) restoredRack.splice(t.rackIdx, 0, t.letter)
     setBoard(newBoard)
     setMyPlayer(prev => ({ ...prev, rack: restoredRack }))
+    localRackRef.current = restoredRack
+    placementsRef.current = []  // sync ref immediately
     setPlacements([])
     setSelected(null)
   }

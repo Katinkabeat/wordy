@@ -721,9 +721,9 @@ export default function GamePage({ session }) {
               )}
             </div>
 
-            {/* Action buttons */}
-            {myTurn && !exchangeMode && (
-              <div className="flex flex-wrap gap-2 justify-center">
+            {/* Action buttons — always rendered to keep banner height stable */}
+            {!exchangeMode ? (
+              <div className={`flex flex-wrap gap-2 justify-center transition-opacity ${myTurn ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <button onClick={submitWord} disabled={submitting || placements.length === 0}
                   className="btn-primary disabled:opacity-50 text-sm">
                   {submitting ? '⏳' : '✅ Submit Word'}
@@ -740,9 +740,7 @@ export default function GamePage({ session }) {
                   ⏩ Pass
                 </button>
               </div>
-            )}
-
-            {myTurn && exchangeMode && (
+            ) : (
               <div className="flex flex-wrap gap-2 justify-center">
                 <p className="w-full text-center text-xs text-wordy-500 font-bold">
                   Tap tiles above to select them for exchange

@@ -8,16 +8,37 @@ self.addEventListener('push', (event) => {
     // fallback to defaults
   }
 
+  const tag = data.tag || 'wordy-turn'
+
   const options = {
     body: data.body,
     icon: '/wordy/favicon.svg',
     badge: '/wordy/favicon.svg',
-    tag: data.tag || 'wordy-turn',       // collapse duplicate notifications
+    tag,                                  // collapse duplicate notifications
     renotify: true,                       // vibrate even if tag matches
     data: { url: data.url || '/wordy/lobby' },
   }
 
-  event.waitUntil(self.registration.showNotification(data.title, options))
+  event.waitUntil(
+    Promise.all([
+      // Check if user is already looking at the app
+      clients.matchAll({ type: 'window', includeUncontrolled: true }),
+      // Check if a notification with this tag already exists (prevents
+      // duplicates when Android shows both Chrome and PWA channels)
+      self.registration.getNotifications({ tag }),
+    ]).then(([windowClients, existing]) => {
+      // Skip if the user is already focused on Wordy
+      const hasFocusedClient = windowClients.some(
+        c => c.url.includes('/wordy/') && c.visibilityState === 'visible' && c.focused
+      )
+      if (hasFocusedClient) return
+
+      // Skip if a notification with this tag is already showing
+      if (existing.length > 0) return
+
+      return self.registration.showNotification(data.title, options)
+    })
+  )
 })
 
 // When the user taps the notification, open/focus the right page
@@ -46,5 +67,5 @@ self.addEventListener('notificationclick', (event) => {
 // Activate immediately — no offline caching needed, just push
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(clients.claim())
 })

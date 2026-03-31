@@ -90,21 +90,15 @@ export default function GamePage({ session }) {
     // is in progress — the mutation will call loadGame({ force: true }) when done.
     if (mutatingRef.current && !force) return
     try {
+      // ── Phase 1: fetch ALL data before touching any state ────
+      // This prevents a race where the user places a tile between two async
+      // fetches and the second fetch's state update overwrites their rack.
       const { data: g, error: gErr } = await supabase
         .from('games')
         .select('*')
         .eq('id', gameId).single()
       if (gErr) throw gErr
       if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
-      // Double-check: if tiles were placed on the board between the poll/RT
-      // trigger and the async fetch completing, bail out to avoid wiping them.
-      if (placementsRef.current.length > 0 && !force) return
-
-      setGame(g)
-      setBoard(deserializeBoard(g.board))
-      setPlacements([])  // clear stale placements — DB board is the source of truth
-      placementsRef.current = []
-      setLoadError(null)
 
       const { data: ps, error: psErr } = await supabase
         .from('game_players')
@@ -112,6 +106,38 @@ export default function GamePage({ session }) {
         .eq('game_id', gameId)
         .order('player_index')
       if (psErr) throw psErr
+
+      // Fetch last move, scores, and profiles in parallel (non-critical)
+      const playerIds = (ps ?? []).map(p => p.user_id)
+      const [lastMovesRes, scoresResults, profsRes] = await Promise.all([
+        supabase.from('game_moves').select('tiles_placed')
+          .eq('game_id', gameId).eq('move_type', 'place')
+          .order('created_at', { ascending: false }).limit(1),
+        playerIds.length
+          ? Promise.all(playerIds.map(pid =>
+              supabase.from('game_moves').select('score, user_id')
+                .eq('game_id', gameId).eq('user_id', pid)
+                .order('created_at', { ascending: false }).limit(1)
+                .then(({ data }) => data?.[0] ?? null)
+            ))
+          : Promise.resolve([]),
+        playerIds.length
+          ? supabase.from('profiles').select('id, username').in('id', playerIds)
+          : Promise.resolve({ data: null, error: null }),
+      ])
+
+      // ── Phase 2: guard check AFTER all fetches, BEFORE any state updates ──
+      // If the user placed tiles while we were fetching, bail out entirely
+      // so we don't overwrite their in-progress placement.
+      if (placementsRef.current.length > 0 && !force) return
+
+      // ── Phase 3: apply all state updates atomically ──────────
+      setGame(g)
+      setBoard(deserializeBoard(g.board))
+      setPlacements([])  // clear stale placements — DB board is the source of truth
+      placementsRef.current = []
+      setLoadError(null)
+
       setPlayers(ps ?? [])
       const me = (ps ?? []).find(p => p.user_id === user.id)
       // Preserve the user's local rack order (from shuffle / tile swaps)
@@ -122,45 +148,22 @@ export default function GamePage({ session }) {
       if (me) localRackRef.current = me.rack
       setMyPlayer(me ?? null)
 
-      // Load the last move so we can highlight those tiles on the board
-      const { data: lastMoves } = await supabase
-        .from('game_moves')
-        .select('tiles_placed')
-        .eq('game_id', gameId)
-        .eq('move_type', 'place')
-        .order('created_at', { ascending: false })
-        .limit(1)
-      setLastMoveTiles(lastMoves?.[0]?.tiles_placed ?? [])
+      setLastMoveTiles(lastMovesRes?.data?.[0]?.tiles_placed ?? [])
 
-      // Load each player's last move score (parallel, not sequential)
-      const playerIds = (ps ?? []).map(p => p.user_id)
-      if (playerIds.length) {
-        const results = await Promise.all(
-          playerIds.map(pid =>
-            supabase.from('game_moves').select('score, user_id')
-              .eq('game_id', gameId).eq('user_id', pid)
-              .order('created_at', { ascending: false }).limit(1)
-              .then(({ data }) => data?.[0] ?? null)
-          )
-        )
+      if (scoresResults.length) {
         const scoreMap = {}
-        for (const r of results) {
+        for (const r of scoresResults) {
           if (r?.score != null) scoreMap[r.user_id] = r.score
         }
         setLastMoveScores(scoreMap)
       }
 
-      // Load usernames — only update if the query succeeds so a transient
+      // Only update profiles if the query succeeded so a transient
       // network failure on mobile doesn't wipe out already-loaded names
-      const ids = (ps ?? []).map(p => p.user_id)
-      if (ids.length) {
-        const { data: profs, error: profsError } = await supabase
-          .from('profiles').select('id, username').in('id', ids)
-        if (!profsError && profs) {
-          const map = {}
-          for (const p of profs) map[p.id] = { username: p.username }
-          setProfiles(map)
-        }
+      if (!profsRes.error && profsRes.data) {
+        const map = {}
+        for (const p of profsRes.data) map[p.id] = { username: p.username }
+        setProfiles(map)
       }
     } catch (err) {
       console.error('loadGame failed:', err)
@@ -238,6 +241,7 @@ export default function GamePage({ session }) {
       const removed = placements[existingIdx]
       const newRack = [...(myPlayer.rack)]
       newRack.splice(removed.rackIdx, 0, removed.tileLetter)
+      localRackRef.current = newRack
       setMyPlayer(prev => ({ ...prev, rack: newRack }))
       setPlacements(prev => prev.filter((_, i) => i !== existingIdx))
       setBoard(prev => {
@@ -266,9 +270,11 @@ export default function GamePage({ session }) {
     newBoard[row][col] = { letter, isBlank, hue: myHue, uid: user.id }
     setBoard(newBoard)
 
-    // Remove from rack
+    // Remove from rack and sync localRackRef so loadGame's
+    // sameRackContents check won't restore the old full rack
     const newRack = [...(myPlayer.rack)]
     newRack.splice(selectedTile.rackIdx, 1)
+    localRackRef.current = newRack
     setMyPlayer(prev => ({ ...prev, rack: newRack }))
 
     const newPlacement = {

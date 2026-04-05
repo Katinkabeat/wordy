@@ -787,9 +787,14 @@ export default function GamePage({ session }) {
                 ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id]?.username ?? '?'} wins!`
                 : "🏆 It's a tie!"}
           </p>
-          <button onClick={() => navigate('/stats')} className="text-sm underline opacity-80 hover:opacity-100">
-            View Stats →
-          </button>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <button onClick={() => navigate('/lobby')} className="bg-white/20 hover:bg-white/30 text-white font-bold text-sm px-4 py-1.5 rounded-full transition-colors">
+              ← Back to Lobby
+            </button>
+            <button onClick={() => navigate('/stats')} className="text-sm underline opacity-80 hover:opacity-100">
+              View Stats →
+            </button>
+          </div>
         </div>
       )}
 

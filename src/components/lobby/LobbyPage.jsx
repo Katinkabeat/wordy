@@ -162,7 +162,7 @@ export default function LobbyPage({ session }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontWeight: 'bold' }}>{headline}</span>
             <button
-              onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
+              onClick={() => { navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
               style={{ fontSize: 12, textDecoration: 'underline', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             >
               View final board →
@@ -183,7 +183,10 @@ export default function LobbyPage({ session }) {
     // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
     // the lobby still refreshes every 10 seconds while visible.
     const poll = setInterval(() => {
-      if (document.visibilityState === 'visible') loadGames()
+      if (document.visibilityState === 'visible') {
+        loadGames()
+        loadUnseenResults()
+      }
     }, 10_000)
 
     // Also refresh immediately when the tab/phone wakes back up.
@@ -431,7 +434,7 @@ export default function LobbyPage({ session }) {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => { dismissResult(gameId); navigate(`/game/${gameId}`) }}
+                      onClick={() => navigate(`/game/${gameId}`)}
                       className="text-sm font-bold opacity-90 hover:opacity-100 whitespace-nowrap"
                     >
                       View board

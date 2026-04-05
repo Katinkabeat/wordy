@@ -360,52 +360,53 @@ export default function GamePage({ session }) {
       }
 
       // ── DB write phase ────────────────────────────────────
-      // Suppress real-time reloads while sequential writes are in progress.
+      // Suppress real-time reloads while parallel writes are in progress.
       mutatingRef.current = true
       try {
-        const { error: gameErr } = await supabase.from('games').update({
-          board: newBoardFlat,
-          tile_bag: newBag,
-          current_player_idx: nextIdx,
-          consecutive_passes: 0,
-          ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
-        }).eq('id', gameId)
+        // Run game + player updates in parallel (independent tables)
+        const [{ error: gameErr }, { error: playerErr }] = await Promise.all([
+          supabase.from('games').update({
+            board: newBoardFlat,
+            tile_bag: newBag,
+            current_player_idx: nextIdx,
+            consecutive_passes: 0,
+            ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
+          }).eq('id', gameId),
+          supabase.from('game_players').update({
+            score: newScore,
+            rack:  newRack,
+          }).eq('game_id', gameId).eq('user_id', user.id),
+        ])
         if (gameErr) { console.error('games update failed:', gameErr); toast.error('Failed to save move — please retry.'); recall(); return }
-
-        const { error: playerErr } = await supabase.from('game_players').update({
-          score: newScore,
-          rack:  newRack,
-        }).eq('game_id', gameId).eq('user_id', user.id)
         if (playerErr) { console.error('game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); recall(); return }
 
+        // Fire-and-forget: move log + finish RPC are non-critical for gameplay
         if (over) {
-          const { error: rpcErr } = await supabase.rpc('finish_game', {
+          supabase.rpc('finish_game', {
             p_game_id: gameId,
             p_player_results: finalPlayers.map(fp => ({
               user_id:   fp.user_id,
               score:     fp.score,
               is_winner: fp.is_winner ?? false,
             })),
-          })
-          if (rpcErr) console.error('finish_game RPC failed:', rpcErr)
+          }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
         }
 
-        const { error: moveErr } = await supabase.from('game_moves').insert({
+        supabase.from('game_moves').insert({
           game_id: gameId, user_id: user.id,
           move_type: 'place',
           tiles_placed: placements,
           words_formed: words.map(w => w.word),
           score: turnScore,
           rack_after: newRack,
-        })
-        if (moveErr) console.error('game_moves insert failed:', moveErr)
+        }).then(({ error }) => { if (error) console.error('game_moves insert failed:', error) })
 
         setPlacements([])
         toast.success(`+${turnScore} pts ✨  [${words.map(w => w.word).join(', ')}]`)
         if (over) toast('🏆 Game over!')
       } finally {
         mutatingRef.current = false
-        // Reload from DB now that ALL writes have completed, so state is consistent
+        // Reload from DB now that critical writes have completed
         loadGame({ force: true })
       }
     } finally {
@@ -438,22 +439,21 @@ export default function GamePage({ session }) {
       }).eq('id', gameId)
       if (gameErr) { console.error('pass: games update failed:', gameErr); toast.error('Failed to pass — please retry.'); return }
 
-      const { error: moveErr } = await supabase.from('game_moves').insert({
+      // Fire-and-forget: move log + finish RPC are non-critical
+      supabase.from('game_moves').insert({
         game_id: gameId, user_id: user.id,
         move_type: 'pass', score: 0, rack_after: myPlayer.rack,
-      })
-      if (moveErr) console.error('pass: game_moves insert failed:', moveErr)
+      }).then(({ error }) => { if (error) console.error('pass: game_moves insert failed:', error) })
 
       if (over) {
-        const { error: rpcErr } = await supabase.rpc('finish_game', {
+        supabase.rpc('finish_game', {
           p_game_id: gameId,
           p_player_results: finalPlayers.map(fp => ({
             user_id:   fp.user_id,
             score:     fp.score,
             is_winner: fp.is_winner ?? false,
           })),
-        })
-        if (rpcErr) console.error('finish_game RPC failed:', rpcErr)
+        }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
         toast('🏆 Game over — no moves left!')
       } else {
         toast('⏩ Turn passed.')
@@ -499,34 +499,35 @@ export default function GamePage({ session }) {
         finalPlayers   = finalPlayers.map(p => ({ ...p, is_winner: p.score === maxScore }))
       }
 
-      const { error: gameErr } = await supabase.from('games').update({
-        tile_bag: newBag,
-        current_player_idx: nextIdx,
-        consecutive_passes: newPasses,
-        ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
-      }).eq('id', gameId)
+      // Run game + player updates in parallel (independent tables)
+      const [{ error: gameErr }, { error: playerErr }] = await Promise.all([
+        supabase.from('games').update({
+          tile_bag: newBag,
+          current_player_idx: nextIdx,
+          consecutive_passes: newPasses,
+          ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
+        }).eq('id', gameId),
+        supabase.from('game_players').update({ rack: refilled })
+          .eq('game_id', gameId).eq('user_id', user.id),
+      ])
       if (gameErr) { console.error('exchange: games update failed:', gameErr); toast.error('Failed to exchange — please retry.'); return }
-
-      const { error: playerErr } = await supabase.from('game_players').update({ rack: refilled })
-        .eq('game_id', gameId).eq('user_id', user.id)
       if (playerErr) { console.error('exchange: game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); return }
 
-      const { error: moveErr } = await supabase.from('game_moves').insert({
+      // Fire-and-forget: move log + finish RPC are non-critical
+      supabase.from('game_moves').insert({
         game_id: gameId, user_id: user.id,
         move_type: 'exchange', score: 0, rack_after: refilled,
-      })
-      if (moveErr) console.error('exchange: game_moves insert failed:', moveErr)
+      }).then(({ error }) => { if (error) console.error('exchange: game_moves insert failed:', error) })
 
       if (over) {
-        const { error: rpcErr } = await supabase.rpc('finish_game', {
+        supabase.rpc('finish_game', {
           p_game_id: gameId,
           p_player_results: finalPlayers.map(fp => ({
             user_id:   fp.user_id,
             score:     fp.score,
             is_winner: fp.is_winner ?? false,
           })),
-        })
-        if (rpcErr) console.error('finish_game RPC failed:', rpcErr)
+        }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
         toast('🏆 Game over — no moves left!')
       } else {
         toast('🔄 Tiles exchanged!')

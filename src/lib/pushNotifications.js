@@ -86,6 +86,41 @@ export async function unsubscribeFromPush(userId) {
 }
 
 /**
+ * Re-sync the current browser push subscription to Supabase.
+ * Push endpoints can silently change (browser updates, PWA reinstall, etc.).
+ * Call this on every lobby visit so the server always has the fresh endpoint.
+ * Returns true if synced, false if no subscription or error.
+ */
+export async function resyncPushSubscription(userId) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
+  try {
+    const sw = await navigator.serviceWorker.ready
+    const subscription = await sw.pushManager.getSubscription()
+    if (!subscription) return false
+
+    const subJson = subscription.toJSON()
+    const { error } = await supabase.from('push_subscriptions').upsert({
+      user_id: userId,
+      endpoint: subJson.endpoint,
+      keys_p256dh: subJson.keys.p256dh,
+      keys_auth: subJson.keys.auth,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'user_id',
+    })
+
+    if (error) {
+      console.error('Failed to resync push subscription:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('Push resync failed:', err)
+    return false
+  }
+}
+
+/**
  * Check if the current user has an active push subscription.
  */
 export async function hasActivePushSubscription() {

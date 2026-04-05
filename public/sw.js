@@ -20,22 +20,21 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    Promise.all([
-      // Check if user is already looking at the app
-      clients.matchAll({ type: 'window', includeUncontrolled: true }),
-      // Check if a notification with this tag already exists (prevents
-      // duplicates when Android shows both Chrome and PWA channels)
-      self.registration.getNotifications({ tag }),
-    ]).then(([windowClients, existing]) => {
-      // Skip if the user is already focused on Wordy
+    // Check if user is already looking at the specific game
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Only skip if the user is focused on the SPECIFIC game page this
+      // notification is about — not just any Wordy tab (e.g. lobby)
+      const targetUrl = data.url || ''
       const hasFocusedClient = windowClients.some(
-        c => c.url.includes('/wordy/') && c.visibilityState === 'visible' && c.focused
+        c => c.visibilityState === 'visible' && c.focused
+             && targetUrl && c.url.includes(targetUrl)
       )
       if (hasFocusedClient) return
 
-      // Skip if a notification with this tag is already showing
-      if (existing.length > 0) return
-
+      // Using the same `tag` automatically replaces any existing notification
+      // for this game, and `renotify: true` re-alerts the user.  No manual
+      // duplicate check needed — the old one that was here silently dropped
+      // legitimate new notifications when the user hadn't dismissed the old one.
       return self.registration.showNotification(data.title, options)
     })
   )

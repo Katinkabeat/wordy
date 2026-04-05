@@ -4,6 +4,7 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
   hasActivePushSubscription,
+  resyncPushSubscription,
   registerServiceWorker,
 } from '../../lib/pushNotifications.js'
 
@@ -20,7 +21,9 @@ export default function NotificationBanner({ userId }) {
     () => localStorage.getItem('wordy-push-dismissed') === 'true'
   )
 
-  // Check if already subscribed on mount
+  // Check if already subscribed on mount, and re-sync the subscription
+  // to Supabase so the server always has the current push endpoint
+  // (endpoints can silently change after browser updates, PWA reinstall, etc.)
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -31,9 +34,13 @@ export default function NotificationBanner({ userId }) {
         setSubscribed(active)
         setLoading(false)
       }
+      // Re-sync subscription to Supabase on every lobby visit
+      if (active && userId) {
+        await resyncPushSubscription(userId)
+      }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [userId])
 
   async function handleEnable() {
     setLoading(true)

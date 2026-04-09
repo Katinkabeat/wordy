@@ -68,12 +68,14 @@ export default function LobbyPage({ session }) {
     // fail with certain syntaxes.  Sort client-side instead.
     const { data: gps, error: gpErr } = await supabase
       .from('game_players')
-      .select('game_id, is_winner, games!inner(id, status, finished_at, forfeit_user_id)')
+      .select('game_id, is_winner, dismissed_at, games!inner(id, status, finished_at, forfeit_user_id)')
       .eq('user_id', user.id)
       .eq('games.status', 'finished')
+      .is('dismissed_at', null)
       .limit(50)
     if (gpErr) { console.error('loadUnseenResults: query failed:', gpErr); return }
 
+    // localStorage is a fast local fallback; dismissed_at in DB is the source of truth
     const unseen = (gps ?? []).filter(gp => !seen.has(gp.game_id))
     if (unseen.length === 0) { setUnseenResults([]); return }
 
@@ -118,6 +120,14 @@ export default function LobbyPage({ session }) {
   useEffect(() => { loadUnseenResults() }, [loadUnseenResults])
 
   function dismissResult(gameId) {
+    // Persist server-side so dismissal survives across devices/browsers
+    supabase
+      .from('game_players')
+      .update({ dismissed_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('game_id', gameId)
+      .then(({ error }) => { if (error) console.error('dismiss write failed:', error) })
+    // Also keep localStorage as instant local cache
     const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
     seen.add(gameId)
     localStorage.setItem(seenKey, JSON.stringify([...seen]))

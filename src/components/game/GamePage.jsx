@@ -721,7 +721,7 @@ export default function GamePage({ session }) {
             />
 
             {/* Row 2: Shuffle + live score preview */}
-            <div className="flex items-center justify-center gap-3 h-6 my-1">
+            <div className="flex items-center justify-center gap-3 h-6 my-2">
               <button
                 onClick={shuffleRack}
                 className="text-xs text-wordy-400 hover:text-wordy-600 transition-colors"

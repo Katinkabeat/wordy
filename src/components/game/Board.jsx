@@ -62,7 +62,6 @@ export default function Board({ board, placements, lastMoveTiles = [], onCellCli
             <div
               key={key}
               onClick={() => onCellClick(r, c)}
-              style={{ touchAction: 'manipulation' }}
               className={`board-cell ${bonus ? BONUS_CLASSES[bonus] : 'cell-normal'} ${myTurn && !cell ? 'cursor-pointer hover:opacity-80' : ''}`}
             >
               {bonus && (
@@ -94,7 +93,6 @@ function BoardTile({ letter, isBlank, hue, isNew, isLastMove, isDark, onClick, l
         background: style.bg,
         boxShadow: style.glow,
         cursor: isNew ? 'pointer' : 'default',
-        touchAction: 'manipulation',
       }}
     >
       <div className="relative flex items-center justify-center w-full h-full">

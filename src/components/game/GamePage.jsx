@@ -9,7 +9,7 @@ import {
   isGameOver, applyEndgamePenalties,
 } from '../../lib/gameLogic.js'
 import { validateWords } from '../../lib/wordValidator.js'
-import Board      from './Board.jsx'
+import ZoomableBoard from './ZoomableBoard.jsx'
 import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
@@ -671,7 +671,7 @@ export default function GamePage({ session }) {
 
         {/* Board */}
         <div className="flex-1 flex items-center justify-center">
-          <Board
+          <ZoomableBoard
             board={board}
             placements={placements}
             lastMoveTiles={lastMoveTiles}

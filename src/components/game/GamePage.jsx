@@ -60,8 +60,8 @@ export default function GamePage({ session }) {
     const vw = window.innerWidth
     if (vw >= 1024) return 38                                   // desktop → 584px board
     if (vw >= 768)  return 32                                   // tablet  → 494px board
-    // Container has p-3 (24px total) + 8px safety margin = 32px, plus 14px of gaps
-    return Math.max(20, Math.floor((vw - 46) / 15))
+    // Container has px-1 (8px total) + 14px grid gaps + 4px board border = 26px
+    return Math.max(20, Math.floor((vw - 26) / 15))
   }, [])
 
   // ── Helpers ───────────────────────────────────────────────
@@ -655,7 +655,7 @@ export default function GamePage({ session }) {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full p-3">
+      <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full px-1 py-3 lg:p-3">
 
         {/* Score panel — desktop sidebar / mobile top bar */}
         <div className="lg:w-56 shrink-0">

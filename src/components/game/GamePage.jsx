@@ -33,6 +33,7 @@ export default function GamePage({ session }) {
   const [exchangeSel, setExchangeSel] = useState([])     // rack indices
   const [blankModal, setBlankModal]   = useState(null)   // { row, col } pending blank assignment
   const [forfeitModal, setForfeitModal] = useState(false)
+  const [passConfirm, setPassConfirm]   = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef(null)
   const [profiles, setProfiles]       = useState({})
@@ -414,7 +415,20 @@ export default function GamePage({ session }) {
     }
   }
 
-  // ── Pass turn ─────────────────────────────────────────────
+  // ── Pass turn (double-tap to confirm) ─────────────────────
+  const passTimerRef = useRef(null)
+  function handlePass() {
+    if (!passConfirm) {
+      setPassConfirm(true)
+      clearTimeout(passTimerRef.current)
+      passTimerRef.current = setTimeout(() => setPassConfirm(false), 3000)
+      return
+    }
+    clearTimeout(passTimerRef.current)
+    setPassConfirm(false)
+    passTurn()
+  }
+
   async function passTurn() {
     if (!isMyTurn()) return
     recall()
@@ -757,10 +771,10 @@ export default function GamePage({ session }) {
                   <span className="btn-icon-emoji">🔄</span>
                   <span className="btn-icon-label">Swap</span>
                 </button>
-                <button onClick={passTurn}
-                  className="btn-icon btn-icon-secondary">
+                <button onClick={handlePass}
+                  className={`btn-icon ${passConfirm ? 'btn-icon-danger' : 'btn-icon-secondary'}`}>
                   <span className="btn-icon-emoji">⏩</span>
-                  <span className="btn-icon-label">Pass</span>
+                  <span className="btn-icon-label">{passConfirm ? 'Sure?' : 'Pass'}</span>
                 </button>
               </div>
             ) : (

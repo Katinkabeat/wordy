@@ -112,6 +112,12 @@ body {
 .btn-icon-secondary .btn-icon-label { color: #7e22ce; }
 .btn-icon-secondary:hover { @apply bg-purple-50; }
 
+.btn-icon-danger {
+  @apply border-2 border-red-400 bg-red-50;
+  color: #dc2626;
+}
+.btn-icon-danger .btn-icon-label { color: #dc2626; }
+
 /* ── Card / panel ── */
 .card {
   @apply bg-white rounded-2xl shadow-md border border-purple-100 p-4;
@@ -252,6 +258,13 @@ body {
 }
 .dark .btn-icon-secondary .btn-icon-label { color: #c4b5fd; }
 .dark .btn-icon-secondary:hover { background-color: #221540; }
+
+.dark .btn-icon-danger {
+  background-color: #2d1215;
+  border-color: #dc2626;
+  color: #fca5a5;
+}
+.dark .btn-icon-danger .btn-icon-label { color: #fca5a5; }
 
 /* ── Inputs & selects ── */
 .dark input,

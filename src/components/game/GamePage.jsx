@@ -566,15 +566,15 @@ export default function GamePage({ session }) {
     setForfeitModal(false)
   }
 
-  // ── Live score preview ────────────────────────────────────
+  // ── Live score preview (always visible: 0 when no tiles placed) ──
   const liveScore = useMemo(() => {
-    if (!board || placements.length === 0) return null
+    if (!board || placements.length === 0) return 0
     try {
       const words = extractWords(board, placements)
-      if (words.length === 0) return null
+      if (words.length === 0) return 0
       return calculateScore(board, placements, words)
     } catch {
-      return null
+      return 0
     }
   }, [board, placements])
 
@@ -688,11 +688,11 @@ export default function GamePage({ session }) {
         <div className="hidden lg:block lg:w-56 shrink-0" aria-hidden="true" />
       </div>
 
-      {/* Bottom controls (shown only to the current player) */}
+      {/* Bottom controls — sticky bar, always visible at bottom */}
       {game.status === 'active' && myPlayer && (
-        <div className="bg-white border-t border-wordy-100 p-3 shadow-t-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
-          <div className="max-w-xl mx-auto space-y-3">
-            {/* Tile rack */}
+        <div className="sticky bottom-0 z-20 bg-white border-t border-wordy-100 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-t-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
+          <div className="max-w-xl mx-auto space-y-1.5">
+            {/* Row 1: Tile rack */}
             <TileRack
               rack={myPlayer.rack}
               selected={selectedTile}
@@ -702,7 +702,6 @@ export default function GamePage({ session }) {
               onSelect={(letter, idx) => {
                 if (exchangeMode) { toggleExchangeSelect(idx); return }
                 if (!myTurn) return
-                // Tap-to-swap: if a tile is already selected and we tap a different tile, swap them
                 if (selectedTile && selectedTile.rackIdx !== idx) {
                   setMyPlayer(prev => {
                     const newRack = [...prev.rack]
@@ -721,8 +720,8 @@ export default function GamePage({ session }) {
               myTurn={myTurn}
             />
 
-            {/* Shuffle + live score preview (fixed height row) */}
-            <div className="flex items-center justify-center gap-3 h-7">
+            {/* Row 2: Shuffle + live score preview */}
+            <div className="flex items-center justify-center gap-3 h-6">
               <button
                 onClick={shuffleRack}
                 className="text-xs text-wordy-400 hover:text-wordy-600 transition-colors"
@@ -730,46 +729,57 @@ export default function GamePage({ session }) {
               >
                 🔀 Shuffle
               </button>
-              {liveScore !== null && (
-                <span className="inline-block bg-wordy-100 text-wordy-700 font-bold text-sm px-3 py-0.5 rounded-full dark:bg-[#2d1b55] dark:text-wordy-200">
-                  ✨ +{liveScore} pts
-                  {placements.length === 7 && <span className="ml-1 text-pink-500">🎉 Bingo!</span>}
-                </span>
-              )}
+              <span className={`inline-block font-bold text-sm px-3 py-0.5 rounded-full ${
+                liveScore > 0
+                  ? 'bg-wordy-100 text-wordy-700 dark:bg-[#2d1b55] dark:text-wordy-200'
+                  : 'bg-wordy-100/50 text-wordy-400 dark:bg-[#2d1b55]/50 dark:text-wordy-400'
+              }`}>
+                {liveScore > 0 ? '✨ ' : ''}+{liveScore} pts
+                {placements.length === 7 && <span className="ml-1 text-pink-500">🎉 Bingo!</span>}
+              </span>
             </div>
 
-            {/* Action buttons — always rendered to keep banner height stable */}
+            {/* Row 3: Action buttons — single row of icon buttons */}
             {!exchangeMode ? (
-              <div className={`flex flex-wrap gap-2 justify-center transition-opacity ${myTurn ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className={`flex gap-2 justify-center transition-opacity ${myTurn ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <button onClick={submitWord} disabled={submitting || placements.length === 0}
-                  className="btn-primary disabled:opacity-50 text-sm">
-                  {submitting ? '⏳' : '✅ Submit Word'}
+                  className="btn-icon btn-icon-primary disabled:opacity-50">
+                  <span className="btn-icon-emoji">{submitting ? '⏳' : '✅'}</span>
+                  <span className="btn-icon-label">Submit</span>
                 </button>
                 <button onClick={recall} disabled={placements.length === 0}
-                  className="btn-secondary text-sm">
-                  ↩ Recall
+                  className="btn-icon btn-icon-secondary disabled:opacity-50">
+                  <span className="btn-icon-emoji">↩️</span>
+                  <span className="btn-icon-label">Recall</span>
                 </button>
                 <button onClick={() => { setExchange(true); recall() }}
-                  className="btn-secondary text-sm">
-                  🔄 Exchange
+                  className="btn-icon btn-icon-secondary">
+                  <span className="btn-icon-emoji">🔄</span>
+                  <span className="btn-icon-label">Swap</span>
                 </button>
-                <button onClick={passTurn} className="btn-secondary text-sm">
-                  ⏩ Pass
+                <button onClick={passTurn}
+                  className="btn-icon btn-icon-secondary">
+                  <span className="btn-icon-emoji">⏩</span>
+                  <span className="btn-icon-label">Pass</span>
                 </button>
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2 justify-center">
-                <p className="w-full text-center text-xs text-wordy-500 font-bold">
-                  Tap tiles above to select them for exchange
+              <div className="flex flex-col items-center gap-1.5">
+                <p className="text-center text-xs text-wordy-500 font-bold">
+                  Tap tiles above to select for exchange
                 </p>
-                <button onClick={confirmExchange}
-                  className="btn-primary text-sm">
-                  🔄 Exchange ({exchangeSel.length})
-                </button>
-                <button onClick={() => { setExchange(false); setExchangeSel([]) }}
-                  className="btn-secondary text-sm">
-                  Cancel
-                </button>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={confirmExchange}
+                    className="btn-icon btn-icon-primary">
+                    <span className="btn-icon-emoji">🔄</span>
+                    <span className="btn-icon-label">Swap ({exchangeSel.length})</span>
+                  </button>
+                  <button onClick={() => { setExchange(false); setExchangeSel([]) }}
+                    className="btn-icon btn-icon-secondary">
+                    <span className="btn-icon-emoji">✖️</span>
+                    <span className="btn-icon-label">Cancel</span>
+                  </button>
+                </div>
               </div>
             )}
 

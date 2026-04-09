@@ -79,6 +79,39 @@ body {
   box-shadow: 0 3px 0 #9f1239;
 }
 
+/* ── Compact icon buttons (game action bar) ── */
+.btn-icon {
+  @apply flex flex-col items-center justify-center rounded-lg transition-all duration-150 active:scale-95;
+  min-width: 56px;
+  height: 40px;
+  padding: 2px 8px;
+  gap: 1px;
+}
+.btn-icon-emoji {
+  font-size: 15px;
+  line-height: 1;
+}
+.btn-icon-label {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+.btn-icon-primary {
+  background: linear-gradient(135deg, #9333ea, #7e22ce);
+  box-shadow: 0 2px 0 #581c87;
+  color: white;
+}
+.btn-icon-primary .btn-icon-label { color: #e9d5ff; }
+.btn-icon-primary:hover { filter: brightness(1.08); }
+.btn-icon-primary:active { box-shadow: none; transform: translateY(1px); }
+
+.btn-icon-secondary {
+  @apply border-2 border-purple-400 bg-white;
+  color: #7e22ce;
+}
+.btn-icon-secondary .btn-icon-label { color: #7e22ce; }
+.btn-icon-secondary:hover { @apply bg-purple-50; }
+
 /* ── Card / panel ── */
 .card {
   @apply bg-white rounded-2xl shadow-md border border-purple-100 p-4;
@@ -211,6 +244,14 @@ body {
   color: #c4b5fd;
 }
 .dark .btn-secondary:hover { background-color: #221540; }
+
+.dark .btn-icon-secondary {
+  background-color: #1a1130;
+  border-color: #6d28d9;
+  color: #c4b5fd;
+}
+.dark .btn-icon-secondary .btn-icon-label { color: #c4b5fd; }
+.dark .btn-icon-secondary:hover { background-color: #221540; }
 
 /* ── Inputs & selects ── */
 .dark input,

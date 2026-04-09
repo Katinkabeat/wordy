@@ -547,7 +547,7 @@ function GameRow({ game, userId, onJoin, joiningId, profile }) {
   return (
     <div className="flex items-center justify-between bg-wordy-50 rounded-xl px-3 py-2 border border-wordy-100">
       <div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {players.map(p => {
             const isCurrentTurn = game.status === 'active' && p.player_index === game.current_player_idx
             const showNudge = isCurrentTurn && canNudge
@@ -583,7 +583,7 @@ function GameRow({ game, userId, onJoin, joiningId, profile }) {
       <button
         onClick={() => onJoin(game)}
         disabled={joiningId === game.id || (isFull && !isMyGame)}
-        className={`text-sm px-3 py-1.5 rounded-lg font-bold transition-all ${
+        className={`text-sm px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 min-w-[5rem] ${
           isMyGame
             ? 'btn-primary text-xs'
             : isFull

@@ -691,7 +691,7 @@ export default function GamePage({ session }) {
       {/* Bottom controls — sticky bar, always visible at bottom */}
       {game.status === 'active' && myPlayer && (
         <div className="sticky bottom-0 z-20 bg-white border-t border-wordy-100 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-t-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
-          <div className="max-w-xl mx-auto">
+          <div className="max-w-xl mx-auto space-y-1.5">
             {/* Row 1: Tile rack */}
             <TileRack
               rack={myPlayer.rack}
@@ -721,7 +721,7 @@ export default function GamePage({ session }) {
             />
 
             {/* Row 2: Shuffle + live score preview */}
-            <div className="flex items-center justify-center gap-3 h-6 py-2">
+            <div className="flex items-center justify-center gap-3 py-2">
               <button
                 onClick={shuffleRack}
                 className="text-xs text-wordy-400 hover:text-wordy-600 transition-colors"
@@ -741,7 +741,7 @@ export default function GamePage({ session }) {
 
             {/* Row 3: Action buttons — single row of icon buttons */}
             {!exchangeMode ? (
-              <div className={`flex gap-2 justify-center mt-1 transition-opacity ${myTurn ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className={`flex gap-2 justify-center transition-opacity ${myTurn ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <button onClick={submitWord} disabled={submitting || placements.length === 0}
                   className="btn-icon btn-icon-primary disabled:opacity-50">
                   <span className="btn-icon-emoji">{submitting ? '⏳' : '✅'}</span>
@@ -764,7 +764,7 @@ export default function GamePage({ session }) {
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-1.5 mt-1">
+              <div className="flex flex-col items-center gap-1.5">
                 <p className="text-center text-xs text-wordy-500 font-bold">
                   Tap tiles above to select for exchange
                 </p>

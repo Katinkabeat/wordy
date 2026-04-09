@@ -64,10 +64,10 @@ export function boardTileStyle(hue = DEFAULT_TILE_HUE, age = 'old', dark = false
     const l = age === 'new' ? [92, 85] : age === 'lastMove' ? [94, 87] : [78, 68]
     const s = age === 'new' ? [90, 80] : age === 'lastMove' ? [100, 92] : [70, 60]
     const glow = age === 'lastMove'
-      ? `0 0 0 2px #c084fc, 0 0 16px hsla(${h},${isGrey ? 0 : 100}%,75%,1.0)`
+      ? `inset 0 0 0 2px #c084fc, inset 0 0 8px hsla(${h},${isGrey ? 0 : 100}%,75%,0.6)`
       : age === 'new'
-        ? `0 0 6px hsla(${h},${isGrey ? 0 : 80}%,65%,0.5)`
-        : `0 0 6px hsla(${h},${isGrey ? 0 : 80}%,65%,0.3)`
+        ? `inset 0 0 4px hsla(${h},${isGrey ? 0 : 80}%,65%,0.4)`
+        : `inset 0 0 4px hsla(${h},${isGrey ? 0 : 80}%,65%,0.2)`
     return {
       bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,
       color:    `hsl(${h},${isGrey ? 0 : 80}%,12%)`,
@@ -79,7 +79,7 @@ export function boardTileStyle(hue = DEFAULT_TILE_HUE, age = 'old', dark = false
   const l = age === 'new' ? [93, 87] : age === 'lastMove' ? [96, 90] : [78, 65]
   const s = age === 'lastMove' ? [100, 95] : [70, 60]
   const glow = age === 'lastMove'
-    ? `0 0 0 2px #a855f7, 0 0 10px hsla(${h},${isGrey ? 0 : 90}%,60%,0.8)`
+    ? `inset 0 0 0 2px #a855f7, inset 0 0 6px hsla(${h},${isGrey ? 0 : 90}%,60%,0.6)`
     : 'none'
   return {
     bg:       `linear-gradient(145deg, hsl(${h},${isGrey ? 0 : s[0]}%,${l[0]}%), hsl(${h},${isGrey ? 0 : s[1]}%,${l[1]}%))`,

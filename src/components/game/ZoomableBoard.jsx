@@ -12,11 +12,12 @@ export default function ZoomableBoard(props) {
     <div
       ref={containerRef}
       style={{
-        width: totalSize,
-        height: totalSize,
+        width: totalSize + 4,
+        height: totalSize + 4,
         overflow: 'hidden',
         position: 'relative',
         touchAction: 'none',
+        padding: 2,
       }}
     >
       <div style={boardStyle}>

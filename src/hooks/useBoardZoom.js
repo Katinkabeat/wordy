@@ -39,13 +39,15 @@ export default function useBoardZoom(boardSize) {
     suppressClick: false,
   })
 
-  // Clamp translate so board doesn't go off-screen
+  // Clamp translate so the board always covers the container viewport.
+  // With transformOrigin '0 0': the board spans from tx to tx + boardSize*scale.
+  // It must cover [0, boardSize], so: tx <= 0 and tx + boardSize*scale >= boardSize.
   const clampTranslate = useCallback((x, y, s) => {
     if (s <= 1) return { x: 0, y: 0 }
-    const max = boardSize * (s - 1) / 2
+    const minT = boardSize - boardSize * s  // negative: max leftward/upward shift
     return {
-      x: Math.max(-max, Math.min(max, x)),
-      y: Math.max(-max, Math.min(max, y)),
+      x: Math.max(minT, Math.min(0, x)),
+      y: Math.max(minT, Math.min(0, y)),
     }
   }, [boardSize])
 
@@ -97,20 +99,31 @@ export default function useBoardZoom(boardSize) {
         e.preventDefault()
         const newDist = dist(e.touches[0], e.touches[1])
         const ratio = newDist / g.startDist
-        let newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, g.startScale * ratio))
+        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, g.startScale * ratio))
 
-        // Focal-point zoom: adjust translate so the midpoint stays stationary
+        // Focal-point zoom: keep the pinch midpoint stationary on screen.
+        // The board content point under the initial midpoint should stay
+        // under the current midpoint as scale changes.
         const rect = el.getBoundingClientRect()
-        const mid = midpoint(e.touches[0], e.touches[1])
-        // Point in container coordinates
-        const cx = mid.x - rect.left
-        const cy = mid.y - rect.top
-        // Where that point was at start
-        const scx = g.startMid.x - rect.left
-        const scy = g.startMid.y - rect.top
 
-        let newTx = g.startTx + (cx - scx) * (1 - newScale / g.startScale)
-        let newTy = g.startTy + (cy - scy) * (1 - newScale / g.startScale)
+        // Initial midpoint in container coords
+        const sx = g.startMid.x - rect.left
+        const sy = g.startMid.y - rect.top
+
+        // Content point under the initial midpoint:
+        // contentX = (sx - startTx) / startScale
+        const contentX = (sx - g.startTx) / g.startScale
+        const contentY = (sy - g.startTy) / g.startScale
+
+        // Current midpoint in container coords
+        const mid = midpoint(e.touches[0], e.touches[1])
+        const mx = mid.x - rect.left
+        const my = mid.y - rect.top
+
+        // New translate so that contentPoint maps to current midpoint:
+        // mx = contentX * newScale + newTx  =>  newTx = mx - contentX * newScale
+        const newTx = mx - contentX * newScale
+        const newTy = my - contentY * newScale
 
         const clamped = clampTranslate(newTx, newTy, newScale)
         setScale(newScale)
@@ -123,14 +136,11 @@ export default function useBoardZoom(boardSize) {
         g.lastX = e.touches[0].clientX
         g.lastY = e.touches[0].clientY
 
-        setTx(prev => {
-          setTy(prevY => {
-            const clamped = clampTranslate(prev + dx, prevY + dy, scale)
-            // Use a ref trick: setTy inside setTx to avoid stale closure
-            return clamped.y
-          })
-          return clampTranslate(tx + dx, ty + dy, scale).x
-        })
+        const newTx = tx + dx
+        const newTy = ty + dy
+        const clamped = clampTranslate(newTx, newTy, scale)
+        setTx(clamped.x)
+        setTy(clamped.y)
       }
     }
 

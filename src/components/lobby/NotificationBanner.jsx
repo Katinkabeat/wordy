@@ -79,7 +79,7 @@ export default function NotificationBanner({ userId }) {
         <div className="flex items-center gap-2">
           <span className="text-lg">🔔</span>
           <span className="text-sm font-bold text-wordy-600 dark:text-wordy-300">
-            Turn notifications are on
+            Notifications are on
           </span>
         </div>
         <button

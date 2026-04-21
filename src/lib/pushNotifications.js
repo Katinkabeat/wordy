@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
+const APP = 'wordy'
 
 /**
  * Check if push notifications are supported and permission state.
@@ -49,12 +50,13 @@ export async function subscribeToPush(userId) {
     const subJson = subscription.toJSON()
     const { error } = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
+      app: APP,
       endpoint: subJson.endpoint,
       keys_p256dh: subJson.keys.p256dh,
       keys_auth: subJson.keys.auth,
       updated_at: new Date().toISOString(),
     }, {
-      onConflict: 'user_id',
+      onConflict: 'user_id,app',
     })
 
     if (error) {
@@ -77,7 +79,7 @@ export async function unsubscribeFromPush(userId) {
     const subscription = await sw.pushManager.getSubscription()
     if (subscription) await subscription.unsubscribe()
 
-    await supabase.from('push_subscriptions').delete().eq('user_id', userId)
+    await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', APP)
     return true
   } catch (err) {
     console.error('Push unsubscribe failed:', err)
@@ -101,12 +103,13 @@ export async function resyncPushSubscription(userId) {
     const subJson = subscription.toJSON()
     const { error } = await supabase.from('push_subscriptions').upsert({
       user_id: userId,
+      app: APP,
       endpoint: subJson.endpoint,
       keys_p256dh: subJson.keys.p256dh,
       keys_auth: subJson.keys.auth,
       updated_at: new Date().toISOString(),
     }, {
-      onConflict: 'user_id',
+      onConflict: 'user_id,app',
     })
 
     if (error) {

@@ -323,6 +323,14 @@ export default function LobbyPage({ session }) {
             <span className="font-display text-2xl text-wordy-700">Wordy</span>
           </div>
           <div className="flex items-center gap-3">
+            <a
+              href="/games/"
+              className="btn-secondary text-sm py-1.5 px-3"
+              title="Rae's Side Quest"
+              aria-label="Rae's Side Quest"
+            >
+              🏠
+            </a>
             <button onClick={() => navigate('/stats')} className="btn-secondary text-sm py-1.5 px-3">
               📊 Stats
             </button>

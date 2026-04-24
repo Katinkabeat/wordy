@@ -635,6 +635,14 @@ export default function GamePage({ session }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <a
+              href="/games/"
+              className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
+              title="Rae's Side Quest"
+              aria-label="Rae's Side Quest"
+            >
+              🏠
+            </a>
             <span className="text-xs text-wordy-300 font-bold">
               🎒 {game.tile_bag?.length ?? 0} left
             </span>

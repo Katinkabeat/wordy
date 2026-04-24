@@ -594,12 +594,12 @@ function GameRow({ game, userId, onJoin, joiningId, profile }) {
       <button
         onClick={() => onJoin(game)}
         disabled={joiningId === game.id || (isFull && !isMyGame)}
-        className={`text-sm px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 min-w-[5rem] ${
+        className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 min-w-[5rem] ${
           isMyGame
-            ? 'btn-primary text-xs'
+            ? 'btn-primary'
             : isFull
-            ? 'opacity-40 cursor-default border border-wordy-200 text-wordy-400 text-xs'
-            : 'btn-primary text-xs'
+            ? 'opacity-40 cursor-default border border-wordy-200 text-wordy-400'
+            : 'btn-primary'
         }`}
       >
         {joiningId === game.id ? '…' : isMyGame ? '▶ Resume' : '+ Join'}

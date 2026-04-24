@@ -326,15 +326,12 @@ export default function LobbyPage({ session }) {
           <div className="flex items-center gap-3">
             <a
               href="/games/"
-              className="btn-secondary text-sm py-1.5 px-3"
+              className="text-2xl leading-none hover:scale-110 transition-transform"
               title="Rae's Side Quest"
               aria-label="Rae's Side Quest"
             >
               🏠
             </a>
-            <button onClick={() => navigate('/stats')} className="btn-secondary text-sm py-1.5 px-3">
-              📊 Stats
-            </button>
             <AvatarMenu profile={profile} onProfileUpdate={setProfile} />
             <div className="relative">
               <button

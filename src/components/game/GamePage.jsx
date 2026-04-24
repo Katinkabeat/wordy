@@ -823,9 +823,6 @@ export default function GamePage({ session }) {
             <button onClick={() => navigate('/lobby')} className="bg-white/20 hover:bg-white/30 text-white font-bold text-sm px-4 py-1.5 rounded-full transition-colors">
               ← Back to Lobby
             </button>
-            <button onClick={() => navigate('/stats')} className="text-sm underline opacity-80 hover:opacity-100">
-              View Stats →
-            </button>
           </div>
         </div>
       )}

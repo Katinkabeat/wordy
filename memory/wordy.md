@@ -213,6 +213,35 @@ At default `cellSize = 36`, letters go from ~14px to ~17px. Layout uses flexbox 
 2. Deploy updated Edge Function: `supabase functions deploy Push-Notification`
 3. Push frontend code to GitHub (triggers GitHub Actions deploy)
 
+### Session: April 21, 2026
+
+### Cross-Game Notification Bug — Fixed
+**Problem:** Wordy turn notifications were showing up with the Rungles icon (and opening the Rungles app on tap) for some users. Reported after Rungles launched on the shared Supabase project.
+
+**Root cause:** `push_subscriptions` had `UNIQUE(user_id)` — only one endpoint per user across both apps. Wordy's `/wordy/sw.js` and Rungles' `/rungles/sw.js` each create their own push subscription with a different endpoint (different SW scopes). Both apps' `saveSubscription` upserted to the same row with `onConflict: 'user_id'`, so whichever app ran last overwrote the other. Rungles calls `resyncPushSubscription` on every banner render, so it routinely overwrote Wordy's endpoint. When Wordy's trigger then fired, the push was delivered to `/rungles/sw.js`, which uses `/rungles/favicon.svg` as the icon — Wordy's title/body but Rungles' icon.
+
+**Fix:** scoped the subscriptions table by app.
+
+1. **Migration** (`push-subscriptions-app-column-migration.sql`): added `app TEXT NOT NULL` column, backfilled existing rows to `'wordy'`, dropped `UNIQUE(user_id)`, added `UNIQUE(user_id, app)`, replaced the per-user index with `(user_id, app)`.
+2. **Wordy frontend** (`src/lib/pushNotifications.js`): `const APP = 'wordy'`, all upserts include `app: APP` with `onConflict: 'user_id,app'`, delete scoped by `.eq('app', APP)`.
+3. **Wordy edge function** (`supabase/functions/push-notification/index.ts`): `sendPushToUser` now filters `.eq('app', 'wordy')`, cleanup delete for 410/404 scoped by app too.
+4. **Rungles frontend** (`js/notifications.js`): same pattern with `APP = 'rungles'`.
+5. **Rungles edge function** (`supabase/functions/rungles-push-notification/index.ts`): same filter with `'rungles'`.
+
+**Cleanup script** (`push-subscriptions-dedupe-stale-wordy-rows.sql`): the migration defaulted ALL existing rows to `app='wordy'`, but some of those rows actually held Rungles SW endpoints (because Rungles had last overwritten the shared row). Detected these by joining `wordy` rows against same-user `rungles` rows with identical endpoints and deleting the stale `wordy` row. Affected users silently skip their next Wordy push and self-heal on next Wordy lobby open (resync recreates the row with the real Wordy endpoint).
+
+**Key lesson:**
+> When two apps share a Supabase project AND share a table keyed only by user_id, the app that writes last wins. Always scope shared per-user tables by app when both apps write to them — add an `app` column to the unique key, not just the data.
+
+**Wordy-only `wordy` rows** (users with no matching `rungles` row) can't be detected as stale from SQL. Decided to wait and let them self-heal on next Wordy open rather than preemptively nuking pre-deploy rows.
+
+**Deployment steps taken:**
+1. Ran migration in Supabase SQL Editor.
+2. Re-deployed both edge functions via Supabase dashboard (paste-in code editor — no CLI).
+3. Pushed Wordy frontend via GitHub Git Data API (commit `74779010`).
+4. Pushed Rungles frontend via normal git (commit `d643f61`).
+5. Ran dedupe SQL to remove stale duplicate endpoints.
+
 ### Pending
 - Add iOS detection prompt guiding users to install Wordy to Home Screen for push notification support (iOS Web Push requires PWA, applies to all iOS browsers since they all use WebKit)
 - Consider adding settings cog to game page (not just lobby) — decided to revisit later

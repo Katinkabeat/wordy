@@ -8,6 +8,7 @@ import AdminPanel from '../admin/AdminPanel.jsx'
 import NotificationBanner from './NotificationBanner.jsx'
 import IOSInstallPrompt from './IOSInstallPrompt.jsx'
 import SettingsDropdown from './SettingsModal.jsx'
+import AvatarMenu from './AvatarMenu.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 
 const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
@@ -334,12 +335,7 @@ export default function LobbyPage({ session }) {
             <button onClick={() => navigate('/stats')} className="btn-secondary text-sm py-1.5 px-3">
               📊 Stats
             </button>
-            <div className="flex items-center gap-2">
-              <Avatar hue={profile?.avatar_hue ?? 270} name={profile?.username ?? '?'} size={8} />
-              <span className="text-sm font-bold text-wordy-700 hidden sm:block">
-                {profile?.username ?? '…'}
-              </span>
-            </div>
+            <AvatarMenu profile={profile} onProfileUpdate={setProfile} />
             <div className="relative">
               <button
                 onClick={() => setShowSettings(s => !s)}
@@ -615,14 +611,3 @@ function GameRow({ game, userId, onJoin, joiningId, profile }) {
   )
 }
 
-function Avatar({ hue, name, size = 8 }) {
-  const initials = name?.slice(0, 2).toUpperCase() ?? '?'
-  return (
-    <div
-      className={`w-${size} h-${size} rounded-full flex items-center justify-center font-bold text-white text-xs`}
-      style={{ background: `hsl(${hue}, 70%, 55%)` }}
-    >
-      {initials}
-    </div>
-  )
-}

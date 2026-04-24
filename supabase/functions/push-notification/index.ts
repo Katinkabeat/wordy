@@ -25,36 +25,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper: send a push notification to a user, cleaning up expired subs
+// Helper: send a push notification to a user, cleaning up expired subs.
+// Tries the SideQuest hub subscription first (so users who enabled
+// notifications in SideQuest get a single consolidated notification),
+// falls back to the user's Wordy-specific subscription otherwise.
 async function sendPushToUser(
   supabase: any,
   userId: string,
-  payload: { title: string; body: string; tag: string; url: string }
-): Promise<{ sent: boolean; reason?: string }> {
-  const { data: sub, error: subErr } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint, keys_p256dh, keys_auth')
-    .eq('user_id', userId)
-    .eq('app', 'wordy')
-    .single()
+  payload: { title: string; body: string; tag: string; url: string; icon?: string }
+): Promise<{ sent: boolean; reason?: string; via?: string }> {
+  const apps = ['sidequest', 'wordy']
 
-  if (subErr || !sub) return { sent: false, reason: 'no push subscription' }
+  for (const app of apps) {
+    const { data: sub } = await supabase
+      .from('push_subscriptions')
+      .select('endpoint, keys_p256dh, keys_auth')
+      .eq('user_id', userId)
+      .eq('app', app)
+      .maybeSingle()
 
-  const pushSubscription = {
-    endpoint: sub.endpoint,
-    keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
-  }
+    if (!sub) continue
 
-  try {
-    await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
-    return { sent: true }
-  } catch (pushErr: any) {
-    if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-      await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', 'wordy')
-      return { sent: false, reason: 'expired subscription removed' }
+    const pushSubscription = {
+      endpoint: sub.endpoint,
+      keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
     }
-    throw pushErr
+
+    try {
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      return { sent: true, via: app }
+    } catch (pushErr: any) {
+      if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+        await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', app)
+        // Fall through to the next app (fallback)
+        continue
+      }
+      throw pushErr
+    }
   }
+
+  return { sent: false, reason: 'no push subscription' }
 }
 
 serve(async (req: Request) => {
@@ -86,6 +96,7 @@ serve(async (req: Request) => {
         body: `${joiner_name || 'Someone'} joined your game! 🎉`,
         tag: `wordy-join-${game_id}`,
         url: `/wordy/game/${game_id}`,
+        icon: '/wordy/favicon.svg',
       })
 
       return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
@@ -123,6 +134,7 @@ serve(async (req: Request) => {
         body: `${nudger_name || 'Someone'} is waiting for your move! 🔔`,
         tag: `wordy-nudge-${game_id}`,
         url: `/wordy/game/${game_id}`,
+        icon: '/wordy/favicon.svg',
       })
 
       return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
@@ -178,6 +190,7 @@ serve(async (req: Request) => {
       body: `${moverName} just played. Your move! 🟣`,
       tag: `wordy-turn-${gameId}`,
       url: `/wordy/game/${gameId}`,
+      icon: '/wordy/favicon.svg',
     })
 
     return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })

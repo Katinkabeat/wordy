@@ -426,6 +426,18 @@ export default function LobbyPage({ session }) {
               </div>
             )}
 
+            {/* Open games to join */}
+            {openGames.length > 0 && (
+              <div className="card">
+                <h2 className="font-display text-xl text-wordy-700 mb-3">🚪 Open Games</h2>
+                <div className="space-y-2">
+                  {openGames.map(g => (
+                    <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} profile={profile} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Unseen game results — shown until dismissed */}
             {unseenResults.map(({ gameId, isWinner, game: g, winnerName, allPlayerNames }) => {
               const isForfeit = !!g?.forfeit_user_id
@@ -461,18 +473,6 @@ export default function LobbyPage({ session }) {
                 </div>
               )
             })}
-
-            {/* Open games to join */}
-            {openGames.length > 0 && (
-              <div className="card">
-                <h2 className="font-display text-xl text-wordy-700 mb-3">🚪 Open Games</h2>
-                <div className="space-y-2">
-                  {openGames.map(g => (
-                    <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} profile={profile} />
-                  ))}
-                </div>
-              </div>
-            )}
 
             {games.length === 0 && (
               <div className="text-center py-12 text-wordy-300">

@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase.js'
 import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import AdminPanel from '../admin/AdminPanel.jsx'
-import NotificationBanner from './NotificationBanner.jsx'
 import IOSInstallPrompt from './IOSInstallPrompt.jsx'
 import SettingsDropdown from './SettingsModal.jsx'
 import AvatarMenu from './AvatarMenu.jsx'
@@ -377,11 +376,10 @@ export default function LobbyPage({ session }) {
         {/* Lobby content */}
         {lobbyTab === 'lobby' && (
           <>
-            {/* iOS: guide user to install PWA for push support */}
+            {/* iOS: guide user to install PWA for push support (still useful
+                even though notification opt-in moved to the SideQuest hub —
+                PWA install gives proper push delivery on iOS). */}
             <IOSInstallPrompt />
-
-            {/* Push notification opt-in */}
-            <NotificationBanner userId={user.id} />
 
             {/* Create game panel */}
             <div className="card">

@@ -246,3 +246,12 @@ At default `cellSize = 36`, letters go from ~14px to ~17px. Layout uses flexbox 
 - Add iOS detection prompt guiding users to install Wordy to Home Screen for push notification support (iOS Web Push requires PWA, applies to all iOS browsers since they all use WebKit)
 - Consider adding settings cog to game page (not just lobby) — decided to revisit later
 - Local git repo is mid-rebase (`main` diverged from `origin/main` with 5 local vs 31 remote commits). Needs `git rebase --abort` from a terminal with write access to `.git` to resolve
+- **Before going public: change the multiplier square arrangement.** Scrabble's specific board layout (the placement of DL/TL/DW/TW squares) is trademarked by Hasbro/Mattel. Wordy's current board copies that layout. Rearrange the premium squares to a different pattern before any public launch — the mechanic itself is fine, just not the exact arrangement.
+
+## 2026-04-25: notification opt-in moved to SideQuest hub
+
+Removed `<NotificationBanner>` from `LobbyPage.jsx` (and dropped its import). Push opt-in now lives only in the SideQuest hub (`Settings → Notifications`). Friends who already enabled notifications via Wordy keep working — the SideQuest hub auto-migrates them to a unified `app='sidequest'` push subscription on their next hub visit (silent, no UI prompt because permission is already granted on the origin), then unsubscribes the per-game SW push managers and deletes the `app='wordy'` row from `push_subscriptions`.
+
+`NotificationBanner.jsx` and `pushNotifications.js` are still in the repo for now in case we need to restore them. Edge function (`push-notification`) is unchanged — it still queries `app='sidequest'` first, falls back to `app='wordy'`. The fallback path will rarely trigger after migration but stays as defense-in-depth.
+
+Migration helper lives at `rae-side-quest/src/lib/pushNotifications.js` → `migrateToSideQuestPush(userId)`.

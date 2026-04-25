@@ -255,3 +255,13 @@ Removed `<NotificationBanner>` from `LobbyPage.jsx` (and dropped its import). Pu
 `NotificationBanner.jsx` and `pushNotifications.js` are still in the repo for now in case we need to restore them. Edge function (`push-notification`) is unchanged — it still queries `app='sidequest'` first, falls back to `app='wordy'`. The fallback path will rarely trigger after migration but stays as defense-in-depth.
 
 Migration helper lives at `rae-side-quest/src/lib/pushNotifications.js` → `migrateToSideQuestPush(userId)`.
+
+## 2026-04-25: Phase 1 of unified-auth migration
+
+Wordy no longer hosts its own login UI for unauthed users in production. When `session === null && !isRecovery`, `App.jsx` redirects to `${origin}/games/?return=<current-path-and-query>`. The SQ hub validates the `return` param against an allowlist of game prefixes and bounces the user back to Wordy after authenticating. Notification deep links into `/wordy/game/<id>` survive a logged-out re-entry through this round-trip.
+
+Recovery emails issued before the migration still land at `/wordy/auth#type=recovery` and use the in-app "Set new password" form; new emails go to `/games/` where SQ now hosts the equivalent recovery UI.
+
+The redirect is gated to `window.location.hostname === 'katinkabeat.github.io'`. Local dev keeps using the in-app login form (handy because `/games/` doesn't exist on a localhost Vite server).
+
+`AuthPage.jsx` and its forgot-password flow are now unreachable for unauthed users in production. They stay in the repo for now (used only when `isRecovery` is true). Phase 2 will remove them and the `redirectTo: SITE_URL` reset call once in-flight legacy emails have aged out.

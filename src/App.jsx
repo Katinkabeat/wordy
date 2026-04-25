@@ -8,6 +8,12 @@ import LobbyPage from './components/lobby/LobbyPage.jsx'
 import GamePage  from './components/game/GamePage.jsx'
 import StatsPage from './components/stats/StatsPage.jsx'
 
+// Only redirect to the SQ hub login when we're actually deployed alongside it.
+// Local dev (vite dev / vite preview on localhost) keeps the in-app login UI.
+function shouldRedirectToHub() {
+  return window.location.hostname === 'katinkabeat.github.io'
+}
+
 // Wrap in ThemeProvider so every page has access to isDark / toggle
 export default function App() {
   return (
@@ -21,7 +27,8 @@ function AppInner() {
   const { isDark } = useTheme()
   const [session, setSession]     = useState(undefined) // undefined = loading
   // Detect password-recovery link immediately from the URL hash — before the
-  // async getSession() resolves — so we never accidentally redirect to /lobby.
+  // async getSession() resolves — so we never accidentally redirect to /lobby
+  // (or to the SQ hub login).
   const [isRecovery, setIsRecovery] = useState(
     () => window.location.hash.includes('type=recovery')
   )
@@ -49,12 +56,37 @@ function AppInner() {
     }
   }, [])
 
+  // Phase 1: Wordy no longer hosts its own login UI for unauthed users — it
+  // sends them to the SQ hub with a ?return= param so they land back here
+  // after authenticating. Recovery emails sent before the migration still
+  // land at /wordy/auth and use the in-app recovery form below.
+  // The hub-redirect only runs in production (where /games/ is the SQ app);
+  // in local dev the in-app login form remains the working entry point.
+  useEffect(() => {
+    if (session === null && !isRecovery && shouldRedirectToHub()) {
+      const ret = window.location.pathname + window.location.search
+      const sqLogin = `${window.location.origin}/games/?return=${encodeURIComponent(ret)}`
+      window.location.replace(sqLogin)
+    }
+  }, [session, isRecovery])
+
   if (session === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
         <div className="text-center">
           <div className="text-5xl mb-4 animate-bounce">🟣</div>
           <p className="font-display text-2xl text-wordy-600 dark:text-wordy-300">Loading Wordy…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (session === null && !isRecovery && shouldRedirectToHub()) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-bounce">🟣</div>
+          <p className="font-display text-2xl text-wordy-600 dark:text-wordy-300">Redirecting to login…</p>
         </div>
       </div>
     )

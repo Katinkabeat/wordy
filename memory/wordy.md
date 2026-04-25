@@ -265,3 +265,14 @@ Recovery emails issued before the migration still land at `/wordy/auth#type=reco
 The redirect is gated to `window.location.hostname === 'katinkabeat.github.io'`. Local dev keeps using the in-app login form (handy because `/games/` doesn't exist on a localhost Vite server).
 
 `AuthPage.jsx` and its forgot-password flow are now unreachable for unauthed users in production. They stay in the repo for now (used only when `isRecovery` is true). Phase 2 will remove them and the `redirectTo: SITE_URL` reset call once in-flight legacy emails have aged out.
+
+## 2026-04-25: SideQuest service worker push fixes
+
+After Phase 1 routed everyone through the hub, the auto-migration moved push subscriptions to `app='sidequest'` for both Wordy and Rungles. That meant the SQ service worker (`rae-side-quest/public/sw.js`) became responsible for all turn-change push events. Two pre-existing bugs in that SW immediately broke Wordy notifications:
+
+1. **Cross-scope navigation lost.** The SW posts `{type:'NAVIGATE', url}` to a focused SQ tab when the click target is outside the SQ scope (e.g. `/wordy/game/<id>`). The SQ React app had no listener for that message, so clicks focused the SQ tab and then did nothing. Fix: added a `serviceWorker` `message` listener in `rae-side-quest/src/App.jsx` that does `window.location.href = event.data.url`.
+2. **Over-eager focus suppression.** The push handler suppressed the notification when any focused tab's URL contained the target URL. For a turn-based game where the user is *waiting on the board*, that's exactly when the "your turn" alert matters most. Fix: removed the suppression — always call `showNotification`.
+
+These bugs hadn't manifested before because most users still had `app='wordy'` rows handled by Wordy's own SW (`/wordy/sw.js`), which has correct routing/notification logic. Phase 1 forced everyone into the migration, exposing the SQ SW bugs.
+
+After deploying these fixes, devices need to reload to pick up the new SW (the SW has `skipWaiting`+`clients.claim`, so the new version takes over on next app open / hard reload).

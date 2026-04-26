@@ -497,11 +497,22 @@ function GameRow({ game, userId, onJoin, joiningId, profile }) {
   const players    = game.game_players ?? []
   const isMyGame   = players.some(p => p.user_id === userId)
   const isFull     = players.length >= game.max_players
-  const statusLabel = {
-    waiting:  '⏳ Waiting for players',
-    active:   '🟢 In progress',
-    finished: '✅ Finished',
-  }[game.status]
+  // Active games show "X ago" since the current turn started (last move).
+  // Waiting and finished games keep their text label.
+  const turnTimeAgo = (() => {
+    if (!game.turn_started_at) return null
+    const diff  = Date.now() - new Date(game.turn_started_at).getTime()
+    const mins  = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days  = Math.floor(diff / 86400000)
+    if (days  > 0) return `${days}d ago`
+    if (hours > 0) return `${hours}h ago`
+    if (mins  > 0) return `${mins}m ago`
+    return 'just now'
+  })()
+  const statusLabel = game.status === 'active'
+    ? (turnTimeAgo ?? '🟢 In progress')
+    : { waiting: '⏳ Waiting for players', finished: '✅ Finished' }[game.status]
 
   // Nudge eligibility: active game, not my turn, turn started > 12h ago,
   // last nudge either null or > 12h ago

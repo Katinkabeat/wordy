@@ -276,3 +276,13 @@ After Phase 1 routed everyone through the hub, the auto-migration moved push sub
 These bugs hadn't manifested before because most users still had `app='wordy'` rows handled by Wordy's own SW (`/wordy/sw.js`), which has correct routing/notification logic. Phase 1 forced everyone into the migration, exposing the SQ SW bugs.
 
 After deploying these fixes, devices need to reload to pick up the new SW (the SW has `skipWaiting`+`clients.claim`, so the new version takes over on next app open / hard reload).
+
+## 2026-04-25: Phase 2 — in-app login UI removed
+
+`src/components/auth/AuthPage.jsx` is gone, along with the `auth/` directory it lived in. `App.jsx` was rewritten to redirect every unauthed visitor to the SQ hub: legacy `/wordy/#type=recovery` emails are forwarded to `/games/<hash>` so SQ's recovery handler picks up the password-update flow; everyone else goes to `/games/?return=<original-url>` so post-login routing brings them back where they were heading. The `/auth` route and the `shouldRedirectToHub()` hostname guard are both gone — the redirect now fires unconditionally because the unified-origin local dev environment has `/games/` reachable on localhost too.
+
+`LobbyPage.jsx`'s logout button used to navigate to `/wordy/auth` (the in-app login UI); it now points at `/games/`.
+
+This was paired with a unified-origin local dev setup in `rae-side-quest/package.json` (`npm run dev:all`) plus Vite proxy config. Without that, deleting the in-app form would have made local dev impossible. With it, dev mirrors prod — log in at `localhost:8080/games/`, navigate to `/wordy/`, session carries via shared localStorage on the same origin.
+
+Verified end-to-end in the local dev env before pushing: logged-in routing intact, logged-out redirects to SQ login with the correct `?return=` param, post-login bounces back to the originating Wordy URL.

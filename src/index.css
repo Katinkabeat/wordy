@@ -190,6 +190,10 @@ body {
 
 /* ── Tailwind colour overrides ── */
 .dark .bg-white           { background-color: #1a1130 !important; }
+/* Dropdown surfaces sit a step lighter than cards so they read as
+   floating above the page surface, not blending into it. */
+.dark .settings-dropdown.card,
+.dark .dropdown-surface { background-color: #241640 !important; }
 .dark .bg-wordy-50        { background-color: #1a1130 !important; }
 .dark .bg-wordy-100       { background-color: #221540 !important; }
 .dark .bg-wordy-200       { background-color: #2d1b55 !important; }

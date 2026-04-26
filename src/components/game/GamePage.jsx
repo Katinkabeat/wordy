@@ -655,7 +655,7 @@ export default function GamePage({ session }) {
                 ⚙️
               </button>
               {settingsOpen && (
-                <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#1a1130] border border-wordy-100 dark:border-[#2d1b55] rounded-xl shadow-lg z-50 py-1 text-sm">
+                <div className="absolute right-0 top-8 w-44 bg-[#fff] dark:bg-[#241640] border border-wordy-100 dark:border-[#2d1b55] rounded-xl shadow-lg z-50 py-1 text-sm">
                   <button
                     onClick={() => { toggleTheme(); setSettingsOpen(false) }}
                     className="w-full text-left px-4 py-2 hover:bg-wordy-50 dark:hover:bg-[#2d1b55] text-wordy-600 dark:text-wordy-300 transition-colors"
@@ -845,7 +845,7 @@ function BlankTileModal({ onConfirm, onCancel }) {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full dark:bg-[#1a1130] dark:border dark:border-[#2d1b55]">
+      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full dark:bg-[#241640] dark:border dark:border-[#2d1b55]">
         <h3 className="font-display text-xl text-wordy-700 mb-3 text-center dark:text-wordy-300">
           🃏 Choose a letter for your blank tile
         </h3>
@@ -867,7 +867,7 @@ function BlankTileModal({ onConfirm, onCancel }) {
 function ForfeitModal({ onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full text-center dark:bg-[#1a1130] dark:border dark:border-[#2d1b55]">
+      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full text-center dark:bg-[#241640] dark:border dark:border-[#2d1b55]">
         <p className="text-4xl mb-3">🏳️</p>
         <h3 className="font-display text-xl text-wordy-700 mb-2 dark:text-wordy-300">Forfeit this game?</h3>
         <p className="text-sm text-wordy-400 mb-5 dark:text-wordy-500">

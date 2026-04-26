@@ -342,9 +342,7 @@ export default function LobbyPage({ session }) {
               </button>
               {showSettings && profile && (
                 <SettingsDropdown
-                  profile={profile}
                   onClose={() => setShowSettings(false)}
-                  onProfileUpdate={updated => setProfile(updated)}
                   isDark={isDark}
                   toggleTheme={toggleTheme}
                   isAdmin={!!adminRecord}

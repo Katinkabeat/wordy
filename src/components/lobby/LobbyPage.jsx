@@ -317,9 +317,7 @@ export default function LobbyPage({ session }) {
       <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10 dark:bg-[#130c25] dark:border-[#2d1b55]">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-wordy-600 flex items-center justify-center">
-              <span className="font-display text-xl text-white">W</span>
-            </div>
+            <AvatarMenu profile={profile} onProfileUpdate={setProfile} />
             <span className="font-display text-2xl text-wordy-700">Wordy</span>
           </div>
           <div className="flex items-center gap-3">
@@ -331,7 +329,6 @@ export default function LobbyPage({ session }) {
             >
               🏠
             </a>
-            <AvatarMenu profile={profile} onProfileUpdate={setProfile} />
             <div className="relative">
               <button
                 onClick={() => setShowSettings(s => !s)}

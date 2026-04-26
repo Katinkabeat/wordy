@@ -3,16 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { supabase } from './lib/supabase.js'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
-import AuthPage  from './components/auth/AuthPage.jsx'
 import LobbyPage from './components/lobby/LobbyPage.jsx'
 import GamePage  from './components/game/GamePage.jsx'
 import StatsPage from './components/stats/StatsPage.jsx'
-
-// Only redirect to the SQ hub login when we're actually deployed alongside it.
-// Local dev (vite dev / vite preview on localhost) keeps the in-app login UI.
-function shouldRedirectToHub() {
-  return window.location.hostname === 'katinkabeat.github.io'
-}
 
 // Wrap in ThemeProvider so every page has access to isDark / toggle
 export default function App() {
@@ -25,30 +18,28 @@ export default function App() {
 
 function AppInner() {
   const { isDark } = useTheme()
-  const [session, setSession]     = useState(undefined) // undefined = loading
-  // Detect password-recovery link immediately from the URL hash — before the
-  // async getSession() resolves — so we never accidentally redirect to /lobby
-  // (or to the SQ hub login).
-  const [isRecovery, setIsRecovery] = useState(
+  const [session, setSession] = useState(undefined) // undefined = loading
+  // Detect password-recovery link from the URL hash synchronously so we can
+  // redirect to the SQ hub (which owns the recovery form) before Supabase
+  // consumes the hash and swaps it for a session token.
+  const [isRecovery] = useState(
     () => window.location.hash.includes('type=recovery')
   )
 
   useEffect(() => {
     // Safety timeout: if getSession() hangs (e.g. orphaned navigator.locks),
-    // fall back to the auth page after 5 seconds instead of spinning forever.
+    // fall back to the redirect path after 5 seconds.
     const timeout = setTimeout(() => {
       setSession(s => (s === undefined ? null : s))
     }, 5000)
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(timeout)
-      // Treat sessions with no user data as invalid
       setSession(session?.user ? session : null)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       clearTimeout(timeout)
       setSession(s?.user ? s : null)
-      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
     })
     return () => {
       clearTimeout(timeout)
@@ -56,21 +47,20 @@ function AppInner() {
     }
   }, [])
 
-  // Phase 1: Wordy no longer hosts its own login UI for unauthed users — it
-  // sends them to the SQ hub with a ?return= param so they land back here
-  // after authenticating. Recovery emails sent before the migration still
-  // land at /wordy/auth and use the in-app recovery form below.
-  // The hub-redirect only runs in production (where /games/ is the SQ app);
-  // in local dev the in-app login form remains the working entry point.
+  // Phase 2: Wordy no longer hosts a login UI of any kind. Redirect logged-out
+  // users — and legacy `/wordy/#type=recovery` emails issued before Phase 0 —
+  // to the SQ hub, which owns the entire auth surface now.
   useEffect(() => {
-    if (session === null && !isRecovery && shouldRedirectToHub()) {
+    if (isRecovery) {
+      // Preserve the full recovery hash so SQ's recovery handler picks it up.
+      window.location.replace(`${window.location.origin}/games/${window.location.hash}`)
+    } else if (session === null) {
       const ret = window.location.pathname + window.location.search
-      const sqLogin = `${window.location.origin}/games/?return=${encodeURIComponent(ret)}`
-      window.location.replace(sqLogin)
+      window.location.replace(`${window.location.origin}/games/?return=${encodeURIComponent(ret)}`)
     }
   }, [session, isRecovery])
 
-  if (session === undefined) {
+  if (session === undefined && !isRecovery) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
         <div className="text-center">
@@ -81,7 +71,7 @@ function AppInner() {
     )
   }
 
-  if (session === null && !isRecovery && shouldRedirectToHub()) {
+  if (session === null || isRecovery) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
         <div className="text-center">
@@ -112,15 +102,10 @@ function AppInner() {
         }}
       />
       <Routes>
-        <Route path="/auth"       element={
-          (!session || isRecovery)
-            ? <AuthPage isRecovery={isRecovery} onPasswordReset={() => setIsRecovery(false)} />
-            : <Navigate to="/lobby" replace />
-        } />
-        <Route path="/lobby"      element={session  ? <LobbyPage session={session} /> : <Navigate to="/auth" replace />} />
-        <Route path="/game/:id"   element={session  ? <GamePage  session={session} /> : <Navigate to="/auth" replace />} />
-        <Route path="/stats"      element={session  ? <StatsPage session={session} /> : <Navigate to="/auth" replace />} />
-        <Route path="*"           element={<Navigate to={isRecovery ? '/auth' : session ? '/lobby' : '/auth'} replace />} />
+        <Route path="/lobby"    element={<LobbyPage session={session} />} />
+        <Route path="/game/:id" element={<GamePage  session={session} />} />
+        <Route path="/stats"    element={<StatsPage session={session} />} />
+        <Route path="*"         element={<Navigate to="/lobby" replace />} />
       </Routes>
     </>
   )

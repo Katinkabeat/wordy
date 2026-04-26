@@ -357,7 +357,7 @@ export default function LobbyPage({ session }) {
                     Object.keys(localStorage).forEach(k => {
                       if (k.startsWith('sb-')) localStorage.removeItem(k)
                     })
-                    window.location.replace('/wordy/auth')
+                    window.location.replace('/games/')
                   }}
                 />
               )}

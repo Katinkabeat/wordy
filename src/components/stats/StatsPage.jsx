@@ -76,7 +76,7 @@ export default function StatsPage({ session }) {
     <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50 dark:bg-[#0f0a1e] dark:bg-none">
       {/* Header */}
       <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10 dark:bg-[#130c25] dark:border-[#2d1b55]">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 font-bold text-sm dark:hover:text-wordy-300">
               ← Lobby
@@ -93,7 +93,7 @@ export default function StatsPage({ session }) {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-[480px] mx-auto px-4 py-6 space-y-6">
 
         {/* All-time leaderboard */}
         {leaderboard.length > 0 && (

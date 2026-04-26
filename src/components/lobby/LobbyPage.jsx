@@ -315,7 +315,7 @@ export default function LobbyPage({ session }) {
     <div className="min-h-screen bg-gradient-to-br from-wordy-50 via-pink-50 to-wordy-100 dark:bg-[#0f0a1e] dark:bg-none">
       {/* Header */}
       <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10 dark:bg-[#130c25] dark:border-[#2d1b55]">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AvatarMenu profile={profile} onProfileUpdate={setProfile} />
             <span className="font-display text-2xl text-wordy-700">Wordy</span>
@@ -361,7 +361,7 @@ export default function LobbyPage({ session }) {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-[480px] mx-auto px-4 py-6 space-y-6">
 
         {/* Admin Panel */}
         {lobbyTab === 'admin' && adminRecord && (

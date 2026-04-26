@@ -41,7 +41,7 @@ export default function TileRack({ rack, selected, onSelect, myTurn, exchangeMod
               ${!myTurn     ? 'opacity-50 cursor-default' : ''}
             `}
           >
-            <span className="font-display">{letter === '?' ? '🃏' : letter}</span>
+            <span className="font-display">{letter === '?' ? '' : letter}</span>
             <span
               className="absolute font-bold leading-none"
               style={{ fontSize: 9, bottom: 2, right: 3, color: isExchanged ? '#fff' : s.valColor }}

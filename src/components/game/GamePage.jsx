@@ -643,7 +643,7 @@ export default function GamePage({ session }) {
             >
               🏠
             </a>
-            <span className="text-xs text-wordy-300 font-bold">
+            <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
               🎒 {game.tile_bag?.length ?? 0} left
             </span>
             <div className="relative" ref={settingsRef}>

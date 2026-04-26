@@ -655,7 +655,7 @@ export default function GamePage({ session }) {
                 ⚙️
               </button>
               {settingsOpen && (
-                <div className="absolute right-0 top-8 w-44 bg-[#fff] dark:bg-[#241640] border border-wordy-100 dark:border-[#2d1b55] rounded-xl shadow-lg z-50 py-1 text-sm">
+                <div className="absolute right-0 top-8 w-44 bg-[#fff] dark:bg-[#241640] border border-wordy-100 dark:border-[#6d28d9] rounded-xl shadow-lg z-50 py-1 text-sm">
                   <button
                     onClick={() => { toggleTheme(); setSettingsOpen(false) }}
                     className="w-full text-left px-4 py-2 hover:bg-wordy-50 dark:hover:bg-[#2d1b55] text-wordy-600 dark:text-wordy-300 transition-colors"

@@ -43,8 +43,8 @@ export default function AvatarMenu({ profile }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-60 bg-[#fff] dark:bg-[#241640] border border-purple-100 dark:border-[#2d1b55] rounded-xl shadow-lg z-50 py-1">
-          <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-purple-100 dark:border-[#2d1b55]">
+        <div className="absolute left-0 top-full mt-2 w-60 bg-[#fff] dark:bg-[#241640] border border-purple-100 dark:border-[#6d28d9] rounded-xl shadow-lg z-50 py-1">
+          <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-purple-100 dark:border-[#6d28d9]">
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-xs"
               style={{ background: `hsl(${hue}, 70%, 55%)` }}

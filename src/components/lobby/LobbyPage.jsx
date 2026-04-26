@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
@@ -567,35 +567,37 @@ function GameRow({ game, userId, onJoin, joiningId, profile }) {
   return (
     <div className="flex items-center justify-between bg-wordy-50 rounded-xl px-3 py-2 border border-wordy-100">
       <div>
-        <div className={
-          players.length >= 4
-            ? 'grid grid-cols-2 gap-1.5 items-center'
-            : 'flex items-center gap-1.5 flex-wrap'
-        }>
-          {players.map(p => {
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {players.map((p, i) => {
             const isCurrentTurn = game.status === 'active' && p.player_index === game.current_player_idx
             const showNudge = isCurrentTurn && canNudge
+            // For 4-player games, force a row break after chip 2 so we get
+            // 2 chips per line. Chips stay content-sized; the count pill
+            // lands naturally at the end of row 2.
+            const breakAfter = players.length === 4 && i === 1
             return (
-              <span
-                key={p.user_id}
-                className={`text-xs font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
-                  isCurrentTurn
-                    ? 'text-white bg-wordy-500'
-                    : 'text-wordy-700 bg-wordy-200'
-                }`}
-              >
-                {showNudge && (
-                  <button
-                    onClick={sendNudge}
-                    disabled={nudging}
-                    className="hover:scale-110 transition-transform leading-none"
-                    title="Send a reminder"
-                  >
-                    {nudging ? '⏳' : '🔔'}
-                  </button>
-                )}
-                {p.profiles?.username ?? '?'}
-              </span>
+              <Fragment key={p.user_id}>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                    isCurrentTurn
+                      ? 'text-white bg-wordy-500'
+                      : 'text-wordy-700 bg-wordy-200'
+                  }`}
+                >
+                  {showNudge && (
+                    <button
+                      onClick={sendNudge}
+                      disabled={nudging}
+                      className="hover:scale-110 transition-transform leading-none"
+                      title="Send a reminder"
+                    >
+                      {nudging ? '⏳' : '🔔'}
+                    </button>
+                  )}
+                  {p.profiles?.username ?? '?'}
+                </span>
+                {breakAfter && <div className="basis-full h-0" aria-hidden="true" />}
+              </Fragment>
             )
           })}
           <span className="text-xs text-wordy-400">

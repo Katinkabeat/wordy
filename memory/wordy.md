@@ -286,3 +286,46 @@ After deploying these fixes, devices need to reload to pick up the new SW (the S
 This was paired with a unified-origin local dev setup in `rae-side-quest/package.json` (`npm run dev:all`) plus Vite proxy config. Without that, deleting the in-app form would have made local dev impossible. With it, dev mirrors prod — log in at `localhost:8080/games/`, navigate to `/wordy/`, session carries via shared localStorage on the same origin.
 
 Verified end-to-end in the local dev env before pushing: logged-in routing intact, logged-out redirects to SQ login with the correct `?return=` param, post-login bounces back to the originating Wordy URL.
+
+## 2026-04-28: Lobby restructure + perf code-split + GamePage/LobbyPage refactor
+
+Three changes shipped in this session, all on `main`:
+
+**Lobby restructure (commits 7ef37cc + 68ce110):** Merged `🎮 My Games` and `🚪 Open Games` into one `🎮 Multiplayer` section card with open joinable games at the top, then my active games. Finished-game banners moved into a new `🏁 Completed Games` section card below Multiplayer with a Rungles-style gradient pill look (`from-wordy-100 to-pink-50` → `from-wordy-900/40 to-purple-900/30`, rounded-xl, ✕ dismiss button on the right). The long underlined "View final board →" link inside the banner was replaced with a compact right-justified "View Game" text button just left of ✕. The score line shows just `allPlayerNames` with no extra prefix.
+
+**Perf code-split (commit af79613):** Routes (`LobbyPage`, `GamePage`, `StatsPage`) and `AdminPanel` converted to `React.lazy()` imports with `<Suspense>` boundaries. The lobby's initial JS download dropped from 422.89 kB → 376.34 kB (~12 kB saved over the wire after gzip). Game/Stats/Admin code now downloads only when the user navigates to those pages. `node_modules` was reinstalled during this work to repair a corrupted local `vite` shim — `npm run build` works cleanly again.
+
+**Refactor (commit dd00106):** Extracted `finalizeEndgame(players, emptyingPlayerId)` into `src/lib/gameLogic.js` and added local helpers `endgameFields(over)` + `callFinishGameRpc(gameId, finalPlayers)` to GamePage. The three move functions (`submitMove`, `passTurn`, `confirmExchange`) used to each contain near-duplicate end-game finalize and finish_game RPC blocks; they now call the helpers. `GamePage.jsx` 886 → 871 lines. Separately, the embedded 132-line `GameRow` sub-component lifted out of `LobbyPage.jsx` into `src/components/lobby/LobbyGameRow.jsx`. `LobbyPage.jsx` 622 → 485 lines (~22% smaller). No behavior change in either refactor; build verified clean (six chunks, same shape as before).
+
+### Future-session candidates flagged in this session
+
+These were flagged as worth doing but out of scope for the session:
+
+1. **Extract `createGame` and `joinGame` to `src/lib/gameMutations.js`** — both are pure data operations sitting inside `LobbyPage.jsx` (~70 lines). Moving them out continues the LobbyPage cleanup arc started here.
+2. **Custom hook `useUnseenResults(user, navigate)`** — the unseen-results system in `LobbyPage.jsx` (the `loadUnseenResults` callback, `dismissResult`, `handleGameChange`'s finish-toast block, the realtime subscription wiring) is ~80 lines that could become a reusable hook. Cleanly separates the "show result banners" feature from the lobby's main concerns.
+3. **Trim the shared `index.js` chunk** — still 355 kB (105 kB gzipped) after the route split. Worth investigating with `vite-bundle-visualizer` or similar to see if there's something heavy in the shared core (likely `@supabase/supabase-js`, `react-router-dom`, or unused tailwind utilities). Only worth doing if Wordy still feels slow in practice.
+
+### General React+Vite watch-fors saved as auto-memory
+
+`feedback_react_perf_codesplit.md` in user auto-memory captures the patterns from this session for future React+Vite work across all SQ games: lazy-load admin/settings/route-only code, use the build report as the perf health check, etc.
+
+## 2026-04-28: GamePage refactor round 1 — extracted `useGameData` hook
+
+First refactor pulled from the new cross-project backlog at `rae-side-quest/docs/refactor-backlog.md`. Walked through the `/refactor` skill (explore → plan → test → refactor → explain).
+
+**What moved:** All "load this game and keep it fresh" logic out of `GamePage.jsx` into a new `wordy/src/hooks/useGameData.js`. The hook owns `game`/`players`/`myPlayer`/`board`/`profiles`/`lastMoveTiles`/`lastMoveScores`/`loadError` state, the `mutatingRef`/`placementsRef`/`localRackRef`/`channelRef` refs, the `loadGame` function (3-phase fetch with race protection), the realtime subscription, the 10-second polling fallback, and the visibility-change re-sync.
+
+**What stayed:** `placements` state (lives with the move/placement logic), all the move actions (`submitWord`, `passTurn`, `confirmExchange`, `forfeitGame`), the local UI state (`selectedTile`, `submitting`, `exchangeMode`, modals, etc.), and the entire render. `placementsRef` is still mirrored from `placements` in GamePage via a `useEffect` since the placements state is owned by the component but the ref needs to be readable from the hook's interval callbacks.
+
+**Subtle behavior preserved:** Removed the `setPlacements([])` line that lived inside `loadGame`'s success path — but it was always a no-op safety net (the function bails earlier if placements are non-empty and not forced; on `force:true` calls all callers had already cleared placements). Net behavior identical.
+
+**Numbers:** GamePage.jsx 871 → 721 lines (-17%). New `useGameData.js` 186 lines. GamePage chunk 30.88 kB → 31.26 kB (+0.38 kB, +0.17 kB gzipped) — small overhead from hook indirection, not worth optimizing.
+
+**Verification:** `npm run build` clean. Rae confirmed in `npm run dev:all` that loading a game, render, settings menu, and dark mode toggle all work. Polling/visibility/move-action verification deferred — those code paths are unchanged from before, just relocated.
+
+**Backup:** `wordy/src/components/game/GamePage.jsx.pre-refactor-2026-04-28.bak` (delete on commit if everything stays good).
+
+### Next refactor candidates queued in backlog
+
+- Round 2: extract `useGameMutations` hook for `submitWord`/`passTurn`/`confirmExchange`/`forfeitGame` — would let the three coordination refs become private to the hooks.
+- Round 3: lift `BlankTileModal` and `ForfeitModal` into their own files.

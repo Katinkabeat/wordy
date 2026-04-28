@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
 import { refillRack }  from '../../lib/tileData.js'
-import { deserializeBoard, serializeBoard } from '../../lib/boardData.js'
+import { serializeBoard } from '../../lib/boardData.js'
 import {
   validatePlacement, extractWords, calculateScore,
   isGameOver, finalizeEndgame,
@@ -13,6 +13,7 @@ import ZoomableBoard from './ZoomableBoard.jsx'
 import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
+import { useGameData } from '../../hooks/useGameData.js'
 import { DEFAULT_TILE_HUE } from '../../lib/tileColors.js'
 
 // ── Move-mutation helpers (shared across submit / pass / exchange) ──
@@ -41,11 +42,16 @@ export default function GamePage({ session }) {
   const user            = session.user
   const { isDark, toggle: toggleTheme } = useTheme()
 
-  // ── State ─────────────────────────────────────────────────
-  const [game, setGame]               = useState(null)
-  const [players, setPlayers]         = useState([])
-  const [myPlayer, setMyPlayer]       = useState(null)
-  const [board, setBoard]             = useState(null)   // 2-D 15×15
+  // ── Live game data + sync (loadGame, realtime, polling, visibility) ──
+  const {
+    game, players, myPlayer, setMyPlayer,
+    board, setBoard,
+    profiles, lastMoveTiles, lastMoveScores,
+    loadError, loadGame,
+    mutatingRef, placementsRef, localRackRef,
+  } = useGameData(gameId, user)
+
+  // ── Local UI state ────────────────────────────────────────
   const [placements, setPlacements]   = useState([])     // tiles placed this turn
   const [selectedTile, setSelected]   = useState(null)   // { letter, rackIdx }
   const [submitting, setSubmitting]   = useState(false)
@@ -56,13 +62,6 @@ export default function GamePage({ session }) {
   const [passConfirm, setPassConfirm]   = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef(null)
-  const [profiles, setProfiles]       = useState({})
-  const [lastMoveTiles, setLastMoveTiles] = useState([]) // tiles from the most recent move
-  const [lastMoveScores, setLastMoveScores] = useState({}) // user_id → last move score
-  const channelRef = useRef(null)
-  const mutatingRef = useRef(false)  // suppress real-time reloads during DB writes
-  const placementsRef = useRef([])   // mirror of placements state for polling guard
-  const localRackRef = useRef(null)  // preserve local rack order across polls
 
   // ── Close settings menu on outside click ──────────────────
   useEffect(() => {
@@ -85,168 +84,19 @@ export default function GamePage({ session }) {
     return Math.max(20, Math.floor((vw - 26) / 15))
   }, [])
 
-  // ── Helpers ───────────────────────────────────────────────
-  // Check if two racks have the same tiles (ignoring order).
-  // Used to preserve the user's local shuffle across poll refreshes.
-  function sameRackContents(a, b) {
-    if (!a || !b || a.length !== b.length) return false
-    const sorted = arr => [...arr].sort().join(',')
-    return sorted(a) === sorted(b)
-  }
-
-  const isMyTurn = useCallback(() => {
+  // ── Derived state ─────────────────────────────────────────
+  function isMyTurn() {
     if (!game || !myPlayer) return false
     return game.current_player_idx === myPlayer.player_index && game.status === 'active'
-  }, [game, myPlayer])
+  }
 
   // Derive from the DB board (game.board), not the live working board,
   // because the live board includes tiles placed this turn.
   const isFirstMove = !game?.board || game.board.length === 0
 
-  const [loadError, setLoadError] = useState(null)
-
-  // ── Load game data ────────────────────────────────────────
-  const loadGame = useCallback(async ({ force = false } = {}) => {
-    // Skip real-time-triggered reloads while a mutation (submit/exchange/pass)
-    // is in progress — the mutation will call loadGame({ force: true }) when done.
-    if (mutatingRef.current && !force) return
-    try {
-      // ── Phase 1: fetch ALL data before touching any state ────
-      // This prevents a race where the user places a tile between two async
-      // fetches and the second fetch's state update overwrites their rack.
-      const { data: g, error: gErr } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId).single()
-      if (gErr) throw gErr
-      if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
-
-      const { data: ps, error: psErr } = await supabase
-        .from('game_players')
-        .select('*')
-        .eq('game_id', gameId)
-        .order('player_index')
-      if (psErr) throw psErr
-
-      // Fetch last move, scores, and profiles in parallel (non-critical)
-      const playerIds = (ps ?? []).map(p => p.user_id)
-      const [lastMovesRes, scoresResults, profsRes] = await Promise.all([
-        supabase.from('game_moves').select('tiles_placed')
-          .eq('game_id', gameId).eq('move_type', 'place')
-          .order('created_at', { ascending: false }).limit(1),
-        playerIds.length
-          ? Promise.all(playerIds.map(pid =>
-              supabase.from('game_moves').select('score, user_id')
-                .eq('game_id', gameId).eq('user_id', pid)
-                .order('created_at', { ascending: false }).limit(1)
-                .then(({ data }) => data?.[0] ?? null)
-            ))
-          : Promise.resolve([]),
-        playerIds.length
-          ? supabase.from('profiles').select('id, username').in('id', playerIds)
-          : Promise.resolve({ data: null, error: null }),
-      ])
-
-      // ── Phase 2: guard check AFTER all fetches, BEFORE any state updates ──
-      // If the user placed tiles while we were fetching, bail out entirely
-      // so we don't overwrite their in-progress placement.
-      if (placementsRef.current.length > 0 && !force) return
-
-      // ── Phase 3: apply all state updates atomically ──────────
-      setGame(g)
-      setBoard(deserializeBoard(g.board))
-      setPlacements([])  // clear stale placements — DB board is the source of truth
-      placementsRef.current = []
-      setLoadError(null)
-
-      setPlayers(ps ?? [])
-      const me = (ps ?? []).find(p => p.user_id === user.id)
-      // Preserve the user's local rack order (from shuffle / tile swaps)
-      // if the DB rack has the same tiles — just possibly in different order.
-      if (me && localRackRef.current && sameRackContents(me.rack, localRackRef.current)) {
-        me.rack = localRackRef.current
-      }
-      if (me) localRackRef.current = me.rack
-      setMyPlayer(me ?? null)
-
-      setLastMoveTiles(lastMovesRes?.data?.[0]?.tiles_placed ?? [])
-
-      if (scoresResults.length) {
-        const scoreMap = {}
-        for (const r of scoresResults) {
-          if (r?.score != null) scoreMap[r.user_id] = r.score
-        }
-        setLastMoveScores(scoreMap)
-      }
-
-      // Only update profiles if the query succeeded so a transient
-      // network failure on mobile doesn't wipe out already-loaded names
-      if (!profsRes.error && profsRes.data) {
-        const map = {}
-        for (const p of profsRes.data) map[p.id] = { username: p.username }
-        setProfiles(map)
-      }
-    } catch (err) {
-      console.error('loadGame failed:', err)
-      setLoadError(err.message ?? 'Failed to load game')
-    }
-  }, [gameId, user.id, navigate])
-
-  useEffect(() => { loadGame() }, [loadGame])
-
-  // Keep placementsRef in sync so the polling guard can read it without
-  // being in the interval's closure / dependency array.
-  useEffect(() => { placementsRef.current = placements }, [placements])
-
-  // Real-time subscription with auto-reconnect.
-  // Both handlers call loadGame() for a guaranteed fresh fetch.
-  // Note: game_players filters on game_id (non-PK), which requires
-  // REPLICA IDENTITY FULL on the table — set via SQL migration.
-  useEffect(() => {
-    function subscribe() {
-      if (channelRef.current) supabase.removeChannel(channelRef.current)
-      channelRef.current = supabase.channel(`game-${gameId}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-          () => { if (placementsRef.current.length === 0) loadGame() }
-        )
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `game_id=eq.${gameId}` },
-          () => { if (placementsRef.current.length === 0) loadGame() }
-        )
-        .subscribe()
-    }
-
-    subscribe()
-
-    // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
-    // the game view still refreshes every 10 seconds while visible.
-    // IMPORTANT: skip when the user has tiles on the board — reloading would
-    // wipe their in-progress placement and return tiles to the rack.
-    const poll = setInterval(() => {
-      if (document.visibilityState === 'visible' && placementsRef.current.length === 0) loadGame()
-    }, 10_000)
-
-    // When the tab/phone wakes back up, reload state and reconnect if needed.
-    // This handles the common case of taking a long time between turns.
-    function handleVisible() {
-      if (document.visibilityState !== 'visible') return
-      // Only auto-reload if the user has no tiles placed on the board —
-      // otherwise switching apps and back would wipe their in-progress word.
-      if (placementsRef.current.length === 0) loadGame()
-      if (!channelRef.current || channelRef.current.state !== 'joined') {
-        subscribe()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisible)
-    window.addEventListener('focus', handleVisible)
-
-    return () => {
-      supabase.removeChannel(channelRef.current)
-      clearInterval(poll)
-      document.removeEventListener('visibilitychange', handleVisible)
-      window.removeEventListener('focus', handleVisible)
-    }
-  }, [gameId, loadGame])
+  // Keep placementsRef in sync so the polling guard (in useGameData) can read
+  // it without being in the interval's closure / dependency array.
+  useEffect(() => { placementsRef.current = placements }, [placements, placementsRef])
 
   // ── Board cell click ──────────────────────────────────────
   function handleCellClick(row, col) {

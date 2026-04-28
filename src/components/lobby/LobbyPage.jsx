@@ -437,25 +437,30 @@ export default function LobbyPage({ session }) {
                   return (
                     <div
                       key={gameId}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-gradient-to-r from-wordy-100 to-pink-50 border border-wordy-200 dark:from-wordy-900/40 dark:to-purple-900/30 dark:border-wordy-700"
+                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-gradient-to-r from-wordy-100 to-pink-50 border border-wordy-200 dark:from-wordy-900/40 dark:to-purple-900/30 dark:border-wordy-700"
                     >
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/game/${gameId}`)}
-                        className="flex-1 text-left min-w-0"
-                      >
+                      <div className="flex-1 min-w-0">
                         <div className="font-display text-sm text-wordy-700 dark:text-wordy-100 truncate">
                           {headline}
                         </div>
-                        <div className="text-xs text-wordy-500 dark:text-wordy-300 truncate">
-                          {allPlayerNames ? `${allPlayerNames} · ` : ''}<span className="underline">View final board →</span>
-                        </div>
+                        {allPlayerNames && (
+                          <div className="text-xs text-wordy-500 dark:text-wordy-300 truncate">
+                            {allPlayerNames}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/game/${gameId}`)}
+                        className="shrink-0 text-xs font-bold text-wordy-700 dark:text-wordy-200 underline hover:no-underline"
+                      >
+                        View Game
                       </button>
                       <button
                         type="button"
                         onClick={() => dismissResult(gameId)}
                         aria-label="Dismiss result"
-                        className="ml-2 shrink-0 w-7 h-7 rounded-full text-wordy-500 hover:text-wordy-700 hover:bg-white/60 dark:text-wordy-300 dark:hover:bg-black/20 flex items-center justify-center text-sm"
+                        className="shrink-0 w-7 h-7 rounded-full text-wordy-500 hover:text-wordy-700 hover:bg-white/60 dark:text-wordy-300 dark:hover:bg-black/20 flex items-center justify-center text-sm"
                       >
                         ✕
                       </button>

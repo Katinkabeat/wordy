@@ -1,10 +1,13 @@
-import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
 import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
-import AdminPanel from '../admin/AdminPanel.jsx'
+
+// Admin-only panel — split out so non-admins (the vast majority of users)
+// don't download its code with the lobby.
+const AdminPanel = lazy(() => import('../admin/AdminPanel.jsx'))
 import IOSInstallPrompt from './IOSInstallPrompt.jsx'
 import SettingsDropdown from './SettingsModal.jsx'
 import AvatarMenu from './AvatarMenu.jsx'
@@ -366,9 +369,11 @@ export default function LobbyPage({ session }) {
 
       <main className="max-w-[480px] mx-auto px-4 py-6 space-y-6">
 
-        {/* Admin Panel */}
+        {/* Admin Panel — lazy-loaded; only fetched when admin tab is opened */}
         {lobbyTab === 'admin' && adminRecord && (
-          <AdminPanel session={session} adminRecord={adminRecord} />
+          <Suspense fallback={<p className="text-sm text-wordy-500">Loading admin panel…</p>}>
+            <AdminPanel session={session} adminRecord={adminRecord} />
+          </Suspense>
         )}
 
         {/* Lobby content */}

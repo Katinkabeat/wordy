@@ -1,11 +1,25 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { supabase } from './lib/supabase.js'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
-import LobbyPage from './components/lobby/LobbyPage.jsx'
-import GamePage  from './components/game/GamePage.jsx'
-import StatsPage from './components/stats/StatsPage.jsx'
+
+// Code-split each route: only the page the user is visiting downloads
+// up-front; the others fetch on demand the first time they're navigated to.
+const LobbyPage = lazy(() => import('./components/lobby/LobbyPage.jsx'))
+const GamePage  = lazy(() => import('./components/game/GamePage.jsx'))
+const StatsPage = lazy(() => import('./components/stats/StatsPage.jsx'))
+
+function PageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
+      <div className="text-center">
+        <div className="text-5xl mb-4 animate-bounce">🟣</div>
+        <p className="font-display text-2xl text-wordy-600 dark:text-wordy-300">Loading…</p>
+      </div>
+    </div>
+  )
+}
 
 // Wrap in ThemeProvider so every page has access to isDark / toggle
 export default function App() {
@@ -101,12 +115,14 @@ function AppInner() {
             : { background: '#fff1f2', color: '#9f1239', border: '1px solid #fda4af' } },
         }}
       />
-      <Routes>
-        <Route path="/lobby"    element={<LobbyPage session={session} />} />
-        <Route path="/game/:id" element={<GamePage  session={session} />} />
-        <Route path="/stats"    element={<StatsPage session={session} />} />
-        <Route path="*"         element={<Navigate to="/lobby" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/lobby"    element={<LobbyPage session={session} />} />
+          <Route path="/game/:id" element={<GamePage  session={session} />} />
+          <Route path="/stats"    element={<StatsPage session={session} />} />
+          <Route path="*"         element={<Navigate to="/lobby" replace />} />
+        </Routes>
+      </Suspense>
     </>
   )
 }

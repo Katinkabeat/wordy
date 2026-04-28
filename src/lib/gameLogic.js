@@ -183,3 +183,13 @@ export function applyEndgamePenalties(players, emptyingPlayerId) {
     return { ...p, score: p.score - (penaltyByPlayer[p.user_id] ?? 0) }
   })
 }
+
+/** Apply end-game penalties and stamp is_winner on whichever players have
+ *  the top score after penalties are settled. emptyingPlayerId is the user
+ *  who emptied their rack (gets the bonus); pass null when the game ends
+ *  via consecutive passes/exchanges (no one gets the bonus, only penalties). */
+export function finalizeEndgame(players, emptyingPlayerId = null) {
+  const withPenalties = applyEndgamePenalties(players, emptyingPlayerId)
+  const maxScore = Math.max(...withPenalties.map(p => p.score))
+  return withPenalties.map(p => ({ ...p, is_winner: p.score === maxScore }))
+}

@@ -6,7 +6,7 @@ import { refillRack }  from '../../lib/tileData.js'
 import { deserializeBoard, serializeBoard } from '../../lib/boardData.js'
 import {
   validatePlacement, extractWords, calculateScore,
-  isGameOver, applyEndgamePenalties,
+  isGameOver, finalizeEndgame,
 } from '../../lib/gameLogic.js'
 import { validateWords } from '../../lib/wordValidator.js'
 import ZoomableBoard from './ZoomableBoard.jsx'
@@ -14,6 +14,26 @@ import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 import { DEFAULT_TILE_HUE } from '../../lib/tileColors.js'
+
+// ── Move-mutation helpers (shared across submit / pass / exchange) ──
+
+// Spread into a `games` UPDATE payload to flip status when the game ends.
+function endgameFields(over) {
+  return over ? { status: 'finished', finished_at: new Date().toISOString() } : {}
+}
+
+// Fire-and-forget finish_game RPC. Errors are logged, never thrown — the
+// move itself succeeded; the RPC just stamps winner/score history.
+function callFinishGameRpc(gameId, finalPlayers) {
+  return supabase.rpc('finish_game', {
+    p_game_id: gameId,
+    p_player_results: finalPlayers.map(fp => ({
+      user_id:   fp.user_id,
+      score:     fp.score,
+      is_winner: fp.is_winner ?? false,
+    })),
+  }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
+}
 
 export default function GamePage({ session }) {
   const { id: gameId } = useParams()
@@ -349,16 +369,12 @@ export default function GamePage({ session }) {
       // Check game over
       const over = isGameOver(newBag.length, newRack, 0, players.length)
 
-      // If game over, apply end-game penalties
+      // If game over, apply end-game penalties (this player emptied their rack
+      // so they get the bonus; the others lose their rack values).
       let finalPlayers = players.map(p =>
         p.user_id === user.id ? { ...p, score: newScore, rack: newRack } : p
       )
-
-      if (over) {
-        finalPlayers = applyEndgamePenalties(finalPlayers, user.id)
-        const maxScore = Math.max(...finalPlayers.map(p => p.score))
-        finalPlayers   = finalPlayers.map(p => ({ ...p, is_winner: p.score === maxScore }))
-      }
+      if (over) finalPlayers = finalizeEndgame(finalPlayers, user.id)
 
       // ── DB write phase ────────────────────────────────────
       // Suppress real-time reloads while parallel writes are in progress.
@@ -371,7 +387,7 @@ export default function GamePage({ session }) {
             tile_bag: newBag,
             current_player_idx: nextIdx,
             consecutive_passes: 0,
-            ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
+            ...endgameFields(over),
           }).eq('id', gameId),
           supabase.from('game_players').update({
             score: newScore,
@@ -382,16 +398,7 @@ export default function GamePage({ session }) {
         if (playerErr) { console.error('game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); recall(); return }
 
         // Fire-and-forget: move log + finish RPC are non-critical for gameplay
-        if (over) {
-          supabase.rpc('finish_game', {
-            p_game_id: gameId,
-            p_player_results: finalPlayers.map(fp => ({
-              user_id:   fp.user_id,
-              score:     fp.score,
-              is_winner: fp.is_winner ?? false,
-            })),
-          }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
-        }
+        if (over) callFinishGameRpc(gameId, finalPlayers)
 
         supabase.from('game_moves').insert({
           game_id: gameId, user_id: user.id,
@@ -439,17 +446,13 @@ export default function GamePage({ session }) {
 
     // If game over via passes: everyone loses their rack value (no one gets the bonus)
     let finalPlayers = [...players]
-    if (over) {
-      finalPlayers = applyEndgamePenalties(finalPlayers, null)
-      const maxScore = Math.max(...finalPlayers.map(p => p.score))
-      finalPlayers   = finalPlayers.map(p => ({ ...p, is_winner: p.score === maxScore }))
-    }
+    if (over) finalPlayers = finalizeEndgame(finalPlayers, null)
 
     try {
       const { error: gameErr } = await supabase.from('games').update({
         current_player_idx: nextIdx,
         consecutive_passes: newPasses,
-        ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
+        ...endgameFields(over),
       }).eq('id', gameId)
       if (gameErr) { console.error('pass: games update failed:', gameErr); toast.error('Failed to pass — please retry.'); return }
 
@@ -460,14 +463,7 @@ export default function GamePage({ session }) {
       }).then(({ error }) => { if (error) console.error('pass: game_moves insert failed:', error) })
 
       if (over) {
-        supabase.rpc('finish_game', {
-          p_game_id: gameId,
-          p_player_results: finalPlayers.map(fp => ({
-            user_id:   fp.user_id,
-            score:     fp.score,
-            is_winner: fp.is_winner ?? false,
-          })),
-        }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
+        callFinishGameRpc(gameId, finalPlayers)
         toast('🏆 Game over — no moves left!')
       } else {
         toast('⏩ Turn passed.')
@@ -507,11 +503,7 @@ export default function GamePage({ session }) {
       const over      = newPasses >= players.length * 2
 
       let finalPlayers = [...players]
-      if (over) {
-        finalPlayers = applyEndgamePenalties(finalPlayers, null)
-        const maxScore = Math.max(...finalPlayers.map(p => p.score))
-        finalPlayers   = finalPlayers.map(p => ({ ...p, is_winner: p.score === maxScore }))
-      }
+      if (over) finalPlayers = finalizeEndgame(finalPlayers, null)
 
       // Run game + player updates in parallel (independent tables)
       const [{ error: gameErr }, { error: playerErr }] = await Promise.all([
@@ -519,7 +511,7 @@ export default function GamePage({ session }) {
           tile_bag: newBag,
           current_player_idx: nextIdx,
           consecutive_passes: newPasses,
-          ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
+          ...endgameFields(over),
         }).eq('id', gameId),
         supabase.from('game_players').update({ rack: refilled })
           .eq('game_id', gameId).eq('user_id', user.id),
@@ -534,14 +526,7 @@ export default function GamePage({ session }) {
       }).then(({ error }) => { if (error) console.error('exchange: game_moves insert failed:', error) })
 
       if (over) {
-        supabase.rpc('finish_game', {
-          p_game_id: gameId,
-          p_player_results: finalPlayers.map(fp => ({
-            user_id:   fp.user_id,
-            score:     fp.score,
-            is_winner: fp.is_winner ?? false,
-          })),
-        }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
+        callFinishGameRpc(gameId, finalPlayers)
         toast('🏆 Game over — no moves left!')
       } else {
         toast('🔄 Tiles exchanged!')

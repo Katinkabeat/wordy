@@ -310,6 +310,9 @@ export default function LobbyPage({ session }) {
     g.status === 'waiting' &&
     g.game_players.length < g.max_players
   )
+  // Single Multiplayer list: open joinable games first (so users see what
+  // they can jump into), then their own active games.
+  const multiplayerGames = [...openGames, ...myGames]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-wordy-50 via-pink-50 to-wordy-100 dark:bg-[#0f0a1e] dark:bg-none">
@@ -407,72 +410,60 @@ export default function LobbyPage({ session }) {
               </div>
             </div>
 
-            {/* My active games */}
-            {myGames.length > 0 && (
-              <div className="card">
-                <h2 className="font-display text-xl text-wordy-700 mb-3">🎮 My Games</h2>
+            {/* Multiplayer (open joinable games first, then my active games) */}
+            <div className="card">
+              <h2 className="font-display text-xl text-wordy-700 mb-3">🎮 Multiplayer</h2>
+              {multiplayerGames.length > 0 ? (
                 <div className="space-y-2">
-                  {myGames.map(g => (
+                  {multiplayerGames.map(g => (
                     <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} profile={profile} />
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Open games to join */}
-            {openGames.length > 0 && (
-              <div className="card">
-                <h2 className="font-display text-xl text-wordy-700 mb-3">🚪 Open Games</h2>
-                <div className="space-y-2">
-                  {openGames.map(g => (
-                    <GameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} profile={profile} />
-                  ))}
+              ) : (
+                <div className="text-center py-6 text-wordy-300">
+                  <div className="text-4xl mb-2">🟣</div>
+                  <p className="font-display">No games yet — be the first to create one!</p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Unseen game results — shown until dismissed */}
-            {unseenResults.map(({ gameId, isWinner, game: g, winnerName, allPlayerNames }) => {
-              const isForfeit = !!g?.forfeit_user_id
-              return (
-                <div key={gameId} className="flex items-center justify-between gap-3 bg-wordy-600 text-white rounded-2xl px-4 py-3 shadow">
-                  <div style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: '5px' }}>
-                    <span className="font-display text-base leading-tight">
-                      {isForfeit ? '🏳️' : '🏆'}
-                    </span>
-                    <p className="font-display text-base leading-tight">
-                      {isForfeit ? 'Opponent forfeited!' : `${winnerName} wins!`}
-                    </p>
-                    {allPlayerNames && <>
-                      <span />{/* keeps emoji column occupied on row 2 */}
-                      <p className="text-xs opacity-80 mt-0.5">{allPlayerNames}</p>
-                    </>}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => navigate(`/game/${gameId}`)}
-                      className="text-sm font-bold opacity-90 hover:opacity-100 whitespace-nowrap"
+            {/* Completed games — banners persist until user dismisses them */}
+            <div className="card">
+              <h2 className="font-display text-xl text-wordy-700 mb-3">🏁 Completed Games</h2>
+              <div className="space-y-2">
+                {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
+                  const isForfeit = !!g?.forfeit_user_id
+                  const headline = isForfeit ? '🏳️ Opponent forfeited!' : `🏆 ${winnerName} wins!`
+                  return (
+                    <div
+                      key={gameId}
+                      className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-gradient-to-r from-wordy-100 to-pink-50 border border-wordy-200 dark:from-wordy-900/40 dark:to-purple-900/30 dark:border-wordy-700"
                     >
-                      View board
-                    </button>
-                    <button
-                      onClick={() => dismissResult(gameId)}
-                      className="text-white opacity-70 hover:opacity-100 text-2xl leading-none font-bold"
-                      title="Dismiss"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-
-            {games.length === 0 && (
-              <div className="text-center py-12 text-wordy-300">
-                <div className="text-5xl mb-3">🟣</div>
-                <p className="font-display text-xl">No games yet — be the first to create one!</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/game/${gameId}`)}
+                        className="flex-1 text-left min-w-0"
+                      >
+                        <div className="font-display text-sm text-wordy-700 dark:text-wordy-100 truncate">
+                          {headline}
+                        </div>
+                        <div className="text-xs text-wordy-500 dark:text-wordy-300 truncate">
+                          {allPlayerNames ? `${allPlayerNames} · ` : ''}<span className="underline">View final board →</span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => dismissResult(gameId)}
+                        aria-label="Dismiss result"
+                        className="ml-2 shrink-0 w-7 h-7 rounded-full text-wordy-500 hover:text-wordy-700 hover:bg-white/60 dark:text-wordy-300 dark:hover:bg-black/20 flex items-center justify-center text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
-            )}
+            </div>
           </>
         )}
       </main>

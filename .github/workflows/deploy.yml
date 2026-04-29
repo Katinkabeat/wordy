@@ -25,11 +25,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Clone the SideQuest hub repo as a sibling so Wordy's build can
+      # resolve `../rae-side-quest/packages/sq-ui/...` imports. The shared
+      # design-system package lives there. See feedback_sq_monorepo_migration.md
+      # for why this is a clone-step instead of a real monorepo right now.
+      - name: Clone rae-side-quest (for shared sq-ui package)
+        run: git clone --depth 1 https://github.com/Katinkabeat/games.git ../rae-side-quest
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-        
+
       - name: Install dependencies
         run: npm install
 

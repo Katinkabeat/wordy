@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase.js'
 import { createTileBag, refillRack } from '../../lib/tileData.js'
 import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
 import LobbyGameRow from './LobbyGameRow.jsx'
+import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
 // Admin-only panel — split out so non-admins (the vast majority of users)
 // don't download its code with the lobby.
@@ -319,57 +320,54 @@ export default function LobbyPage({ session }) {
   const multiplayerGames = [...openGames, ...myGames]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wordy-50 via-pink-50 to-wordy-100 dark:bg-[#0f0a1e] dark:bg-none">
-      {/* Header */}
-      <header className="bg-white border-b border-wordy-100 shadow-sm sticky top-0 z-10 dark:bg-[#130c25] dark:border-[#2d1b55]">
-        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AvatarMenu profile={profile} onProfileUpdate={setProfile} />
-            <span className="font-display text-2xl text-wordy-700">Wordy</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="/games/"
-              className="text-2xl leading-none hover:scale-110 transition-transform"
-              title="Rae's Side Quest"
-              aria-label="Rae's Side Quest"
-            >
-              🏠
-            </a>
-            <div className="relative">
-              <button
-                onClick={() => setShowSettings(s => !s)}
-                className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
-                title="Settings"
+    <SQLobbyShell
+      header={
+        <SQLobbyHeader
+          title="Wordy"
+          avatarSlot={<AvatarMenu profile={profile} onProfileUpdate={setProfile} />}
+          rightSlot={
+            <>
+              <a
+                href="/games/"
+                className="text-2xl leading-none hover:scale-110 transition-transform"
+                title="Rae's Side Quest"
+                aria-label="Rae's Side Quest"
               >
-                ⚙️
-              </button>
-              {showSettings && profile && (
-                <SettingsDropdown
-                  onClose={() => setShowSettings(false)}
-                  isDark={isDark}
-                  toggleTheme={toggleTheme}
-                  isAdmin={!!adminRecord}
-                  lobbyTab={lobbyTab}
-                  onToggleAdmin={() => { setLobbyTab(t => t === 'admin' ? 'lobby' : 'admin'); setShowSettings(false) }}
-                  onLogout={async () => {
-                    try { await supabase.auth.signOut() } catch {}
-                    // Fallback: nuke auth tokens from localStorage so even
-                    // a corrupt session gets cleared and we return to login
-                    Object.keys(localStorage).forEach(k => {
-                      if (k.startsWith('sb-')) localStorage.removeItem(k)
-                    })
-                    window.location.replace('/games/')
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-[480px] mx-auto px-4 py-6 space-y-6">
-
+                🏠
+              </a>
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettings(s => !s)}
+                  className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
+                  title="Settings"
+                >
+                  ⚙️
+                </button>
+                {showSettings && profile && (
+                  <SettingsDropdown
+                    onClose={() => setShowSettings(false)}
+                    isDark={isDark}
+                    toggleTheme={toggleTheme}
+                    isAdmin={!!adminRecord}
+                    lobbyTab={lobbyTab}
+                    onToggleAdmin={() => { setLobbyTab(t => t === 'admin' ? 'lobby' : 'admin'); setShowSettings(false) }}
+                    onLogout={async () => {
+                      try { await supabase.auth.signOut() } catch {}
+                      // Fallback: nuke auth tokens from localStorage so even
+                      // a corrupt session gets cleared and we return to login
+                      Object.keys(localStorage).forEach(k => {
+                        if (k.startsWith('sb-')) localStorage.removeItem(k)
+                      })
+                      window.location.replace('/games/')
+                    }}
+                  />
+                )}
+              </div>
+            </>
+          }
+        />
+      }
+    >
         {/* Admin Panel — lazy-loaded; only fetched when admin tab is opened */}
         {lobbyTab === 'admin' && adminRecord && (
           <Suspense fallback={<p className="text-sm text-wordy-500">Loading admin panel…</p>}>
@@ -434,52 +432,47 @@ export default function LobbyPage({ session }) {
             </div>
 
             {/* Completed games — banners persist until user dismisses them */}
-            <div className="card">
-              <h2 className="font-display text-xl text-wordy-700 mb-3">🏁 Completed Games</h2>
-              <div className="space-y-2">
-                {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
-                  const isForfeit = !!g?.forfeit_user_id
-                  const headline = isForfeit ? '🏳️ Opponent forfeited!' : `🏆 ${winnerName} wins!`
-                  return (
-                    <div
-                      key={gameId}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-gradient-to-r from-wordy-100 to-pink-50 border border-wordy-200 dark:from-wordy-900/40 dark:to-purple-900/30 dark:border-wordy-700"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display text-sm text-wordy-700 dark:text-wordy-100 truncate">
-                          {headline}
-                        </div>
-                        {allPlayerNames && (
-                          <div className="text-xs text-wordy-500 dark:text-wordy-300 truncate">
-                            {allPlayerNames}
-                          </div>
-                        )}
+            <SQCompletedGamesCard>
+              {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
+                const isForfeit = !!g?.forfeit_user_id
+                const headline = isForfeit ? '🏳️ Opponent forfeited!' : `🏆 ${winnerName} wins!`
+                return (
+                  <div
+                    key={gameId}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2.5 bg-gradient-to-r from-wordy-100 to-pink-50 border border-wordy-200 dark:from-wordy-900/40 dark:to-purple-900/30 dark:border-wordy-700"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-display text-sm text-wordy-700 dark:text-wordy-100 truncate">
+                        {headline}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/game/${gameId}`)}
-                        className="shrink-0 text-xs font-bold text-wordy-700 dark:text-wordy-200 underline hover:no-underline"
-                      >
-                        View Game
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => dismissResult(gameId)}
-                        aria-label="Dismiss result"
-                        className="shrink-0 w-7 h-7 rounded-full text-wordy-500 hover:text-wordy-700 hover:bg-white/60 dark:text-wordy-300 dark:hover:bg-black/20 flex items-center justify-center text-sm"
-                      >
-                        ✕
-                      </button>
+                      {allPlayerNames && (
+                        <div className="text-xs text-wordy-500 dark:text-wordy-300 truncate">
+                          {allPlayerNames}
+                        </div>
+                      )}
                     </div>
-                  )
-                })}
-              </div>
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/game/${gameId}`)}
+                      className="shrink-0 text-xs font-bold text-wordy-700 dark:text-wordy-200 underline hover:no-underline"
+                    >
+                      View Game
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dismissResult(gameId)}
+                      aria-label="Dismiss result"
+                      className="shrink-0 w-7 h-7 rounded-full text-wordy-500 hover:text-wordy-700 hover:bg-white/60 dark:text-wordy-300 dark:hover:bg-black/20 flex items-center justify-center text-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              })}
+            </SQCompletedGamesCard>
           </>
         )}
-      </main>
-
-    </div>
+    </SQLobbyShell>
   )
 }
 

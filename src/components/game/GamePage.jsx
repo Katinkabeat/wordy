@@ -15,6 +15,14 @@ import ScorePanel from './ScorePanel.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 import { useGameData } from '../../hooks/useGameData.js'
 import { DEFAULT_TILE_HUE } from '../../lib/tileColors.js'
+import {
+  SQBoardShell,
+  SQBoardHeader,
+  SQDropdown,
+  SQSettingsRow,
+  SQModal,
+  SQButton,
+} from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
 // ── Move-mutation helpers (shared across submit / pass / exchange) ──
 
@@ -451,104 +459,64 @@ export default function GamePage({ session }) {
   const currentPlayerName = profiles[players[game.current_player_idx]?.user_id]?.username ?? '?'
   const myTurn = isMyTurn()
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-wordy-50 to-pink-50 flex flex-col dark:bg-[#0f0a1e] dark:bg-none">
+  const turnStatus = (
+    <span className={`font-display text-base ${myTurn ? 'text-wordy-700 dark:text-wordy-300' : 'text-wordy-400'}`}>
+      {game.status === 'finished'
+        ? '🏆 Game Over!'
+        : myTurn
+        ? '✨ Your turn!'
+        : `⏳ ${currentPlayerName}'s turn`}
+    </span>
+  )
 
-      {/* Header */}
-      <header className="bg-white border-b border-wordy-100 shadow-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
-        <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between gap-3">
-          <button onClick={() => navigate('/lobby')} className="text-wordy-400 hover:text-wordy-700 text-sm font-bold dark:text-wordy-400 dark:hover:text-wordy-300">
-            ← Lobby
-          </button>
-          <div className="flex-1 text-center">
-            <span className={`font-display text-base ${myTurn ? 'text-wordy-700 dark:text-wordy-300' : 'text-wordy-400'}`}>
-              {game.status === 'finished'
-                ? '🏆 Game Over!'
-                : myTurn
-                ? '✨ Your turn!'
-                : `⏳ ${currentPlayerName}'s turn`}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="/games/"
-              className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
-              title="Rae's Side Quest"
-              aria-label="Rae's Side Quest"
-            >
-              🏠
-            </a>
-            <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
-              🎒 {game.tile_bag?.length ?? 0} left
-            </span>
-            <div className="relative" ref={settingsRef}>
-              <button
-                onClick={() => setSettingsOpen(o => !o)}
-                className="text-lg leading-none hover:scale-110 transition-transform"
-                title="Settings"
-              >
-                ⚙️
-              </button>
-              {settingsOpen && (
-                <div className="absolute right-0 top-8 w-44 bg-[#fff] dark:bg-[#241640] border border-[#f3e8ff] dark:border-[#6d28d9] rounded-xl shadow-lg z-50 py-1 text-sm">
-                  <button
-                    onClick={() => { toggleTheme(); setSettingsOpen(false) }}
-                    className="w-full text-left px-4 py-2 hover:bg-wordy-50 dark:hover:bg-[#2d1b55] text-wordy-600 dark:text-wordy-300 transition-colors"
-                  >
-                    {isDark ? '☀️ Light mode' : '🌙 Dark mode'}
-                  </button>
-                  {game.status === 'active' && myPlayer && (
-                    <button
-                      onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
-                      className="w-full text-left px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-500 transition-colors"
-                    >
-                      🏳️ Forfeit game
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col lg:flex-row gap-3 max-w-6xl mx-auto w-full px-1 py-3 lg:p-3">
-
-        {/* Score panel — desktop sidebar / mobile top bar */}
-        <div className="lg:w-56 shrink-0">
-          <ScorePanel
-            players={players}
-            profiles={profiles}
-            currentIdx={game.current_player_idx}
-            userId={user.id}
-            status={game.status}
-            lastMoveScores={lastMoveScores}
+  const headerRight = (
+    <>
+      <a
+        href="/games/"
+        className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
+        title="Rae's Side Quest"
+        aria-label="Rae's Side Quest"
+      >
+        🏠
+      </a>
+      <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
+        🎒 {game.tile_bag?.length ?? 0} left
+      </span>
+      <div className="relative" ref={settingsRef}>
+        <button
+          onClick={() => setSettingsOpen(o => !o)}
+          className="text-lg leading-none hover:scale-110 transition-transform"
+          title="Settings"
+        >
+          ⚙️
+        </button>
+        <SQDropdown
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          align="right"
+          className="text-sm"
+        >
+          <SQSettingsRow
+            label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
+            onClick={() => { toggleTheme(); setSettingsOpen(false) }}
           />
-        </div>
-
-        {/* Board */}
-        <div className="flex-1 flex items-center justify-center">
-          <ZoomableBoard
-            board={board}
-            placements={placements}
-            lastMoveTiles={lastMoveTiles}
-            onCellClick={handleCellClick}
-            myTurn={myTurn}
-            cellSize={cellSize}
-            isDark={isDark}
-          />
-        </div>
-
-        {/* Invisible spacer — mirrors the score panel width so the board
-            stays centred relative to the full page (not just the remaining space).
-            Must always match the score panel's lg:w-56 class. */}
-        <div className="hidden lg:block lg:w-56 shrink-0" aria-hidden="true" />
+          {game.status === 'active' && myPlayer && (
+            <SQSettingsRow
+              label="🏳️ Forfeit game"
+              danger
+              onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
+            />
+          )}
+        </SQDropdown>
       </div>
+    </>
+  )
 
-      {/* Bottom controls — sticky bar, always visible at bottom */}
-      {game.status === 'active' && myPlayer && (
-        <div className="sticky bottom-0 z-20 bg-white border-t border-wordy-100 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-t-sm dark:bg-[#130c25] dark:border-[#2d1b55]">
-          <div className="max-w-xl mx-auto space-y-1.5">
+  // Custom-positioned bits below the action bar (finished banner) need to
+  // live OUTSIDE SQBoardShell so they're not constrained to the play area.
+  const actionBar = (game.status === 'active' && myPlayer) ? (
+    <div className="p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-xl mx-auto space-y-1.5">
             {/* Row 1: Tile rack */}
             <TileRack
               rack={myPlayer.rack}
@@ -639,14 +607,49 @@ export default function GamePage({ session }) {
                 </div>
               </div>
             )}
+      </div>
+    </div>
+  ) : null
 
-          </div>
-        </div>
-      )}
+  const scorePanel = (
+    <ScorePanel
+      players={players}
+      profiles={profiles}
+      currentIdx={game.current_player_idx}
+      userId={user.id}
+      status={game.status}
+      lastMoveScores={lastMoveScores}
+    />
+  )
 
-      {/* Finished banner */}
+  return (
+    <SQBoardShell
+      header={
+        <SQBoardHeader
+          backHref="#"
+          backLabel="← Lobby"
+          centerSlot={turnStatus}
+          rightSlot={headerRight}
+          onBackClick={() => navigate('/lobby')}
+        />
+      }
+      scorePanel={scorePanel}
+      actionBar={actionBar}
+    >
+      <ZoomableBoard
+        board={board}
+        placements={placements}
+        lastMoveTiles={lastMoveTiles}
+        onCellClick={handleCellClick}
+        myTurn={myTurn}
+        cellSize={cellSize}
+        isDark={isDark}
+      />
+
+      {/* Finished banner — rendered inside the play area so it appears
+          above the action bar but below the header. */}
       {game.status === 'finished' && (
-        <div className="bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
           <p className="font-display text-xl mb-1">
             {game.forfeit_user_id
               ? `🏳️ ${profiles[game.forfeit_user_id]?.username ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id]?.username ?? '?'} wins!`
@@ -662,16 +665,13 @@ export default function GamePage({ session }) {
         </div>
       )}
 
-      {/* Blank tile modal */}
       {blankModal && (
         <BlankTileModal onConfirm={confirmBlank} onCancel={() => setBlankModal(null)} />
       )}
-
-      {/* Forfeit confirmation modal */}
       {forfeitModal && (
         <ForfeitModal onConfirm={forfeitGame} onCancel={() => setForfeitModal(false)} />
       )}
-    </div>
+    </SQBoardShell>
   )
 }
 
@@ -679,44 +679,51 @@ export default function GamePage({ session }) {
 function BlankTileModal({ onConfirm, onCancel }) {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full dark:bg-[#241640] dark:border dark:border-[#6d28d9]">
-        <h3 className="font-display text-xl text-wordy-700 mb-3 text-center dark:text-wordy-300">
-          🃏 Choose a letter for your blank tile
-        </h3>
-        <div className="grid grid-cols-9 gap-1">
-          {letters.map(l => (
-            <button key={l} onClick={() => onConfirm(l)}
-              className="h-8 w-8 rounded-lg bg-wordy-100 hover:bg-wordy-300 text-wordy-800 font-bold text-xs transition-colors dark:bg-[#2d1b55] dark:hover:bg-wordy-700 dark:text-wordy-200">
-              {l}
-            </button>
-          ))}
-        </div>
-        <button onClick={onCancel} className="mt-3 w-full btn-secondary text-sm">Cancel</button>
+    <SQModal
+      open={true}
+      onClose={onCancel}
+      title="🃏 Choose a letter for your blank tile"
+    >
+      <div className="grid grid-cols-9 gap-1">
+        {letters.map(l => (
+          <button key={l} onClick={() => onConfirm(l)}
+            className="h-8 w-8 rounded-lg bg-wordy-100 hover:bg-wordy-300 text-wordy-800 font-bold text-xs transition-colors dark:bg-[#2d1b55] dark:hover:bg-wordy-700 dark:text-wordy-200">
+            {l}
+          </button>
+        ))}
       </div>
-    </div>
+      <div className="mt-4">
+        <SQButton variant="secondary" className="w-full text-sm" onClick={onCancel}>Cancel</SQButton>
+      </div>
+    </SQModal>
   )
 }
 
 // ── Forfeit confirmation ───────────────────────────────────────
 function ForfeitModal({ onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-5 max-w-sm w-full text-center dark:bg-[#241640] dark:border dark:border-[#6d28d9]">
+    <SQModal
+      open={true}
+      onClose={onCancel}
+      title={null}
+      actions={
+        <>
+          <SQButton variant="secondary" className="flex-1 text-sm" onClick={onCancel}>
+            Keep Playing
+          </SQButton>
+          <SQButton variant="danger" className="flex-1 text-sm" onClick={onConfirm}>
+            Yes, Forfeit
+          </SQButton>
+        </>
+      }
+    >
+      <div className="text-center">
         <p className="text-4xl mb-3">🏳️</p>
         <h3 className="font-display text-xl text-wordy-700 mb-2 dark:text-wordy-300">Forfeit this game?</h3>
-        <p className="text-sm text-wordy-400 mb-5 dark:text-wordy-500">
+        <p className="text-sm text-wordy-400 dark:text-wordy-500">
           Your opponent wins regardless of the current score.
         </p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 btn-secondary text-sm">
-            Keep Playing
-          </button>
-          <button onClick={onConfirm} className="flex-1 btn-danger text-sm">
-            Yes, Forfeit
-          </button>
-        </div>
       </div>
-    </div>
+    </SQModal>
   )
 }

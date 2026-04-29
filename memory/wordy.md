@@ -327,5 +327,27 @@ First refactor pulled from the new cross-project backlog at `rae-side-quest/docs
 
 ### Next refactor candidates queued in backlog
 
-- Round 2: extract `useGameMutations` hook for `submitWord`/`passTurn`/`confirmExchange`/`forfeitGame` — would let the three coordination refs become private to the hooks.
+- ~~Round 2: extract `useGameMutations` hook~~ — done 2026-04-29 (see below).
 - Round 3: lift `BlankTileModal` and `ForfeitModal` into their own files.
+
+## Session: April 29, 2026
+
+### Round 2 GamePage refactor: `useGameMutations` hook — done
+
+Pulled all four DB mutations + their helpers out of `GamePage.jsx` into a dedicated hook at `src/hooks/useGameMutations.js`. Pairs with the existing `useGameData.js` (reads): now reads and writes live in sibling hooks, GamePage is pure UI + local state.
+
+**Files:**
+- `src/hooks/useGameMutations.js` (new, 240 lines) — owns `submitWord`, `passTurn`, `confirmExchange`, `forfeitGame`, plus `endgameFields()` and `callFinishGameRpc()` helpers (previously module-level in GamePage).
+- `src/components/game/GamePage.jsx` — removed inline handlers, dropped associated imports (supabase, refillRack, serializeBoard, validatePlacement, isGameOver, finalizeEndgame, validateWords, toast — most no longer needed at the GamePage level).
+
+**Hook signature** — receives all dependencies as a single options object: game/players/myPlayer, board, placements + setPlacements, exchange selection state, setForfeitModal, gameId, user, loadGame, mutatingRef, isFirstMove, isMyTurn, recall. Returns `{ submitting, submitWord, passTurn, confirmExchange, forfeitGame }`. Lots of params, but it's exactly what the mutation flows genuinely need; resisting the urge to wrap into a less-explicit `ctx`.
+
+**Numbers:** GamePage 735 → 524 lines (-211). Total LOC up slightly (imports + hook signature) but cleanly separated. No bundle-size measurements taken — refactor only.
+
+**Verification:** Pass tested end-to-end against Rae-vs-Test throwaway game (✨ moved Rae→Test, no console errors). Submit/exchange/forfeit verified by structural inspection only (same code, just relocated; `submitting` state correctly disables Submit button when no placements). Pure copy-paste — no logic changes.
+
+**Commit:** f8c4b96.
+
+### Next: scaffold
+
+Tomorrow's plan is the `templates/sq-game-starter/` scaffold (see project memory `project_sq_next_session.md`). Not started in this session.

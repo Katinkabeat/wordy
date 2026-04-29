@@ -10,7 +10,6 @@ import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard } from '../../../../r
 // Admin-only panel — split out so non-admins (the vast majority of users)
 // don't download its code with the lobby.
 const AdminPanel = lazy(() => import('../admin/AdminPanel.jsx'))
-import IOSInstallPrompt from './IOSInstallPrompt.jsx'
 import SettingsDropdown from './SettingsModal.jsx'
 import AvatarMenu from './AvatarMenu.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
@@ -378,11 +377,6 @@ export default function LobbyPage({ session }) {
         {/* Lobby content */}
         {lobbyTab === 'lobby' && (
           <>
-            {/* iOS: guide user to install PWA for push support (still useful
-                even though notification opt-in moved to the SideQuest hub —
-                PWA install gives proper push delivery on iOS). */}
-            <IOSInstallPrompt />
-
             {/* Create game panel */}
             <div className="card">
               <h2 className="font-display text-xl text-wordy-700 mb-4">🌸 New Game</h2>

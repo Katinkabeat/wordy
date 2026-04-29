@@ -30,7 +30,7 @@
       }(window.location))
     </script>
     <!-- Prevent flash of wrong theme: apply dark class synchronously before React renders -->
-    <script>if(localStorage.getItem('wordy-theme')==='dark')document.documentElement.classList.add('dark')</script>
+    <script>if((localStorage.getItem('sq-theme')||localStorage.getItem('wordy-theme')||localStorage.getItem('rungles-theme')||localStorage.getItem('snibble-theme'))==='dark')document.documentElement.classList.add('dark')</script>
   </head>
   <body>
     <div id="root"></div>

@@ -461,16 +461,6 @@ export default function GamePage({ session }) {
   const currentPlayerName = profiles[players[game.current_player_idx]?.user_id]?.username ?? '?'
   const myTurn = isMyTurn()
 
-  const turnStatus = (
-    <span className={`font-display text-base ${myTurn ? 'text-wordy-700 dark:text-wordy-300' : 'text-wordy-400'}`}>
-      {game.status === 'finished'
-        ? '🏆 Game Over!'
-        : myTurn
-        ? '✨ Your turn!'
-        : `⏳ ${currentPlayerName}'s turn`}
-    </span>
-  )
-
   // Top header: app-level identity + nav. Same structure on lobby and board
   // (per sq-style-spec.md §4) so the user always has avatar / hub / settings
   // access.
@@ -520,13 +510,14 @@ export default function GamePage({ session }) {
     />
   )
 
-  // Sub-header: board-context info. Back-to-lobby link, whose turn it is,
-  // and the bag count. Sits beneath the top header.
+  // Sub-header: minimal, just navigation + bag. Whose-turn indicator
+  // already lives in the score panel (✨ next to the current player), so
+  // we don't duplicate it here. Pattern matches Rungles' game pages.
   const subHeader = (
     <SQBoardHeader
       backLabel="← Lobby"
       onBackClick={() => navigate('/lobby')}
-      centerSlot={turnStatus}
+      centerSlot={null}
       rightSlot={
         <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
           🎒 {game.tile_bag?.length ?? 0} left

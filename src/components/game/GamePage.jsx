@@ -18,11 +18,13 @@ import { DEFAULT_TILE_HUE } from '../../lib/tileColors.js'
 import {
   SQBoardShell,
   SQBoardHeader,
+  SQLobbyHeader,
   SQDropdown,
   SQSettingsRow,
   SQModal,
   SQButton,
 } from '../../../../rae-side-quest/packages/sq-ui/index.js'
+import AvatarMenu from '../lobby/AvatarMenu.jsx'
 
 // ── Move-mutation helpers (shared across submit / pass / exchange) ──
 
@@ -469,47 +471,68 @@ export default function GamePage({ session }) {
     </span>
   )
 
-  const headerRight = (
-    <>
-      <a
-        href="/games/"
-        className="text-lg leading-none hover:scale-110 transition-transform text-wordy-500 hover:text-wordy-700"
-        title="Rae's Side Quest"
-        aria-label="Rae's Side Quest"
-      >
-        🏠
-      </a>
-      <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
-        🎒 {game.tile_bag?.length ?? 0} left
-      </span>
-      <div className="relative" ref={settingsRef}>
-        <button
-          onClick={() => setSettingsOpen(o => !o)}
-          className="text-lg leading-none hover:scale-110 transition-transform"
-          title="Settings"
-        >
-          ⚙️
-        </button>
-        <SQDropdown
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-          align="right"
-          className="text-sm"
-        >
-          <SQSettingsRow
-            label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
-            onClick={() => { toggleTheme(); setSettingsOpen(false) }}
-          />
-          {game.status === 'active' && myPlayer && (
-            <SQSettingsRow
-              label="🏳️ Forfeit game"
-              danger
-              onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
-            />
-          )}
-        </SQDropdown>
-      </div>
-    </>
+  // Top header: app-level identity + nav. Same structure on lobby and board
+  // (per sq-style-spec.md §4) so the user always has avatar / hub / settings
+  // access.
+  const topHeader = (
+    <SQLobbyHeader
+      title="Wordy"
+      avatarSlot={<AvatarMenu profile={profiles[user.id]} />}
+      rightSlot={
+        <>
+          <a
+            href="/games/"
+            className="text-2xl leading-none hover:scale-110 transition-transform"
+            title="Rae's Side Quest"
+            aria-label="Rae's Side Quest"
+          >
+            🏠
+          </a>
+          <div className="relative" ref={settingsRef}>
+            <button
+              onClick={() => setSettingsOpen(o => !o)}
+              className="text-lg leading-none hover:scale-110 transition-transform"
+              title="Settings"
+            >
+              ⚙️
+            </button>
+            <SQDropdown
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              align="right"
+              className="text-sm"
+            >
+              <SQSettingsRow
+                label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
+                onClick={() => { toggleTheme(); setSettingsOpen(false) }}
+              />
+              {game.status === 'active' && myPlayer && (
+                <SQSettingsRow
+                  label="🏳️ Forfeit game"
+                  danger
+                  onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
+                />
+              )}
+            </SQDropdown>
+          </div>
+        </>
+      }
+    />
+  )
+
+  // Sub-header: board-context info. Back-to-lobby link, whose turn it is,
+  // and the bag count. Sits beneath the top header.
+  const subHeader = (
+    <SQBoardHeader
+      backLabel="← Lobby"
+      onBackClick={() => navigate('/lobby')}
+      centerSlot={turnStatus}
+      rightSlot={
+        <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
+          🎒 {game.tile_bag?.length ?? 0} left
+        </span>
+      }
+    />
   )
 
   // Custom-positioned bits below the action bar (finished banner) need to
@@ -624,15 +647,7 @@ export default function GamePage({ session }) {
 
   return (
     <SQBoardShell
-      header={
-        <SQBoardHeader
-          backHref="#"
-          backLabel="← Lobby"
-          centerSlot={turnStatus}
-          rightSlot={headerRight}
-          onBackClick={() => navigate('/lobby')}
-        />
-      }
+      header={<>{topHeader}{subHeader}</>}
       scorePanel={scorePanel}
       actionBar={actionBar}
     >

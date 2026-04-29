@@ -11,12 +11,11 @@
     <meta name="apple-mobile-web-app-title" content="Wordy" />
     <link rel="apple-touch-icon" href="/wordy/favicon.svg" />
     <title>Wordy 🟣 – Play With Friends!</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Self-hosted SQ fonts. Files live in rae-side-quest/public/fonts/
+         and serve at /games/fonts/... (same origin for all SQ surfaces).
+         @font-face declarations live in sq-ui/globals.css. -->
+    <link rel="preload" href="/games/fonts/fredoka-one-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/games/fonts/nunito.woff2" as="font" type="font/woff2" crossorigin />
     <!-- GitHub Pages SPA redirect: restore path from query string (see public/404.html) -->
     <script type="text/javascript">
       (function(l) {

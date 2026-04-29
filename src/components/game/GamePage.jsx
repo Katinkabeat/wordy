@@ -647,7 +647,8 @@ export default function GamePage({ session }) {
 
   return (
     <SQBoardShell
-      header={<>{topHeader}{subHeader}</>}
+      header={topHeader}
+      subHeader={subHeader}
       scorePanel={scorePanel}
       actionBar={actionBar}
     >

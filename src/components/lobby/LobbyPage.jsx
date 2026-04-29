@@ -424,15 +424,14 @@ export default function LobbyPage({ session }) {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6 text-wordy-300">
-                  <div className="text-4xl mb-2">🟣</div>
+                <div className="text-center py-4 text-wordy-300">
                   <p className="font-display">No games yet — be the first to create one!</p>
                 </div>
               )}
             </div>
 
             {/* Completed games — banners persist until user dismisses them */}
-            <SQCompletedGamesCard>
+            <SQCompletedGamesCard emptyMessage="🪧 No finished games yet.">
               {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
                 const isForfeit = !!g?.forfeit_user_id
                 const headline = isForfeit ? '🏳️ Opponent forfeited!' : `🏆 ${winnerName} wins!`

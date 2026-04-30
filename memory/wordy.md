@@ -351,3 +351,14 @@ Pulled all four DB mutations + their helpers out of `GamePage.jsx` into a dedica
 ### Next: scaffold
 
 Tomorrow's plan is the `templates/sq-game-starter/` scaffold (see project memory `project_sq_next_session.md`). Not started in this session.
+
+### Session: 2026-04-29 — Hub-leftovers cleanup
+
+Two pieces removed because the hub now owns them:
+
+- **`IOSInstallPrompt.jsx` deleted** from `src/components/lobby/` and the `<IOSInstallPrompt />` render dropped from `LobbyPage.jsx`. Component moved to `rae-side-quest/src/components/IOSInstallPrompt.jsx` with copy adapted ("Install Rae's Side Quest", new dismiss key `sq-ios-install-dismissed`). Hub also gained a new `AndroidInstallPrompt` for Chromium `beforeinstallprompt`. See hub memory for details.
+- **Cloudflare Turnstile fully removed.** `@marsidev/react-turnstile` dropped from `package.json` (lockfile regenerated, 1 package removed); `VITE_TURNSTILE_SITE_KEY` line removed from `.github/workflows/deploy.yml` and `.env.example`. The `CLOUDFLARE_CAPTCHA` GitHub secret on the Wordy repo was also deleted by Rae from Settings → Secrets. Hub repo (`Katinkabeat/games`) still uses Turnstile on its own auth page — leave that alone.
+
+No source still references Turnstile (only the Scrabble dictionary at `public/words.txt` keeps `TURNSTILE`/`TURNSTILES` as legit playable words). Service worker has no `CACHE_VERSION` to bump — `public/sw.js` only handles push events.
+
+**Commit:** `c22a165`.

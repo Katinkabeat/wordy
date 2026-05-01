@@ -3,6 +3,13 @@
 -- Run this in: Supabase → SQL Editor → New Query
 -- ============================================================
 
+-- ── 0. CLOSED-BY-ADMIN FLAG ON GAMES ──────────────────────────
+-- Marks a game that an admin closed via admin_close_game so the
+-- lobby + game-end UI can render "🛑 Game closed by admin" without
+-- attributing a winner. Idempotent.
+ALTER TABLE public.games
+  ADD COLUMN IF NOT EXISTS closed_by_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- ── 1. ADMINS TABLE ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.admins (
   user_id     UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -79,6 +86,10 @@ ON CONFLICT (user_id) DO NOTHING;
 -- SECURITY DEFINER lets this function update any game regardless
 -- of whether the admin is a player in that game (bypasses RLS).
 -- The function itself enforces the permission check.
+--
+-- Sets games.closed_by_admin = TRUE so the lobby + game-end UI can
+-- render "🛑 Game closed by admin" with no winner attribution. The
+-- `closed_by_admin` column lives on public.games (NOT NULL DEFAULT FALSE).
 CREATE OR REPLACE FUNCTION public.admin_close_game(p_game_id UUID)
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -91,9 +102,9 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized: you do not have the close_games permission';
   END IF;
 
-  -- Close the game
+  -- Close the game and flag it as admin-closed so no winner is attributed.
   UPDATE public.games
-  SET status = 'finished', finished_at = NOW()
+  SET status = 'finished', finished_at = NOW(), closed_by_admin = TRUE
   WHERE id = p_game_id
     AND status IN ('waiting', 'active');
 

@@ -1,9 +1,9 @@
-import { lazy, Suspense, useEffect, useState, useCallback, useRef } from 'react'
+import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
-import { createTileBag, refillRack } from '../../lib/tileData.js'
-import { createEmptyBoard, serializeBoard } from '../../lib/boardData.js'
+import { createGame as createGameMutation, joinGame as joinGameMutation } from '../../lib/gameMutations.js'
+import { useUnseenResults } from '../../hooks/useUnseenResults.jsx'
 import LobbyGameRow from './LobbyGameRow.jsx'
 import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
@@ -29,7 +29,6 @@ export default function LobbyPage({ session }) {
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
   const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
   const [showSettings, setShowSettings] = useState(false)
-  const [unseenResults, setUnseenResults] = useState([]) // finished games not yet acknowledged
 
   // ── Load profile ──────────────────────────────────────────
   useEffect(() => {
@@ -60,133 +59,13 @@ export default function LobbyPage({ session }) {
 
   useEffect(() => { loadGames() }, [loadGames])
 
-  // Show a banner for any recently finished game the user hasn't dismissed yet.
-  // Extracted as a stable callback so it can be re-invoked from the real-time handler.
-  const seenKey = `wordy_seen_results_${user.id}`
-  const loadUnseenResults = useCallback(async () => {
-    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
+  const { unseenResults, loadUnseenResults, dismissResult, handleFinishedToast } =
+    useUnseenResults({ user, games, navigate })
 
-    // Query game_players first (user-scoped) then join games — guarantees we only
-    // fetch THIS user's records regardless of how many total games exist.
-    // NOTE: avoid .order() on foreign table columns — supabase-js v2 can silently
-    // fail with certain syntaxes.  Sort client-side instead.
-    const { data: gps, error: gpErr } = await supabase
-      .from('game_players')
-      .select('game_id, is_winner, dismissed_at, games!inner(id, status, finished_at, forfeit_user_id)')
-      .eq('user_id', user.id)
-      .eq('games.status', 'finished')
-      .is('dismissed_at', null)
-      .limit(50)
-    if (gpErr) { console.error('loadUnseenResults: query failed:', gpErr); return }
-
-    // localStorage is a fast local fallback; dismissed_at in DB is the source of truth
-    const unseen = (gps ?? []).filter(gp => !seen.has(gp.game_id))
-    if (unseen.length === 0) { setUnseenResults([]); return }
-
-    // Sort newest-first client-side
-    unseen.sort((a, b) => (b.games?.finished_at ?? '').localeCompare(a.games?.finished_at ?? ''))
-
-    // Fetch ALL players for those games in a flat separate query (avoids RLS blocking nested join)
-    const gameIds = unseen.map(gp => gp.game_id)
-    const { data: allGamePlayers } = await supabase
-      .from('game_players')
-      .select('game_id, user_id, is_winner, score')
-      .in('game_id', gameIds)
-
-    // Batch-fetch all usernames
-    const allUserIds = [...new Set((allGamePlayers ?? []).map(p => p.user_id))]
-    const { data: profs } = await supabase.from('profiles').select('id, username').in('id', allUserIds)
-    const profileMap = Object.fromEntries((profs ?? []).map(p => [p.id, p.username]))
-
-    // Group players by game_id
-    const playersByGame = {}
-    for (const p of (allGamePlayers ?? [])) {
-      if (!playersByGame[p.game_id]) playersByGame[p.game_id] = []
-      playersByGame[p.game_id].push(p)
-    }
-
-    setUnseenResults(unseen.map(gp => {
-      const allPlayers = playersByGame[gp.game_id] ?? []
-      // Prefer is_winner flag; fall back to highest score if RPC didn't set it
-      const winnerPlayer = allPlayers.find(p => p.is_winner)
-        ?? allPlayers.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
-      return {
-        gameId:     gp.game_id,
-        isWinner:   gp.is_winner,
-        game:       gp.games,
-        winnerName:     profileMap[winnerPlayer?.user_id] ?? '?',
-        allPlayerNames: allPlayers.map(p => profileMap[p.user_id] ?? '?').join(' · '),
-      }
-    }))
-  }, [user.id, seenKey])
-
-  // Run on mount
-  useEffect(() => { loadUnseenResults() }, [loadUnseenResults])
-
-  function dismissResult(gameId) {
-    // Persist server-side so dismissal survives across devices/browsers
-    supabase
-      .from('game_players')
-      .update({ dismissed_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .eq('game_id', gameId)
-      .then(({ error }) => { if (error) console.error('dismiss write failed:', error) })
-    // Also keep localStorage as instant local cache
-    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
-    seen.add(gameId)
-    localStorage.setItem(seenKey, JSON.stringify([...seen]))
-    setUnseenResults(prev => prev.filter(r => r.gameId !== gameId))
-  }
-
-  // Track which game IDs the user is currently in so the real-time handler can detect finishes
-  const myGameIdsRef = useRef(new Set())
-  useEffect(() => {
-    myGameIdsRef.current = new Set(
-      games.filter(g => g.game_players.some(p => p.user_id === user.id)).map(g => g.id)
-    )
-  }, [games, user.id])
-
-  // Real-time: refresh list when a game changes.
-  // Also watch for a game the user is in finishing and show a winner notification.
-  const handleGameChange = useCallback(async (payload) => {
+  const handleGameChange = useCallback((payload) => {
     loadGames()
-    if (payload.new?.status === 'finished' && myGameIdsRef.current.has(payload.new.id)) {
-      // Refresh the persistent banner list so it appears even after the toast expires
-      // Small delay lets the finish_game RPC complete so is_winner is set in DB
-      setTimeout(() => loadUnseenResults(), 1500)
-
-      const gameId = payload.new.id
-      const { data: gps } = await supabase
-        .from('game_players')
-        .select('user_id, is_winner, score')
-        .eq('game_id', gameId)
-      // Prefer is_winner flag; fall back to highest score if RPC didn't set it
-      const winnerPlayer = gps?.find(p => p.is_winner)
-        ?? gps?.reduce((best, p) => (p.score ?? 0) > (best?.score ?? -1) ? p : best, null)
-      let name = '?'
-      if (winnerPlayer) {
-        const { data: prof } = await supabase.from('profiles').select('username').eq('id', winnerPlayer.user_id).single()
-        name = prof?.username ?? '?'
-      }
-      const headline = payload.new.forfeit_user_id
-        ? '🏳️ Opponent forfeited!'
-        : `🏆 ${name} wins!`
-      toast(
-        (t) => (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontWeight: 'bold' }}>{headline}</span>
-            <button
-              onClick={() => { navigate(`/game/${gameId}`); toast.dismiss(t.id) }}
-              style={{ fontSize: 12, textDecoration: 'underline', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            >
-              View final board →
-            </button>
-          </div>
-        ),
-        { duration: 15000 }
-      )
-    }
-  }, [loadGames, loadUnseenResults, navigate, user.id])
+    handleFinishedToast(payload)
+  }, [loadGames, handleFinishedToast])
 
   useEffect(() => {
     const channel = supabase.channel('lobby-updates')
@@ -220,30 +99,12 @@ export default function LobbyPage({ session }) {
     }
   }, [loadGames, loadUnseenResults, handleGameChange])
 
-  // ── Create a new game ─────────────────────────────────────
   async function createGame() {
     setCreating(true)
     try {
-      // Build the initial tile bag
-      let bag  = createTileBag()
-      let rack = []
-      ;({ rack, bag } = refillRack(rack, bag))
-
-      const board = serializeBoard(createEmptyBoard())
-
-      const { data: game, error: gameErr } = await supabase
-        .from('games')
-        .insert({ status: 'waiting', max_players: maxPlayers, tile_bag: bag, board, created_by: user.id })
-        .select().single()
-      if (gameErr) throw gameErr
-
-      const { error: playerErr } = await supabase
-        .from('game_players')
-        .insert({ game_id: game.id, user_id: user.id, player_index: 0, rack })
-      if (playerErr) throw playerErr
-
+      const { gameId } = await createGameMutation({ user, maxPlayers })
       toast.success('🎉 Game created! Waiting for friends to join…')
-      navigate(`/game/${game.id}`)
+      navigate(`/game/${gameId}`)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -251,56 +112,14 @@ export default function LobbyPage({ session }) {
     }
   }
 
-  // ── Join an existing game ─────────────────────────────────
   async function joinGame(game) {
     setJoiningId(game.id)
     try {
-      // Check if already in game
-      const alreadyIn = game.game_players.some(p => p.user_id === user.id)
-      if (alreadyIn) { navigate(`/game/${game.id}`); return }
-
-      const playerIndex = game.game_players.length
-      if (playerIndex >= game.max_players) {
-        toast.error('This game is full!')
-        return
-      }
-
-      // Get fresh bag & deal rack
-      const { data: fresh } = await supabase
-        .from('games').select('tile_bag').eq('id', game.id).single()
-      let bag  = fresh.tile_bag
-      let rack = []
-      ;({ rack, bag } = refillRack(rack, bag))
-
-      const { error: joinErr } = await supabase
-        .from('game_players')
-        .insert({ game_id: game.id, user_id: user.id, player_index: playerIndex, rack })
-      if (joinErr) throw joinErr
-
-      // Update the tile bag
-      await supabase.from('games').update({ tile_bag: bag }).eq('id', game.id)
-
-      // If we now have enough players, start the game with a random first player
-      if (playerIndex + 1 === game.max_players) {
-        const randomFirst = Math.floor(Math.random() * game.max_players)
-        await supabase.from('games').update({ status: 'active', current_player_idx: randomFirst }).eq('id', game.id)
-      }
-
-      // Notify the game creator that someone joined (fire-and-forget)
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/Push-Notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ type: 'player_joined', game_id: game.id, joiner_name: profile?.username }),
+      const { gameId, alreadyIn } = await joinGameMutation({
+        user, game, joinerName: profile?.username,
       })
-        .then(r => r.json().then(d => console.log('[push-notify]', r.status, d)))
-        .catch(e => console.warn('[push-notify] failed:', e))
-
-      toast.success('🟣 Joined! Good luck!')
-      navigate(`/game/${game.id}`)
+      if (!alreadyIn) toast.success('🟣 Joined! Good luck!')
+      navigate(`/game/${gameId}`)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -427,8 +246,13 @@ export default function LobbyPage({ session }) {
             {/* Completed games — banners persist until user dismisses them */}
             <SQCompletedGamesCard emptyMessage="🪧 No finished games yet.">
               {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
-                const isForfeit = !!g?.forfeit_user_id
-                const headline = isForfeit ? '🏳️ Opponent forfeited!' : `🏆 ${winnerName} wins!`
+                const headline = g?.closed_by_admin
+                  ? '🛑 Game closed by admin'
+                  : g?.forfeit_user_id
+                    ? '🏳️ Opponent forfeited!'
+                    : winnerName
+                      ? `🏆 ${winnerName} wins!`
+                      : "🤝 It's a tie!"
                 return (
                   <div
                     key={gameId}

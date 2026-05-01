@@ -14,10 +14,10 @@ import {
   SQLobbyHeader,
   SQDropdown,
   SQSettingsRow,
-  SQModal,
-  SQButton,
 } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 import AvatarMenu from '../lobby/AvatarMenu.jsx'
+import BlankTileModal from './modals/BlankTileModal.jsx'
+import ForfeitModal from './modals/ForfeitModal.jsx'
 
 export default function GamePage({ session }) {
   const { id: gameId } = useParams()
@@ -447,11 +447,13 @@ export default function GamePage({ session }) {
       {game.status === 'finished' && (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
           <p className="font-display text-xl mb-1">
-            {game.forfeit_user_id
-              ? `🏳️ ${profiles[game.forfeit_user_id]?.username ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id]?.username ?? '?'} wins!`
-              : players.find(p => p.is_winner)
-                ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id]?.username ?? '?'} wins!`
-                : "🏆 It's a tie!"}
+            {game.closed_by_admin
+              ? '🛑 Game closed by admin'
+              : game.forfeit_user_id
+                ? `🏳️ ${profiles[game.forfeit_user_id]?.username ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id]?.username ?? '?'} wins!`
+                : players.find(p => p.is_winner)
+                  ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id]?.username ?? '?'} wins!`
+                  : "🤝 It's a tie!"}
           </p>
           <div className="flex items-center justify-center gap-4 mt-2">
             <button onClick={() => navigate('/lobby')} className="bg-white/20 hover:bg-white/30 text-white font-bold text-sm px-4 py-1.5 rounded-full transition-colors">
@@ -468,58 +470,5 @@ export default function GamePage({ session }) {
         <ForfeitModal onConfirm={forfeitGame} onCancel={() => setForfeitModal(false)} />
       )}
     </SQBoardShell>
-  )
-}
-
-// ── Blank tile letter picker ──────────────────────────────────
-function BlankTileModal({ onConfirm, onCancel }) {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
-  return (
-    <SQModal
-      open={true}
-      onClose={onCancel}
-      title="🃏 Choose a letter for your blank tile"
-    >
-      <div className="grid grid-cols-9 gap-1">
-        {letters.map(l => (
-          <button key={l} onClick={() => onConfirm(l)}
-            className="h-8 w-8 rounded-lg bg-wordy-100 hover:bg-wordy-300 text-wordy-800 font-bold text-xs transition-colors dark:bg-[#2d1b55] dark:hover:bg-wordy-700 dark:text-wordy-200">
-            {l}
-          </button>
-        ))}
-      </div>
-      <div className="mt-4">
-        <SQButton variant="secondary" className="w-full text-sm" onClick={onCancel}>Cancel</SQButton>
-      </div>
-    </SQModal>
-  )
-}
-
-// ── Forfeit confirmation ───────────────────────────────────────
-function ForfeitModal({ onConfirm, onCancel }) {
-  return (
-    <SQModal
-      open={true}
-      onClose={onCancel}
-      title={null}
-      actions={
-        <>
-          <SQButton variant="secondary" className="flex-1 text-sm" onClick={onCancel}>
-            Keep Playing
-          </SQButton>
-          <SQButton variant="danger" className="flex-1 text-sm" onClick={onConfirm}>
-            Yes, Forfeit
-          </SQButton>
-        </>
-      }
-    >
-      <div className="text-center">
-        <p className="text-4xl mb-3">🏳️</p>
-        <h3 className="font-display text-xl text-wordy-700 mb-2 dark:text-wordy-300">Forfeit this game?</h3>
-        <p className="text-sm text-wordy-400 dark:text-wordy-500">
-          Your opponent wins regardless of the current score.
-        </p>
-      </div>
-    </SQModal>
   )
 }

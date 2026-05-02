@@ -18,7 +18,8 @@ export function useUnseenResults({ user, games, navigate }) {
       .eq('user_id', user.id)
       .eq('games.status', 'finished')
       .is('dismissed_at', null)
-      .limit(50)
+      .order('finished_at', { referencedTable: 'games', ascending: false })
+      .limit(10)
     if (gpErr) { console.error('loadUnseenResults: query failed:', gpErr); return }
 
     const unseen = (gps ?? []).filter(gp => !seen.has(gp.game_id))

@@ -362,3 +362,13 @@ Two pieces removed because the hub now owns them:
 No source still references Turnstile (only the Scrabble dictionary at `public/words.txt` keeps `TURNSTILE`/`TURNSTILES` as legit playable words). Service worker has no `CACHE_VERSION` to bump — `public/sw.js` only handles push events.
 
 **Commit:** `c22a165`.
+
+### Session: 2026-05-03 — Completed-games banners not appearing
+
+Rae reported that her last ten finished-game banners stopped showing in the Wordy lobby. DB query (`select * from game_players where user_id=... and games.status='finished'`) returned all 15 most recent finished games with `dismissed_at IS NULL` — so the DB believed nothing was dismissed.
+
+**Root cause:** `useUnseenResults.jsx` had a second client-side filter using `localStorage[wordy_seen_results_${userId}]`. Originally the only dismissal mechanism (commit `e5ca2a0`, 2026-03-25), it stayed in place after the DB-backed `dismissed_at` column was added (commit `cf8949d`, 2026-04-09). The localStorage write happens unconditionally in `dismissResult`, even if the DB write fails — so any prior silent DB failure left orphan localStorage entries that hid banners forever.
+
+**Fix:** Removed the localStorage layer entirely. DB `dismissed_at` is now the only source of truth. `dismissResult` still does an immediate `setUnseenResults` filter for snappy UX. Cross-device dismissals now sync via DB. Failed DB writes mean banners reappear on reload (recoverable) instead of being silently hidden (the bug).
+
+**Commit:** `e71c311`.

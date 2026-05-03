@@ -59,7 +59,7 @@ export default function LobbyPage({ session }) {
 
   useEffect(() => { loadGames() }, [loadGames])
 
-  const { unseenResults, loadUnseenResults, dismissResult, handleFinishedToast } =
+  const { unseenResults, loadUnseenResults, handleFinishedToast } =
     useUnseenResults({ user, games, navigate })
 
   const handleGameChange = useCallback((payload) => {
@@ -243,7 +243,7 @@ export default function LobbyPage({ session }) {
               )}
             </div>
 
-            {/* Completed games — banners persist until user dismisses them */}
+            {/* Completed games — last 10 finished games */}
             <SQCompletedGamesCard emptyMessage="🪧 No finished games yet.">
               {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
                 const headline = g?.closed_by_admin
@@ -274,14 +274,6 @@ export default function LobbyPage({ session }) {
                       className="shrink-0 text-xs font-bold text-wordy-700 dark:text-wordy-200 underline hover:no-underline"
                     >
                       View Game
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => dismissResult(gameId)}
-                      aria-label="Dismiss result"
-                      className="shrink-0 w-7 h-7 rounded-full text-wordy-500 hover:text-wordy-700 hover:bg-white/60 dark:text-wordy-300 dark:hover:bg-black/20 flex items-center justify-center text-sm"
-                    >
-                      ✕
                     </button>
                   </div>
                 )

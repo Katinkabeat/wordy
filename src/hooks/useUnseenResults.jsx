@@ -2,27 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase.js'
 
-// Owns the "you have a finished game you haven't acknowledged" banner state.
-// Loads on mount, exposes dismissResult, and listens to the supplied games
-// list so it can react when one of the user's games transitions to finished.
+// Owns the "last 10 completed games" banner state for the lobby. Loads on
+// mount and listens to the supplied games list so it can react when one of
+// the user's games transitions to finished.
 export function useUnseenResults({ user, games, navigate }) {
   const [unseenResults, setUnseenResults] = useState([])
 
   const loadUnseenResults = useCallback(async () => {
-    const { data: gps, error: gpErr } = await supabase
-      .from('game_players')
-      .select('game_id, is_winner, dismissed_at, games!inner(id, status, finished_at, forfeit_user_id, closed_by_admin)')
-      .eq('user_id', user.id)
-      .eq('games.status', 'finished')
-      .is('dismissed_at', null)
-      .order('finished_at', { referencedTable: 'games', ascending: false })
+    // Query games as the parent so order-by finished_at sorts the rows we
+    // actually limit on (ordering by a joined column only sorts the embed).
+    const { data: gms, error: gErr } = await supabase
+      .from('games')
+      .select('id, status, finished_at, forfeit_user_id, closed_by_admin, game_players!inner(user_id, is_winner)')
+      .eq('status', 'finished')
+      .eq('game_players.user_id', user.id)
+      .order('finished_at', { ascending: false })
       .limit(10)
-    if (gpErr) { console.error('loadUnseenResults: query failed:', gpErr); return }
+    if (gErr) { console.error('loadUnseenResults: query failed:', gErr); return }
 
-    const unseen = gps ?? []
+    const unseen = (gms ?? []).map(g => ({
+      game_id: g.id,
+      is_winner: g.game_players?.[0]?.is_winner ?? false,
+      games: g,
+    }))
     if (unseen.length === 0) { setUnseenResults([]); return }
-
-    unseen.sort((a, b) => (b.games?.finished_at ?? '').localeCompare(a.games?.finished_at ?? ''))
 
     const gameIds = unseen.map(gp => gp.game_id)
     const { data: allGamePlayers } = await supabase
@@ -56,16 +59,6 @@ export function useUnseenResults({ user, games, navigate }) {
   }, [user.id])
 
   useEffect(() => { loadUnseenResults() }, [loadUnseenResults])
-
-  function dismissResult(gameId) {
-    supabase
-      .from('game_players')
-      .update({ dismissed_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-      .eq('game_id', gameId)
-      .then(({ error }) => { if (error) console.error('dismiss write failed:', error) })
-    setUnseenResults(prev => prev.filter(r => r.gameId !== gameId))
-  }
 
   // Track which game IDs the user is currently in, so the realtime handler
   // can detect when one of their games transitions to finished.
@@ -121,5 +114,5 @@ export function useUnseenResults({ user, games, navigate }) {
     )
   }, [loadUnseenResults, navigate])
 
-  return { unseenResults, loadUnseenResults, dismissResult, handleFinishedToast }
+  return { unseenResults, loadUnseenResults, handleFinishedToast }
 }

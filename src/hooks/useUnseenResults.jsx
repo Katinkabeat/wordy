@@ -7,11 +7,8 @@ import { supabase } from '../lib/supabase.js'
 // list so it can react when one of the user's games transitions to finished.
 export function useUnseenResults({ user, games, navigate }) {
   const [unseenResults, setUnseenResults] = useState([])
-  const seenKey = `wordy_seen_results_${user.id}`
 
   const loadUnseenResults = useCallback(async () => {
-    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
-
     const { data: gps, error: gpErr } = await supabase
       .from('game_players')
       .select('game_id, is_winner, dismissed_at, games!inner(id, status, finished_at, forfeit_user_id, closed_by_admin)')
@@ -22,7 +19,7 @@ export function useUnseenResults({ user, games, navigate }) {
       .limit(10)
     if (gpErr) { console.error('loadUnseenResults: query failed:', gpErr); return }
 
-    const unseen = (gps ?? []).filter(gp => !seen.has(gp.game_id))
+    const unseen = gps ?? []
     if (unseen.length === 0) { setUnseenResults([]); return }
 
     unseen.sort((a, b) => (b.games?.finished_at ?? '').localeCompare(a.games?.finished_at ?? ''))
@@ -56,7 +53,7 @@ export function useUnseenResults({ user, games, navigate }) {
         allPlayerNames: allPlayers.map(p => profileMap[p.user_id] ?? '?').join(' · '),
       }
     }))
-  }, [user.id, seenKey])
+  }, [user.id])
 
   useEffect(() => { loadUnseenResults() }, [loadUnseenResults])
 
@@ -67,9 +64,6 @@ export function useUnseenResults({ user, games, navigate }) {
       .eq('user_id', user.id)
       .eq('game_id', gameId)
       .then(({ error }) => { if (error) console.error('dismiss write failed:', error) })
-    const seen = new Set(JSON.parse(localStorage.getItem(seenKey) ?? '[]'))
-    seen.add(gameId)
-    localStorage.setItem(seenKey, JSON.stringify([...seen]))
     setUnseenResults(prev => prev.filter(r => r.gameId !== gameId))
   }
 

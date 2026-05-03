@@ -363,12 +363,12 @@ No source still references Turnstile (only the Scrabble dictionary at `public/wo
 
 **Commit:** `c22a165`.
 
-### Session: 2026-05-03 — Completed-games banners not appearing
+### Session: 2026-05-03 — Completed-games banners showing wrong games
 
-Rae reported that her last ten finished-game banners stopped showing in the Wordy lobby. DB query (`select * from game_players where user_id=... and games.status='finished'`) returned all 15 most recent finished games with `dismissed_at IS NULL` — so the DB believed nothing was dismissed.
+Rae reported her last 10 finished-game banners stopped showing in the lobby. After the first investigation showed `dismissed_at IS NULL` for all 15 most recent finished games in DB, removed the localStorage filter (commit `e71c311`). Banners reappeared — but they were Rae's *oldest* games (March Test/Dino era), not her recent multiplayer games.
 
-**Root cause:** `useUnseenResults.jsx` had a second client-side filter using `localStorage[wordy_seen_results_${userId}]`. Originally the only dismissal mechanism (commit `e5ca2a0`, 2026-03-25), it stayed in place after the DB-backed `dismissed_at` column was added (commit `cf8949d`, 2026-04-09). The localStorage write happens unconditionally in `dismissResult`, even if the DB write fails — so any prior silent DB failure left orphan localStorage entries that hid banners forever.
+**Real root cause:** Query in `useUnseenResults.jsx` used `.order('finished_at', { referencedTable: 'games', ascending: false })` on a joined column. PostgREST only sorts the embedded payload that way, not the parent rows. With `LIMIT 10` applied to unsorted parent rows (default order is by id/joined_at ascending), the query returned the 10 oldest qualifying rows. Client-side sort on line 25 then arranged those 10 oldest by finished_at desc — but they were still the wrong 10.
 
-**Fix:** Removed the localStorage layer entirely. DB `dismissed_at` is now the only source of truth. `dismissResult` still does an immediate `setUnseenResults` filter for snappy UX. Cross-device dismissals now sync via DB. Failed DB writes mean banners reappear on reload (recoverable) instead of being silently hidden (the bug).
+**Fix (commit `0459696`):** Query rewritten to use `games` as the parent table with `game_players!inner(...)` join filter. Order-by `finished_at` now sorts the rows we limit on. Also removed the `dismissed_at IS NULL` filter and the X dismiss button entirely — section now shows the 10 most recent finished games unconditionally.
 
-**Commit:** `e71c311`.
+**Commits:** `e71c311` (localStorage removal), `0459696` (query rewrite + dismiss removal).

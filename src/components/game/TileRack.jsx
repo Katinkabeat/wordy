@@ -5,7 +5,7 @@ export default function TileRack({ rack, selected, onSelect, myTurn, exchangeMod
   const s = tileStyle(tileHue, isDark)
 
   return (
-    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+    <div className="grid grid-cols-7 gap-1.5 max-w-[316px] mx-auto">
       {rack.map((letter, idx) => {
         const val         = TILE_VALUES[letter] ?? 0
         const isSelected  = selected?.rackIdx === idx
@@ -36,7 +36,7 @@ export default function TileRack({ rack, selected, onSelect, myTurn, exchangeMod
             className={`
               relative flex items-center justify-center rounded-lg font-bold select-none cursor-pointer
               transition-all duration-100
-              w-10 h-11 text-lg
+              w-full h-11 text-lg min-w-0
               ${isSelected  ? 'ring-2 ring-pink-400' : ''}
               ${!myTurn     ? 'opacity-50 cursor-default' : ''}
             `}

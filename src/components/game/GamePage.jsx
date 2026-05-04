@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { extractWords, calculateScore } from '../../lib/gameLogic.js'
+import { joinGame as joinGameMutation } from '../../lib/gameMutations.js'
 import ZoomableBoard from './ZoomableBoard.jsx'
 import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
@@ -44,6 +46,46 @@ export default function GamePage({ session }) {
   const [passConfirm, setPassConfirm]   = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef(null)
+  const [autoJoining, setAutoJoining] = useState(false)
+  const autoJoinAttemptedRef = useRef(false)
+
+  // Auto-accept invite when arriving from a notification deep-link.
+  // The notification URL goes straight to /game/:id, so a user who hasn't
+  // formally joined yet (no game_players row) lands on a game they can't
+  // play. Detect that state and join on their behalf.
+  useEffect(() => {
+    if (!game || !players) return
+    if (autoJoinAttemptedRef.current || autoJoining) return
+    if (myPlayer) return
+
+    const iAmInvited = (game.invited_user_ids ?? []).includes(user.id)
+    const seatAvailable = players.length < game.max_players
+    if (!iAmInvited || game.status !== 'waiting' || !seatAvailable) {
+      autoJoinAttemptedRef.current = true
+      toast.error("You're not in this game.")
+      navigate('/lobby')
+      return
+    }
+
+    autoJoinAttemptedRef.current = true
+    setAutoJoining(true)
+    ;(async () => {
+      try {
+        await joinGameMutation({
+          user,
+          game: { ...game, game_players: players },
+          joinerName: profiles[user.id]?.username,
+        })
+        toast.success('🟣 Joined! Good luck!')
+        await loadGame({ force: true })
+      } catch (err) {
+        toast.error(err.message ?? "Couldn't join game")
+        navigate('/lobby')
+      } finally {
+        setAutoJoining(false)
+      }
+    })()
+  }, [game, players, myPlayer, autoJoining, user, profiles, loadGame, navigate])
 
   // ── Close settings menu on outside click ──────────────────
   useEffect(() => {
@@ -227,7 +269,7 @@ export default function GamePage({ session }) {
   }, [board, placements])
 
   // ── Render ────────────────────────────────────────────────
-  if (!game || !board) {
+  if (!game || !board || autoJoining || (game && players && !myPlayer && !autoJoinAttemptedRef.current)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-wordy-50 dark:bg-[#0f0a1e]">
         {loadError ? (
@@ -241,7 +283,9 @@ export default function GamePage({ session }) {
             </div>
           </div>
         ) : (
-          <p className="font-display text-2xl text-wordy-400 animate-pulse dark:text-wordy-300">Loading game… 🟣</p>
+          <p className="font-display text-2xl text-wordy-400 animate-pulse dark:text-wordy-300">
+            {autoJoining ? 'Joining game… 🟣' : 'Loading game… 🟣'}
+          </p>
         )}
       </div>
     )

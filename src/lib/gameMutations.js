@@ -5,16 +5,34 @@ import { createEmptyBoard, serializeBoard } from './boardData.js'
 // Pure data ops for the lobby. UI concerns (toast, navigate, button-state)
 // stay in the caller — these throw on failure and return the new game id.
 
-export async function createGame({ user, maxPlayers }) {
+/**
+ * Create a new game. Pass `invitedUserIds` (uuid[]) to invite specific
+ * friends. Up to `maxPlayers - 1` invitees allowed. Their slots are
+ * reserved (randos can only fill unreserved slots). Auto-cancels in
+ * 24h if invited; 7d if open. expires_at is filled by the
+ * wordy_set_game_expiry trigger — we don't pass it.
+ */
+export async function createGame({ user, maxPlayers, invitedUserIds = [] }) {
   let bag  = createTileBag()
   let rack = []
   ;({ rack, bag } = refillRack(rack, bag))
 
   const board = serializeBoard(createEmptyBoard())
 
+  const insertRow = {
+    status: 'waiting',
+    max_players: maxPlayers,
+    tile_bag: bag,
+    board,
+    created_by: user.id,
+  }
+  if (invitedUserIds && invitedUserIds.length > 0) {
+    insertRow.invited_user_ids = invitedUserIds
+  }
+
   const { data: game, error: gameErr } = await supabase
     .from('games')
-    .insert({ status: 'waiting', max_players: maxPlayers, tile_bag: bag, board, created_by: user.id })
+    .insert(insertRow)
     .select().single()
   if (gameErr) throw gameErr
 
@@ -24,6 +42,28 @@ export async function createGame({ user, maxPlayers }) {
   if (playerErr) throw playerErr
 
   return { gameId: game.id }
+}
+
+/**
+ * Cancel a game the current user created. Server enforces:
+ *   - caller is the creator
+ *   - status is 'waiting' or 'active'
+ *   - no game_moves exist
+ */
+export async function cancelGame(gameId) {
+  const { error } = await supabase.rpc('wordy_cancel_game', { p_game_id: gameId })
+  if (error) throw error
+}
+
+/**
+ * Sweeps any waiting games past expires_at:
+ *   - 2+ players joined → auto-start
+ *   - <2 joined        → auto-cancel
+ * Safe to call from anywhere; only acts on stale rows.
+ */
+export async function autoStartOrCancelStale() {
+  const { error } = await supabase.rpc('wordy_auto_start_or_cancel_stale')
+  if (error) throw error
 }
 
 export async function joinGame({ user, game, joinerName }) {

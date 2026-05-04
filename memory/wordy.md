@@ -372,3 +372,39 @@ Rae reported her last 10 finished-game banners stopped showing in the lobby. Aft
 **Fix (commit `0459696`):** Query rewritten to use `games` as the parent table with `game_players!inner(...)` join filter. Order-by `finished_at` now sorts the rows we limit on. Also removed the `dismissed_at IS NULL` filter and the X dismiss button entirely — section now shows the 10 most recent finished games unconditionally.
 
 **Commits:** `e71c311` (localStorage removal), `0459696` (query rewrite + dismiss removal).
+
+
+### Session: 2026-05-03 — Invite-a-friend feature
+
+Ports Snibble's friend-invite pattern to Wordy with Wordy-specific multiplayer twists.
+
+**Schema (`wordy-invite-friend-migration.sql`, applied):**
+- `games.invited_user_ids` (uuid[]) — multi-friend invite (Wordy supports up to 4 players)
+- `games.expires_at` (timestamptz) — auto-set by `wordy_set_game_expiry` BEFORE-INSERT trigger; 24h for invited, 7d for open
+- `games.cancelled_at` (timestamptz?) — set when creator manually cancels
+- `'cancelled'` and `'expired'` added to status check constraint
+- Read-RLS replaced — fully-invited games hidden from non-participants. "Fully invited" = cardinality(invited_user_ids) >= max_players-1, i.e. no unreserved slots
+- INSERT-RLS on game_players replaced with reserved-slot check: a non-invitee can only join if (current_player_count + pending_invitee_count) < max_players. Invitees can always join.
+- `wordy_cancel_game(p_game_id)` RPC — creator-only, blocked once any game_moves exist
+- `wordy_auto_start_or_cancel_stale()` RPC — sweeps waiting games past expires_at; if 2+ players joined, flips to active with random first turn; else flips to cancelled
+- AFTER-INSERT push trigger fires when invited_user_ids non-empty → POSTs to push-notification with type=`game_invited`
+
+**Edge function (deployed):** new `game_invited` handler in push-notification — fans out one push per invitee with "{inviter} invited you to a Wordy game" body.
+
+**Frontend:**
+- `src/hooks/useFriends.js` — same shape as Snibble/Rungles
+- `src/components/lobby/CreateGameSheet.jsx` (new) — toggle (Open/With friends), player count picker (2/3/4), search input, multi-select friend list with cap = max_players-1, dynamic copy reflecting remaining unreserved slots
+- `src/lib/gameMutations.js` — `createGame` accepts `invitedUserIds` array; new `cancelGame` and `autoStartOrCancelStale` helpers
+- `src/components/lobby/LobbyPage.jsx` — replaces inline create-card with sheet trigger; lazy-calls `autoStartOrCancelStale` on each load; new `pendingInviteeNames` lookup so creator's row can render "📨 Invited X, Y" subtext; bucket logic adds invitedToYou (bumps to top of list)
+- `src/components/lobby/LobbyGameRow.jsx` — accepts `isInviteToMe` (amber row + "Accept" button), `pendingInviteeNames` (drives invite subtext on creator's rows), `onCancel` (✕ button on creator's waiting rows)
+
+**Behavior:**
+- Open game: anyone joins, max_players FCFS, auto-cancel at 7d
+- Invited game with all slots reserved (e.g. 3-player + 2 invitees): private, only invitees + creator see it
+- Invited game with unreserved slots (e.g. 4-player + 2 invitees): visible in open lobby, randos can fill the 1 unreserved slot
+- 24h timeout: if 2+ players joined → auto-start; else auto-cancel
+
+**URL gotcha:** Wordy's edge function is deployed at `/functions/v1/push-notification` (lowercase). Earlier had `Push-Notification` (capital) in the migration — fixed in DB and migration file.
+
+**Verified in preview:** sheet opens with player count + Open mode; toggle to Friends mode shows correct friend list (Krispy/Onyi/snuggie); selecting 2 of 3 updates description to "Remaining 1 slot will fill from the open lobby"; button label updates to "Send invites (2 friends)"; ✕ Cancel game button appears on existing waiting game (1/2).
+

@@ -8,7 +8,21 @@ const NUDGE_COOLDOWN_MS = 12 * 60 * 60 * 1000 // 12 hours
 // status label, and the join/resume button. The 🔔 nudge button only
 // appears when it's the current user's opponent's turn AND it's been
 // more than 12h since the turn started AND no nudge fired in the last 12h.
-export default function LobbyGameRow({ game, userId, onJoin, joiningId, profile }) {
+//
+// Invite-aware variants:
+//   • isInviteToMe: amber row with "Accept" button + "{creator} invited
+//     you" subtext. Used in invitedToYou bucket.
+//   • onCancel: ✕ button on creator's own waiting rows.
+//   • pendingInviteeNames: { uuid → username } for any invitees that
+//     haven't yet joined, used to render "Invited X, Y" subtext on the
+//     creator's own row.
+export default function LobbyGameRow({
+  game, userId, onJoin, joiningId, profile,
+  isInviteToMe = false,
+  pendingInviteeNames,
+  onCancel,
+  cancelDisabled,
+}) {
   const [nudging, setNudging] = useState(false)
   const [justNudged, setJustNudged] = useState(false)
 
@@ -28,9 +42,26 @@ export default function LobbyGameRow({ game, userId, onJoin, joiningId, profile 
     if (mins  > 0) return `${mins}m ago`
     return 'just now'
   })()
-  const statusLabel = game.status === 'active'
-    ? (turnTimeAgo ?? '🟢 In progress')
-    : { waiting: '⏳ Waiting for players', finished: '✅ Finished' }[game.status]
+  // Pending invitees = those in invited_user_ids who haven't yet joined.
+  const joinedIds = new Set(players.map(p => p.user_id))
+  const pendingInviteeIds = (game.invited_user_ids ?? []).filter(id => !joinedIds.has(id))
+  const iAmCreator = game.created_by === userId
+
+  let statusLabel
+  if (isInviteToMe) {
+    const creatorPlayer = players.find(p => p.user_id === game.created_by)
+    const inviterName = creatorPlayer?.profiles?.username ?? 'Someone'
+    statusLabel = `📨 ${inviterName} invited you`
+  } else if (game.status === 'waiting' && iAmCreator && pendingInviteeIds.length > 0) {
+    const names = pendingInviteeIds
+      .map(id => pendingInviteeNames?.[id] ?? 'friend')
+      .join(', ')
+    statusLabel = `📨 Invited ${names}`
+  } else if (game.status === 'active') {
+    statusLabel = turnTimeAgo ?? '🟢 In progress'
+  } else {
+    statusLabel = { waiting: '⏳ Waiting for players', finished: '✅ Finished' }[game.status]
+  }
 
   // Nudge eligibility: active game, not my turn, turn started > 12h ago,
   // last nudge either null or > 12h ago
@@ -83,7 +114,11 @@ export default function LobbyGameRow({ game, userId, onJoin, joiningId, profile 
   }
 
   return (
-    <div className="flex items-center justify-between bg-wordy-50 rounded-xl px-3 py-2 border border-wordy-100">
+    <div className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
+      isInviteToMe
+        ? 'bg-amber-50 dark:bg-[#2a1f10] border-amber-200 dark:border-amber-700'
+        : 'bg-wordy-50 border-wordy-100'
+    }`}>
       <div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {players.map((p, i) => {
@@ -124,19 +159,41 @@ export default function LobbyGameRow({ game, userId, onJoin, joiningId, profile 
         </div>
         <p className="text-xs text-wordy-400 mt-0.5">{statusLabel}</p>
       </div>
-      <button
-        onClick={() => onJoin(game)}
-        disabled={joiningId === game.id || (isFull && !isMyGame)}
-        className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 min-w-[5rem] ${
-          isMyGame
-            ? 'btn-primary'
-            : isFull
-            ? 'opacity-40 cursor-default border border-wordy-200 text-wordy-400'
-            : 'btn-primary'
-        }`}
-      >
-        {joiningId === game.id ? '…' : isMyGame ? '▶ Resume' : '+ Join'}
-      </button>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelDisabled}
+            className="w-7 h-7 grid place-items-center rounded-full text-wordy-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 transition-colors"
+            aria-label="Cancel game"
+            title="Cancel game"
+          >
+            ✕
+          </button>
+        )}
+        <button
+          onClick={() => onJoin(game)}
+          disabled={joiningId === game.id || (isFull && !isMyGame && !isInviteToMe)}
+          className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all shrink-0 min-w-[5rem] ${
+            isInviteToMe
+              ? 'btn-primary bg-amber-500 hover:bg-amber-600'
+              : isMyGame
+                ? 'btn-primary'
+                : isFull
+                  ? 'opacity-40 cursor-default border border-wordy-200 text-wordy-400'
+                  : 'btn-primary'
+          }`}
+        >
+          {joiningId === game.id
+            ? '…'
+            : isInviteToMe
+              ? 'Accept'
+              : isMyGame
+                ? '▶ Resume'
+                : '+ Join'}
+        </button>
+      </div>
     </div>
   )
 }

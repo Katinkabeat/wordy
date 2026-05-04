@@ -1,10 +1,15 @@
-import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
-import { createGame as createGameMutation, joinGame as joinGameMutation } from '../../lib/gameMutations.js'
+import {
+  joinGame as joinGameMutation,
+  cancelGame as cancelGameMutation,
+  autoStartOrCancelStale,
+} from '../../lib/gameMutations.js'
 import { useUnseenResults } from '../../hooks/useUnseenResults.jsx'
 import LobbyGameRow from './LobbyGameRow.jsx'
+import CreateGameSheet from './CreateGameSheet.jsx'
 import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
 // Admin-only panel — split out so non-admins (the vast majority of users)
@@ -23,9 +28,9 @@ export default function LobbyPage({ session }) {
 
   const [profile, setProfile]         = useState(null)
   const [games, setGames]             = useState([])
-  const [maxPlayers, setMax]          = useState(2)
-  const [creating, setCreating]       = useState(false)
   const [joiningId, setJoiningId]     = useState(null)
+  const [cancellingId, setCancellingId] = useState(null)
+  const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
   const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
   const [showSettings, setShowSettings] = useState(false)
@@ -44,11 +49,15 @@ export default function LobbyPage({ session }) {
 
   // ── Load available games ──────────────────────────────────
   const loadGames = useCallback(async () => {
+    // Lazy server-side sweep — only acts on rows past expires_at.
+    try { await autoStartOrCancelStale() } catch { /* non-fatal */ }
+
     const { data } = await supabase
       .from('games')
       .select(`
         id, status, max_players, created_at, current_player_idx,
         turn_started_at, last_nudged_at,
+        invited_user_ids, expires_at, cancelled_at, created_by,
         game_players ( user_id, player_index, score, profiles ( username ) )
       `)
       .in('status', ['waiting', 'active'])
@@ -56,6 +65,34 @@ export default function LobbyPage({ session }) {
       .limit(20)
     setGames(data ?? [])
   }, [])
+
+  // Look up usernames for invitees that aren't yet game_players (so we
+  // can show "Invited Onyi" subtext on the creator's row before they
+  // accept). One query for all pending-invitee ids across visible games.
+  const [pendingInviteeNames, setPendingInviteeNames] = useState({})
+  useEffect(() => {
+    const ids = new Set()
+    for (const g of games) {
+      if (!g.invited_user_ids) continue
+      const joined = new Set((g.game_players ?? []).map(p => p.user_id))
+      for (const id of g.invited_user_ids) {
+        if (!joined.has(id)) ids.add(id)
+      }
+    }
+    if (ids.size === 0) {
+      setPendingInviteeNames({})
+      return
+    }
+    supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', [...ids])
+      .then(({ data }) => {
+        setPendingInviteeNames(
+          Object.fromEntries((data ?? []).map(p => [p.id, p.username]))
+        )
+      })
+  }, [games])
 
   useEffect(() => { loadGames() }, [loadGames])
 
@@ -99,16 +136,18 @@ export default function LobbyPage({ session }) {
     }
   }, [loadGames, loadUnseenResults, handleGameChange])
 
-  async function createGame() {
-    setCreating(true)
+  async function handleCancel(gameId) {
+    if (cancellingId) return
+    if (!confirm('Cancel this game?')) return
+    setCancellingId(gameId)
     try {
-      const { gameId } = await createGameMutation({ user, maxPlayers })
-      toast.success('🎉 Game created! Waiting for friends to join…')
-      navigate(`/game/${gameId}`)
+      await cancelGameMutation(gameId)
+      toast.success('Game cancelled.')
     } catch (err) {
-      toast.error(err.message)
+      toast.error(err.message || 'Failed to cancel')
     } finally {
-      setCreating(false)
+      setCancellingId(null)
+      loadGames()
     }
   }
 
@@ -127,15 +166,30 @@ export default function LobbyPage({ session }) {
     }
   }
 
-  const myGames   = games.filter(g => g.game_players.some(p => p.user_id === user.id))
-  const openGames = games.filter(g =>
-    !g.game_players.some(p => p.user_id === user.id) &&
-    g.status === 'waiting' &&
-    g.game_players.length < g.max_players
-  )
-  // Single Multiplayer list: open joinable games first (so users see what
-  // they can jump into), then their own active games.
-  const multiplayerGames = [...openGames, ...myGames]
+  const buckets = useMemo(() => {
+    const invitedToYou = []
+    const myGames = []
+    const openGames = []
+    for (const g of games) {
+      const iAmPlayer = (g.game_players ?? []).some(p => p.user_id === user.id)
+      const iAmInvitee = !iAmPlayer && (g.invited_user_ids ?? []).includes(user.id)
+      if (iAmInvitee && g.status === 'waiting') {
+        invitedToYou.push(g)
+      } else if (iAmPlayer) {
+        myGames.push(g)
+      } else if (g.status === 'waiting' && (g.game_players ?? []).length < g.max_players) {
+        openGames.push(g)
+      }
+    }
+    return { invitedToYou, myGames, openGames }
+  }, [games, user.id])
+
+  // Render invites first, then open games, then your own active games.
+  const multiplayerGames = [
+    ...buckets.invitedToYou,
+    ...buckets.openGames,
+    ...buckets.myGames,
+  ]
 
   return (
     <SQLobbyShell
@@ -196,45 +250,47 @@ export default function LobbyPage({ session }) {
         {/* Lobby content */}
         {lobbyTab === 'lobby' && (
           <>
-            {/* Create game panel */}
+            {/* Multiplayer */}
             <div className="card">
-              <h2 className="font-display text-xl text-wordy-700 mb-4">🌸 New Game</h2>
-              <div className="flex flex-wrap items-end gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-wordy-600 mb-1">Players</label>
-                  <div className="flex gap-2">
-                    {[2, 3, 4].map(n => (
-                      <button
-                        key={n}
-                        onClick={() => setMax(n)}
-                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
-                          maxPlayers === n
-                            ? 'bg-wordy-600 text-white shadow'
-                            : 'border-2 border-wordy-200 text-wordy-500 hover:border-wordy-400'
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={createGame} disabled={creating}
-                  className="btn-primary disabled:opacity-60"
-                >
-                  {creating ? '⏳ Creating…' : '✨ Create Game'}
-                </button>
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="font-display text-xl text-wordy-700">🎮 Multiplayer</h2>
+                {buckets.invitedToYou.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 text-amber-800 ring-1 ring-amber-300">
+                    {buckets.invitedToYou.length} invite{buckets.invitedToYou.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
-            </div>
-
-            {/* Multiplayer (open joinable games first, then my active games) */}
-            <div className="card">
-              <h2 className="font-display text-xl text-wordy-700 mb-3">🎮 Multiplayer</h2>
+              <button
+                onClick={() => setShowCreateSheet(true)}
+                className="btn-primary mb-4"
+              >
+                ✨ Create Game
+              </button>
               {multiplayerGames.length > 0 ? (
                 <div className="space-y-2">
-                  {multiplayerGames.map(g => (
-                    <LobbyGameRow key={g.id} game={g} userId={user.id} onJoin={joinGame} joiningId={joiningId} profile={profile} />
-                  ))}
+                  {multiplayerGames.map(g => {
+                    const iAmPlayer = (g.game_players ?? []).some(p => p.user_id === user.id)
+                    const iAmInvitee = !iAmPlayer && (g.invited_user_ids ?? []).includes(user.id)
+                    const iCreated = g.created_by === user.id
+                    return (
+                      <LobbyGameRow
+                        key={g.id}
+                        game={g}
+                        userId={user.id}
+                        onJoin={joinGame}
+                        joiningId={joiningId}
+                        profile={profile}
+                        isInviteToMe={iAmInvitee && g.status === 'waiting'}
+                        pendingInviteeNames={pendingInviteeNames}
+                        onCancel={
+                          iCreated && g.status === 'waiting'
+                            ? () => handleCancel(g.id)
+                            : undefined
+                        }
+                        cancelDisabled={cancellingId === g.id}
+                      />
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-4 text-wordy-300">
@@ -281,6 +337,17 @@ export default function LobbyPage({ session }) {
             </SQCompletedGamesCard>
           </>
         )}
+
+      {showCreateSheet && (
+        <CreateGameSheet
+          user={user}
+          onClose={() => setShowCreateSheet(false)}
+          onCreated={(gameId) => {
+            setShowCreateSheet(false)
+            navigate(`/game/${gameId}`)
+          }}
+        />
+      )}
     </SQLobbyShell>
   )
 }

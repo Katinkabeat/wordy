@@ -1,8 +1,9 @@
 // Supabase Edge Function: Push-Notification
-// Handles three notification types:
+// Handles four notification types:
 //   1. turn_change  — DB webhook fires when games.current_player_idx changes
 //   2. player_joined — client POST when someone joins a game
 //   3. nudge         — client POST to remind an inactive player it's their turn
+//   4. game_invited  — DB webhook fires when a game is created with invitees
 //
 // Uses the battle-tested `web-push` npm library via Deno's npm: specifier
 // to handle all the VAPID signing + payload encryption correctly.
@@ -76,6 +77,35 @@ serve(async (req: Request) => {
   try {
     const payload = await req.json()
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+    // ── Type: game_invited (from games AFTER INSERT trigger) ────
+    // record.invited_user_ids is a uuid[]. Fan out one push per invitee.
+    if (payload.type === 'game_invited') {
+      const { record } = payload
+      if (!record?.id || !record.created_by || !Array.isArray(record.invited_user_ids) || record.invited_user_ids.length === 0) {
+        return new Response(JSON.stringify({ skipped: 'missing fields' }), { status: 200, headers: corsHeaders })
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', record.created_by)
+        .maybeSingle()
+      const inviterName = profile?.username ?? 'Someone'
+
+      const results = []
+      for (const inviteeId of record.invited_user_ids) {
+        const r = await sendPushToUser(supabase, inviteeId, {
+          title: 'Wordy — game invite',
+          body: `${inviterName} invited you to a Wordy game. Tap to play! 🌸`,
+          tag: `wordy-invite-${record.id}`,
+          url: `/wordy/game/${record.id}`,
+          icon: '/wordy/favicon.svg',
+        })
+        results.push({ invitee: inviteeId, ...r })
+      }
+      return new Response(JSON.stringify({ results }), { status: 200, headers: corsHeaders })
+    }
 
     // ── Type: player_joined (from client) ───────────────────────
     if (payload.type === 'player_joined') {

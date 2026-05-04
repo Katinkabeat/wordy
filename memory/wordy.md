@@ -408,3 +408,7 @@ Ports Snibble's friend-invite pattern to Wordy with Wordy-specific multiplayer t
 
 **Verified in preview:** sheet opens with player count + Open mode; toggle to Friends mode shows correct friend list (Krispy/Onyi/snuggie); selecting 2 of 3 updates description to "Remaining 1 slot will fill from the open lobby"; button label updates to "Send invites (2 friends)"; ✕ Cancel game button appears on existing waiting game (1/2).
 
+
+## 2026-05-04 — Tile rack cross-browser wrap fix
+
+Firefox was wrapping the 7th tile to a new line because `flex-wrap` + fixed `w-10` (40px) tiles + Firefox's box-rendering quirks pushed total width past the container. Switched `TileRack.jsx` container from `flex … flex-wrap` to `grid grid-cols-7 max-w-[316px] mx-auto`, and tiles from `w-10` to `w-full min-w-0` so they fill the grid cell and gracefully scale down on viewports narrower than 316px. Same pattern applied to Rungles for consistency.

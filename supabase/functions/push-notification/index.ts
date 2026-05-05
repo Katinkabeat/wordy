@@ -26,6 +26,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper: respect the recipient's notification prefs before sending.
+// Calls sq_notification_enabled(user, app, topic) — if false, skip
+// the send entirely. Fail-open on RPC error so a transient DB blip
+// doesn't break the platform.
+async function sendIfOptedIn(
+  supabase: any,
+  userId: string,
+  app: string,
+  topic: string,
+  payload: { title: string; body: string; tag: string; url: string; icon?: string }
+): Promise<{ sent: boolean; reason?: string; via?: string }> {
+  const { data: enabled, error } = await supabase.rpc('sq_notification_enabled', {
+    p_user_id: userId,
+    p_app: app,
+    p_topic: topic,
+  })
+  if (error) {
+    console.error('sq_notification_enabled failed (fail-open):', error)
+  } else if (enabled === false) {
+    return { sent: false, reason: 'opted out' }
+  }
+  return sendPushToUser(supabase, userId, payload)
+}
+
 // Helper: send a push notification to a user, cleaning up expired subs.
 // Tries the SideQuest hub subscription first (so users who enabled
 // notifications in SideQuest get a single consolidated notification),
@@ -95,7 +119,7 @@ serve(async (req: Request) => {
 
       const results = []
       for (const inviteeId of record.invited_user_ids) {
-        const r = await sendPushToUser(supabase, inviteeId, {
+        const r = await sendIfOptedIn(supabase, inviteeId, 'wordy', 'invite', {
           title: 'Wordy — game invite',
           body: `${inviterName} invited you to a Wordy game. Tap to play! 🌸`,
           tag: `wordy-invite-${record.id}`,
@@ -121,7 +145,7 @@ serve(async (req: Request) => {
         return new Response(JSON.stringify({ skipped: 'no creator' }), { status: 200, headers: corsHeaders })
       }
 
-      const result = await sendPushToUser(supabase, game.created_by, {
+      const result = await sendIfOptedIn(supabase, game.created_by, 'wordy', 'opponent_joined', {
         title: 'Wordy — Player joined!',
         body: `${joiner_name || 'Someone'} joined your game! 🎉`,
         tag: `wordy-join-${game_id}`,
@@ -159,7 +183,7 @@ serve(async (req: Request) => {
         return new Response(JSON.stringify({ skipped: 'player not found' }), { status: 200, headers: corsHeaders })
       }
 
-      const result = await sendPushToUser(supabase, currentPlayer.user_id, {
+      const result = await sendIfOptedIn(supabase, currentPlayer.user_id, 'wordy', 'nudge', {
         title: "Wordy — It's your turn!",
         body: `${nudger_name || 'Someone'} is waiting for your move! 🔔`,
         tag: `wordy-nudge-${game_id}`,
@@ -215,7 +239,7 @@ serve(async (req: Request) => {
       }
     }
 
-    const result = await sendPushToUser(supabase, currentPlayer.user_id, {
+    const result = await sendIfOptedIn(supabase, currentPlayer.user_id, 'wordy', 'your_turn', {
       title: "Wordy — It's your turn!",
       body: `${moverName} just played. Your move! 🟣`,
       tag: `wordy-turn-${gameId}`,

@@ -460,3 +460,19 @@ queries per game load from 7 to 4 for a 4-player game. Commit `e9146f1`.
 `sq_perf_indexes.sql` migration on `game_players(user_id)`,
 `game_moves(user_id, created_at)`, plus the Rungles equivalents.
 Applied to shared Supabase via `supabase db query --linked`.
+
+## 2026-05-04 — perf: parallelize loadGame fetches
+
+Rae reported submit feels slow. Traced the submit pipeline — the DB
+writes already run in parallel and the heavy validation (word list)
+caches after first use. The hot path was `loadGame({ force: true })`
+called after every submit/pass/exchange in `useGameMutations.js`,
+which was doing 3 sequential network rounds inside `useGameData.js`:
+games → game_players → (lastMove + scores + profiles) in parallel.
+
+Collapsed to 2 rounds: the first 4 queries (games, game_players,
+last-move tiles, all-move scores) all only need `gameId` and now
+fire together via one `Promise.all`. Profiles still happens in a
+second round because it needs `user_ids` from the game_players
+result. Net effect: one round-trip removed from every move. Commit
+`10c7257`.

@@ -363,7 +363,7 @@ export default function GamePage({ session }) {
   // live OUTSIDE SQBoardShell so they're not constrained to the play area.
   const actionBar = (game.status === 'active' && myPlayer) ? (
     <div className="p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
-      <div className="max-w-xl mx-auto space-y-1">
+      <div className="max-w-xl mx-auto space-y-2">
             {/* Row 1: Tile rack */}
             <TileRack
               rack={myPlayer.rack}

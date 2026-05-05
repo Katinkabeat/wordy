@@ -2,6 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Force the browser to revalidate index.html on each load so deploys
+         show up on the next refresh (hashed JS/CSS bundles are still cached
+         by filename). Without this, GitHub Pages' default max-age=600 made
+         users see stale UI for up to 10 minutes after a push. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <link rel="icon" type="image/svg+xml" href="/wordy/favicon.svg" />
     <link rel="manifest" href="/wordy/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

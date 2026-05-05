@@ -412,3 +412,17 @@ Ports Snibble's friend-invite pattern to Wordy with Wordy-specific multiplayer t
 ## 2026-05-04 — Tile rack cross-browser wrap fix
 
 Firefox was wrapping the 7th tile to a new line because `flex-wrap` + fixed `w-10` (40px) tiles + Firefox's box-rendering quirks pushed total width past the container. Switched `TileRack.jsx` container from `flex … flex-wrap` to `grid grid-cols-7 max-w-[316px] mx-auto`, and tiles from `w-10` to `w-full min-w-0` so they fill the grid cell and gracefully scale down on viewports narrower than 316px. Same pattern applied to Rungles for consistency.
+
+## 2026-05-04 — 4-player board cut off on short mobile viewports
+
+Snuggie (Pixel) reported the bottom row of the board hidden behind the sticky action bar in 3-4 player games. The board sizes purely on viewport width, with no awareness of remaining vertical room — at 4 players the score chips wrap to two rows, eating ~70px, and on a Pixel with the URL bar visible the cumulative chrome pushed the board past the action bar.
+
+Tried a height-aware cellSize clamp first; Rae rejected because the board is already small on mobile and shouldn't shrink further. Pivoted to trimming chrome instead, board cell size unchanged (still 25px on Pixel-width):
+
+- `GamePage.jsx` action bar: outer `p-2` → `p-1.5`, inner `space-y-1.5` → `space-y-1`, shuffle row `py-2` → `py-0.5`
+- `ScorePanel.jsx` mobile chips: `py-1` → `py-0.5`, wrapped row gap `gap-2` → `gap-x-2 gap-y-1`
+- `rae-side-quest/packages/sq-ui/components/SQBoardShell.jsx` wide-mode mobile `gap-3 / py-3` → `gap-2 / py-2` (desktop unchanged so Wordy desktop + other wide-mode users like Rungles' future board games aren't affected on lg+)
+
+Saved ~32px of vertical chrome. Verified in preview at 412×780 (48px gap to action bar) and 412×730 (22px gap, still no cutoff).
+
+**Commits:** wordy `534df18`, rae-side-quest (sq-ui) `51d1d24`.

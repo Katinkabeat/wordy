@@ -41,39 +41,34 @@ export function useGameData(gameId, user) {
       // ── Phase 1: fetch ALL data before touching any state ────
       // This prevents a race where the user places a tile between two async
       // fetches and the second fetch's state update overwrites their rack.
-      const { data: g, error: gErr } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId).single()
-      if (gErr) throw gErr
-      if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
-
-      const { data: ps, error: psErr } = await supabase
-        .from('game_players')
-        .select('*')
-        .eq('game_id', gameId)
-        .order('player_index')
-      if (psErr) throw psErr
-
-      // Fetch last move, scores, and profiles in parallel (non-critical).
-      // Scores are one batched query (.in player_ids) sorted DESC by time;
-      // the first row per user_id is their most recent score. This replaces
-      // a per-player Promise.all that fired N queries (one per player).
-      const playerIds = (ps ?? []).map(p => p.user_id)
-      const [lastMovesRes, allMovesRes, profsRes] = await Promise.all([
+      //
+      // Round 1: 4 queries that only need gameId fire in parallel.
+      // (Previously games + game_players ran sequentially, adding a round-trip
+      // to every submit since loadGame is called after every mutation.)
+      const [gameRes, psRes, lastMovesRes, allMovesRes] = await Promise.all([
+        supabase.from('games').select('*').eq('id', gameId).single(),
+        supabase.from('game_players').select('*')
+          .eq('game_id', gameId).order('player_index'),
         supabase.from('game_moves').select('tiles_placed')
           .eq('game_id', gameId).eq('move_type', 'place')
           .order('created_at', { ascending: false }).limit(1),
-        playerIds.length
-          ? supabase.from('game_moves').select('user_id, score')
-              .eq('game_id', gameId)
-              .in('user_id', playerIds)
-              .order('created_at', { ascending: false })
-          : Promise.resolve({ data: [], error: null }),
-        playerIds.length
-          ? supabase.from('profiles').select('id, username').in('id', playerIds)
-          : Promise.resolve({ data: null, error: null }),
+        supabase.from('game_moves').select('user_id, score')
+          .eq('game_id', gameId)
+          .order('created_at', { ascending: false }),
       ])
+
+      const { data: g, error: gErr } = gameRes
+      if (gErr) throw gErr
+      if (!g) { toast.error('Game not found.'); navigate('/lobby'); return }
+
+      const { data: ps, error: psErr } = psRes
+      if (psErr) throw psErr
+
+      // Round 2: profiles needs user_ids from game_players.
+      const playerIds = (ps ?? []).map(p => p.user_id)
+      const profsRes = playerIds.length
+        ? await supabase.from('profiles').select('id, username').in('id', playerIds)
+        : { data: null, error: null }
 
       // ── Phase 2: guard check AFTER all fetches, BEFORE any state updates ──
       // If the user placed tiles while we were fetching, bail out entirely

@@ -362,8 +362,8 @@ export default function GamePage({ session }) {
   // Custom-positioned bits below the action bar (finished banner) need to
   // live OUTSIDE SQBoardShell so they're not constrained to the play area.
   const actionBar = (game.status === 'active' && myPlayer) ? (
-    <div className="p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-      <div className="max-w-xl mx-auto space-y-1.5">
+    <div className="p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-xl mx-auto space-y-1">
             {/* Row 1: Tile rack */}
             <TileRack
               rack={myPlayer.rack}
@@ -393,7 +393,7 @@ export default function GamePage({ session }) {
             />
 
             {/* Row 2: Shuffle + live score preview */}
-            <div className="flex items-center justify-center gap-3 py-2">
+            <div className="flex items-center justify-center gap-3 py-0.5">
               <button
                 onClick={shuffleRack}
                 className="text-xs text-wordy-400 hover:text-wordy-600 transition-colors"

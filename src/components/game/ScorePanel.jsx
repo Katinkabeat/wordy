@@ -39,7 +39,7 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
       </div>
 
       {/* ── Mobile: compact horizontal score bar ────────────── */}
-      <div className="flex lg:hidden gap-2 flex-wrap px-1">
+      <div className="flex lg:hidden gap-x-2 gap-y-1 flex-wrap px-1">
         {players.map((p, i) => {
           const name      = profiles[p.user_id]?.username ?? '?'
           const isMe      = p.user_id === userId
@@ -49,7 +49,7 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
             <div
               key={p.user_id}
               className={`
-                flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all
+                flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold transition-all
                 ${isCurrent ? 'bg-wordy-200 border-2 border-wordy-500 text-wordy-800' : 'bg-wordy-50 border border-wordy-200 text-wordy-500'}
                 ${isWinner  ? 'bg-yellow-50 border-yellow-300 text-yellow-800' : ''}
               `}

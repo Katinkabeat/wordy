@@ -362,7 +362,7 @@ export default function GamePage({ session }) {
   // Custom-positioned bits below the action bar (finished banner) need to
   // live OUTSIDE SQBoardShell so they're not constrained to the play area.
   const actionBar = (game.status === 'active' && myPlayer) ? (
-    <div className="p-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+    <div className="p-1.5">
       <div className="max-w-xl mx-auto space-y-2">
             {/* Row 1: Tile rack */}
             <TileRack

@@ -55,20 +55,21 @@ export function useGameData(gameId, user) {
         .order('player_index')
       if (psErr) throw psErr
 
-      // Fetch last move, scores, and profiles in parallel (non-critical)
+      // Fetch last move, scores, and profiles in parallel (non-critical).
+      // Scores are one batched query (.in player_ids) sorted DESC by time;
+      // the first row per user_id is their most recent score. This replaces
+      // a per-player Promise.all that fired N queries (one per player).
       const playerIds = (ps ?? []).map(p => p.user_id)
-      const [lastMovesRes, scoresResults, profsRes] = await Promise.all([
+      const [lastMovesRes, allMovesRes, profsRes] = await Promise.all([
         supabase.from('game_moves').select('tiles_placed')
           .eq('game_id', gameId).eq('move_type', 'place')
           .order('created_at', { ascending: false }).limit(1),
         playerIds.length
-          ? Promise.all(playerIds.map(pid =>
-              supabase.from('game_moves').select('score, user_id')
-                .eq('game_id', gameId).eq('user_id', pid)
-                .order('created_at', { ascending: false }).limit(1)
-                .then(({ data }) => data?.[0] ?? null)
-            ))
-          : Promise.resolve([]),
+          ? supabase.from('game_moves').select('user_id, score')
+              .eq('game_id', gameId)
+              .in('user_id', playerIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
         playerIds.length
           ? supabase.from('profiles').select('id, username').in('id', playerIds)
           : Promise.resolve({ data: null, error: null }),
@@ -96,13 +97,15 @@ export function useGameData(gameId, user) {
 
       setLastMoveTiles(lastMovesRes?.data?.[0]?.tiles_placed ?? [])
 
-      if (scoresResults.length) {
-        const scoreMap = {}
-        for (const r of scoresResults) {
-          if (r?.score != null) scoreMap[r.user_id] = r.score
+      // Rows are sorted by created_at DESC, so the first occurrence of
+      // each user_id is their most recent score.
+      const scoreMap = {}
+      for (const row of allMovesRes?.data ?? []) {
+        if (!(row.user_id in scoreMap) && row.score != null) {
+          scoreMap[row.user_id] = row.score
         }
-        setLastMoveScores(scoreMap)
       }
+      setLastMoveScores(scoreMap)
 
       // Only update profiles if the query succeeded so a transient
       // network failure on mobile doesn't wipe out already-loaded names

@@ -105,9 +105,22 @@ export default function LobbyPage({ session }) {
   }, [loadGames, handleFinishedToast])
 
   useEffect(() => {
-    const channel = supabase.channel('lobby-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, handleGameChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players' }, loadGames)
+    // Narrow filters: subscribe only to games I created and to game_players
+    // rows that are mine. The previous unfiltered subscription fired on
+    // every other player's move across the entire Wordy database, causing
+    // the lobby to re-fetch + re-render constantly. Open games created by
+    // OTHERS still appear via the 10s poll fallback below — that's fine
+    // since urgent events ("your turn", "opponent joined") have push
+    // notifications anyway.
+    const channel = supabase.channel(`lobby-updates-${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'games',
+        filter: `created_by=eq.${user.id}`,
+      }, handleGameChange)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'game_players',
+        filter: `user_id=eq.${user.id}`,
+      }, loadGames)
       .subscribe()
 
     // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
@@ -134,7 +147,7 @@ export default function LobbyPage({ session }) {
       document.removeEventListener('visibilitychange', handleVisible)
       window.removeEventListener('focus', handleVisible)
     }
-  }, [loadGames, loadUnseenResults, handleGameChange])
+  }, [user.id, loadGames, loadUnseenResults, handleGameChange])
 
   async function handleCancel(gameId) {
     if (cancellingId) return

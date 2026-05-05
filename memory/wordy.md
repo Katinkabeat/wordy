@@ -426,3 +426,37 @@ Tried a height-aware cellSize clamp first; Rae rejected because the board is alr
 Saved ~32px of vertical chrome. Verified in preview at 412×780 (48px gap to action bar) and 412×730 (22px gap, still no cutoff).
 
 **Commits:** wordy `534df18`, rae-side-quest (sq-ui) `51d1d24`.
+
+## 2026-05-04 — perf sweep: lobby subscription scoping + game-load batching
+
+Rae reported general SQ slowness across all four apps. Two Wordy-side
+fixes shipped as part of the platform-wide sweep:
+
+**Lobby realtime narrowed (LobbyPage.jsx).** The lobby was subscribed
+to every change on every games + game_players row in the database, so
+every other player's move across the platform re-fetched + re-rendered
+the lobby. Filters added:
+```js
+.on('postgres_changes', { event: '*', schema: 'public', table: 'games',
+    filter: `created_by=eq.${user.id}` }, handleGameChange)
+.on('postgres_changes', { event: '*', schema: 'public', table: 'game_players',
+    filter: `user_id=eq.${user.id}` }, loadGames)
+```
+Channel name now per-user (`lobby-updates-${user.id}`). Trade-off:
+other people's open games appearing in real-time is gone — they show
+up via the existing 10s poll + visibility-change refresh. Urgent
+events (your turn, opponent joined, finished match) still arrive
+instantly via push notifications. Rae confirmed the trade-off is
+acceptable. Commit `f32c4c4`.
+
+**game_moves per-player score query batched (useGameData.js).** Was
+firing N sequential Supabase queries (one per player) inside a
+Promise.all to grab each player's last-move score. Now one batched
+query with `.in('user_id', playerIds)` ordered DESC; first occurrence
+of each user_id in the result is their most recent score. Drops total
+queries per game load from 7 to 4 for a 4-player game. Commit `e9146f1`.
+
+**Cross-cutting (rae-side-quest):** Added 5 perf indexes via
+`sq_perf_indexes.sql` migration on `game_players(user_id)`,
+`game_moves(user_id, created_at)`, plus the Rungles equivalents.
+Applied to shared Supabase via `supabase db query --linked`.

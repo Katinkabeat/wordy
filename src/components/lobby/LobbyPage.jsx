@@ -355,10 +355,7 @@ export default function LobbyPage({ session }) {
         <CreateGameSheet
           user={user}
           onClose={() => setShowCreateSheet(false)}
-          onCreated={(gameId) => {
-            setShowCreateSheet(false)
-            navigate(`/game/${gameId}`)
-          }}
+          onCreated={() => setShowCreateSheet(false)}
         />
       )}
     </SQLobbyShell>

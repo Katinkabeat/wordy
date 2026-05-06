@@ -114,11 +114,7 @@ export default function LobbyGameRow({
   }
 
   return (
-    <div className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
-      isInviteToMe
-        ? 'bg-amber-50 dark:bg-[#2a1f10] border-amber-200 dark:border-amber-700'
-        : 'bg-wordy-50 border-wordy-100'
-    }`}>
+    <div className="flex items-center justify-between rounded-xl px-3 py-2 border bg-wordy-50 border-wordy-100">
       <div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {players.map((p, i) => {

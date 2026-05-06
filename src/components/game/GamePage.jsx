@@ -21,44 +21,28 @@ import AvatarMenu from '../lobby/AvatarMenu.jsx'
 import BlankTileModal from './modals/BlankTileModal.jsx'
 import ForfeitModal from './modals/ForfeitModal.jsx'
 
-// Computes board cell size from current viewport.
-//
-// Width-based: container has px-1 (8px total) + 14px grid gaps + 4px
-// board border = 26px overhead on the board's column.
-//
-// Height-based (mobile/tablet only): the board must also fit within
-// the play column's height so it stays centred no matter the player
-// count. The score strip wraps to 2 rows in 4-player games, stealing
-// vertical space; without a height cap the board overflows, items-center
-// hides the bottom behind the sticky action bar (z-20), and the visible
-// top edge appears pushed up. We estimate the non-board vertical space
-// (header + mobile sub-header + score strip at max 2 rows + action bar
-// + wrapper paddings) and clamp cellSize so the board fits in what's
-// left. Width still wins when there's plenty of height (desktop, 2-player
-// games), so this doesn't change the layout for users who already see
-// it correctly.
-function computeCellSize() {
+// Computes the largest cellSize that fits inside a play-area of width
+// `w` and height `h`. Board overhead is 14px (one-pixel gaps between 15
+// cells) + 4px (board border-2) + 4px (ZoomableBoard's outer padding) =
+// 22px in each dimension. Capped at 38 (desktop hardcoded value) and
+// floored at 20 (smallest readable cell).
+function fitCellSize(w, h) {
   const vw = window.innerWidth
-  let fromWidth
-  if (vw >= 1024) fromWidth = 38                                       // desktop → 584px board
-  else if (vw >= 768) fromWidth = 32                                   // tablet  → 494px board
-  else fromWidth = Math.max(20, Math.floor((vw - 26) / 15))
+  // Preserve original device-tier defaults when there's plenty of room.
+  let fromW
+  if (vw >= 1024) fromW = 38
+  else if (vw >= 768) fromW = 32
+  else fromW = Math.max(20, Math.floor((w - 18) / 15))
+  const fromH = Math.max(20, Math.floor((h - 22) / 15))
+  return Math.min(fromW, fromH)
+}
 
-  // Desktop has plenty of vertical room; skip the height cap.
-  if (vw >= 1024) return fromWidth
-
-  // Mobile/tablet height cap. Estimated non-board vertical space:
-  //   top banner (~52) + mobile sub-header (~32) +
-  //   score strip up to 2 wrapped rows (~88) +
-  //   action bar with TileRack + shuffle + buttons (~196) +
-  //   wrapper paddings + gaps (~24)
-  // ≈ 392, rounded up to 400 for breathing room.
-  const NON_BOARD_HEIGHT = 400
-  const vh = window.innerHeight
-  const availableHeight = vh - NON_BOARD_HEIGHT
-  const fromHeight = Math.max(20, Math.floor((availableHeight - 18) / 15))
-
-  return Math.min(fromWidth, fromHeight)
+// Best-effort first guess before the play area has been measured.
+function initialCellSize() {
+  const vw = window.innerWidth
+  if (vw >= 1024) return 38
+  if (vw >= 768) return 32
+  return Math.max(20, Math.floor((vw - 26) / 15))
 }
 
 export default function GamePage({ session }) {
@@ -139,27 +123,37 @@ export default function GamePage({ session }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [settingsOpen])
 
-  // ── Cell size — reactive to viewport changes ──────────────
-  // We can't useMemo with [] because mobile Firefox is mid-transition
-  // at first mount (URL bar animating, dvh value still settling), so a
-  // single mount-time reading captures a transient innerWidth and freezes
-  // a too-large board. Listening to resize lets us recompute when the
-  // viewport stabilises — and on browsers where it was already stable at
-  // mount, the resize listener returns the same value (skip-if-equal in
-  // setState), so there's no re-render and no visible change.
-  const [cellSize, setCellSize] = useState(() => computeCellSize())
+  // ── Cell size — sized to the actual play area ─────────────
+  // We measure the board's parent (the items-center container in
+  // SQBoardShell) with a ResizeObserver and pick the largest cellSize
+  // that fits. This handles cases that pure viewport-based math can't:
+  // 4-player games where the score strip wraps to 2 rows on mobile and
+  // shrinks the play column, mobile Firefox where the URL bar animates
+  // and dvh changes after mount, orientation changes, etc. When the
+  // play area is plenty large (desktop, 2-player mobile), this returns
+  // the same value as the original width-based formula, so users who
+  // already see the board correctly see no change.
+  const boardSlotRef = useRef(null)
+  const [cellSize, setCellSize] = useState(initialCellSize)
   useEffect(() => {
+    const slot = boardSlotRef.current
+    if (!slot) return
+    const measured = slot.parentElement
+    if (!measured) return
     const update = () => {
-      const next = computeCellSize()
+      const w = measured.clientWidth
+      const h = measured.clientHeight
+      if (!w || !h) return
+      const next = fitCellSize(w, h)
       setCellSize(prev => (prev === next ? prev : next))
     }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(measured)
     window.addEventListener('resize', update)
-    // Also one-shot recompute shortly after mount, in case no resize
-    // fires but the viewport finished settling (Firefox Android).
-    const timer = setTimeout(update, 200)
     return () => {
+      observer.disconnect()
       window.removeEventListener('resize', update)
-      clearTimeout(timer)
     }
   }, [])
 
@@ -531,15 +525,20 @@ export default function GamePage({ session }) {
       scorePanel={scorePanel}
       actionBar={actionBar}
     >
-      <ZoomableBoard
-        board={board}
-        placements={placements}
-        lastMoveTiles={lastMoveTiles}
-        onCellClick={handleCellClick}
-        myTurn={myTurn}
-        cellSize={cellSize}
-        isDark={isDark}
-      />
+      {/* `contents` wrapper has no box of its own — it's just a DOM
+          handle so the cellSize effect can find and measure the
+          parent (SQBoardShell's items-center play-area container). */}
+      <div ref={boardSlotRef} className="contents">
+        <ZoomableBoard
+          board={board}
+          placements={placements}
+          lastMoveTiles={lastMoveTiles}
+          onCellClick={handleCellClick}
+          myTurn={myTurn}
+          cellSize={cellSize}
+          isDark={isDark}
+        />
+      </div>
 
       {/* Finished banner — rendered inside the play area so it appears
           above the action bar but below the header. */}

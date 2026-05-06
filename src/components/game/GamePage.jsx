@@ -134,18 +134,17 @@ export default function GamePage({ session }) {
   // the same value as the original width-based formula, so users who
   // already see the board correctly see no change.
   const [cellSize, setCellSize] = useState(initialCellSize)
-  // TEMP DEBUG: visible overlay so we can read measurements off a phone
-  // screenshot. Remove after the layout issue is solved.
-  const [debugInfo, setDebugInfo] = useState({ stage: 'init', cs: initialCellSize() })
 
-  // Callback ref so setup runs the moment the element mounts. A useEffect
-  // with [] deps would have run during the initial loading screen render
-  // (before this div exists in the tree) and never re-fired once the real
-  // layout appeared.
+  // Callback ref so setup runs the moment the play-area div mounts. A
+  // useEffect with [] deps would fire during the initial loading-screen
+  // render (when this div doesn't exist in the tree yet) and never
+  // re-fire once the real layout appears, leaving the ResizeObserver
+  // unattached on Firefox/Chrome alike. With a callback ref, the
+  // observer attaches exactly when there's something to measure.
   const observerRef = useRef(null)
   const resizeHandlerRef = useRef(null)
   const boardSlotRef = useCallback((el) => {
-    // Tear down previous observer / listener
+    // Tear down previous observer + listener.
     if (observerRef.current) {
       observerRef.current.disconnect()
       observerRef.current = null
@@ -154,29 +153,13 @@ export default function GamePage({ session }) {
       window.removeEventListener('resize', resizeHandlerRef.current)
       resizeHandlerRef.current = null
     }
-    if (!el) {
-      setDebugInfo(d => ({ ...d, stage: 'detached' }))
-      return
-    }
+    if (!el) return
     const update = () => {
       const w = el.clientWidth
       const h = el.clientHeight
-      const rect = el.getBoundingClientRect()
-      const boardEl = el.querySelector('div[style*="grid-template-columns"]')
-      const boardRect = boardEl?.getBoundingClientRect()
-      const next = (w && h) ? fitCellSize(w, h) : null
-      setDebugInfo({
-        stage: 'ok',
-        cw: w, ch: h,
-        rt: Math.round(rect.top), rb: Math.round(rect.bottom),
-        vw: window.innerWidth, vh: window.innerHeight,
-        bt: boardRect ? Math.round(boardRect.top) : null,
-        bb: boardRect ? Math.round(boardRect.bottom) : null,
-        cs: next,
-      })
-      if (next != null) {
-        setCellSize(prev => (prev === next ? prev : next))
-      }
+      if (!w || !h) return
+      const next = fitCellSize(w, h)
+      setCellSize(prev => (prev === next ? prev : next))
     }
     update()
     const observer = new ResizeObserver(update)
@@ -561,24 +544,10 @@ export default function GamePage({ session }) {
       scorePanel={scorePanel}
       actionBar={actionBar}
     >
-      {/* TEMP DEBUG OVERLAY — always rendered so we can confirm the new
-          bundle is loaded even before measurements arrive. */}
-      <div className="fixed top-16 left-1 right-1 z-50 bg-yellow-200 text-black text-[10px] font-mono p-1 rounded pointer-events-none border border-yellow-700">
-        DBG[{debugInfo.stage}] cs={debugInfo.cs}
-        {debugInfo.stage === 'ok' && (
-          <>
-            {' '}c={debugInfo.cw}×{debugInfo.ch}
-            {' '}rect=t{debugInfo.rt}/b{debugInfo.rb}
-            {' '}v={debugInfo.vw}×{debugInfo.vh}
-            {' '}board=t{debugInfo.bt}/b{debugInfo.bb}
-          </>
-        )}
-      </div>
-      {/* Real flex item that stretches to fill SQBoardShell's items-center
-          play-area container. We measure THIS div's clientWidth/Height to
-          pick a cellSize that fits, then re-center ZoomableBoard inside.
-          Replaces a display:contents wrapper that wasn't being measured
-          correctly on Firefox Android. */}
+      {/* Flex item that stretches to fill SQBoardShell's items-center
+          play-area container. We measure this div's clientWidth/Height
+          (via the boardSlotRef callback ref) to pick a cellSize that
+          fits, then re-center ZoomableBoard inside. */}
       <div
         ref={boardSlotRef}
         className="self-stretch flex-1 min-h-0 w-full flex items-center justify-center"

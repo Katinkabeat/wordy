@@ -21,6 +21,16 @@ import AvatarMenu from '../lobby/AvatarMenu.jsx'
 import BlankTileModal from './modals/BlankTileModal.jsx'
 import ForfeitModal from './modals/ForfeitModal.jsx'
 
+// Computes board cell size from current viewport width. Container has
+// px-1 (8px total) + 14px grid gaps + 4px board border = 26px overhead
+// on the board's column.
+function computeCellSize() {
+  const vw = window.innerWidth
+  if (vw >= 1024) return 38   // desktop → 584px board
+  if (vw >= 768)  return 32   // tablet  → 494px board
+  return Math.max(20, Math.floor((vw - 26) / 15))
+}
+
 export default function GamePage({ session }) {
   const { id: gameId } = useParams()
   const navigate        = useNavigate()
@@ -99,13 +109,28 @@ export default function GamePage({ session }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [settingsOpen])
 
-  // ── Cell size — fixed, device-appropriate ─────────────────
-  const cellSize = useMemo(() => {
-    const vw = window.innerWidth
-    if (vw >= 1024) return 38                                   // desktop → 584px board
-    if (vw >= 768)  return 32                                   // tablet  → 494px board
-    // Container has px-1 (8px total) + 14px grid gaps + 4px board border = 26px
-    return Math.max(20, Math.floor((vw - 26) / 15))
+  // ── Cell size — reactive to viewport changes ──────────────
+  // We can't useMemo with [] because mobile Firefox is mid-transition
+  // at first mount (URL bar animating, dvh value still settling), so a
+  // single mount-time reading captures a transient innerWidth and freezes
+  // a too-large board. Listening to resize lets us recompute when the
+  // viewport stabilises — and on browsers where it was already stable at
+  // mount, the resize listener returns the same value (skip-if-equal in
+  // setState), so there's no re-render and no visible change.
+  const [cellSize, setCellSize] = useState(() => computeCellSize())
+  useEffect(() => {
+    const update = () => {
+      const next = computeCellSize()
+      setCellSize(prev => (prev === next ? prev : next))
+    }
+    window.addEventListener('resize', update)
+    // Also one-shot recompute shortly after mount, in case no resize
+    // fires but the viewport finished settling (Firefox Android).
+    const timer = setTimeout(update, 200)
+    return () => {
+      window.removeEventListener('resize', update)
+      clearTimeout(timer)
+    }
   }, [])
 
   // ── Derived state ─────────────────────────────────────────

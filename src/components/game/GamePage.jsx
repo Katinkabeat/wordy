@@ -135,6 +135,9 @@ export default function GamePage({ session }) {
   // already see the board correctly see no change.
   const boardSlotRef = useRef(null)
   const [cellSize, setCellSize] = useState(initialCellSize)
+  // TEMP DEBUG: visible overlay so we can read measurements off a phone
+  // screenshot. Remove after the layout issue is solved.
+  const [debugInfo, setDebugInfo] = useState(null)
   useEffect(() => {
     const slot = boardSlotRef.current
     if (!slot) return
@@ -143,6 +146,17 @@ export default function GamePage({ session }) {
     const update = () => {
       const w = measured.clientWidth
       const h = measured.clientHeight
+      const rect = measured.getBoundingClientRect()
+      const board = slot.querySelector('div[style*="grid-template-columns"]')
+      const boardRect = board?.getBoundingClientRect()
+      setDebugInfo({
+        cw: w, ch: h,
+        rt: Math.round(rect.top), rb: Math.round(rect.bottom),
+        vw: window.innerWidth, vh: window.innerHeight,
+        bt: boardRect ? Math.round(boardRect.top) : null,
+        bb: boardRect ? Math.round(boardRect.bottom) : null,
+        cs: cellSize,
+      })
       if (!w || !h) return
       const next = fitCellSize(w, h)
       setCellSize(prev => (prev === next ? prev : next))
@@ -155,7 +169,7 @@ export default function GamePage({ session }) {
       observer.disconnect()
       window.removeEventListener('resize', update)
     }
-  }, [])
+  }, [cellSize])
 
   // ── Derived state ─────────────────────────────────────────
   function isMyTurn() {
@@ -525,6 +539,15 @@ export default function GamePage({ session }) {
       scorePanel={scorePanel}
       actionBar={actionBar}
     >
+      {/* TEMP DEBUG OVERLAY — remove once the layout bug is solved */}
+      {debugInfo && (
+        <div className="fixed top-16 left-1 right-1 z-50 bg-yellow-200 text-black text-[10px] font-mono p-1 rounded pointer-events-none border border-yellow-700">
+          parent c={debugInfo.cw}×{debugInfo.ch} rect=t{debugInfo.rt}/b{debugInfo.rb}
+          {' '}vw={debugInfo.vw}/vh={debugInfo.vh}
+          {' '}cs={debugInfo.cs}
+          {' '}board=t{debugInfo.bt}/b{debugInfo.bb}
+        </div>
+      )}
       {/* `contents` wrapper has no box of its own — it's just a DOM
           handle so the cellSize effect can find and measure the
           parent (SQBoardShell's items-center play-area container). */}

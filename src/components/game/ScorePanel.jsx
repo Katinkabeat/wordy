@@ -39,7 +39,12 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
       </div>
 
       {/* ── Mobile: compact horizontal score bar ────────────── */}
-      <div className="flex lg:hidden gap-x-2 gap-y-1 flex-wrap px-1">
+      {/* min-h reserves the natural 2-row chip height (~52px) so 2/3-player
+          games take the same vertical space as 4-player ones. Keeps the
+          board's centred position consistent across player counts — when
+          only 1 row of chips renders, there's empty space below them
+          inside the score panel rather than the play area expanding. */}
+      <div className="flex lg:hidden gap-x-2 gap-y-1 flex-wrap px-1 min-h-[52px]">
         {players.map((p, i) => {
           const name      = profiles[p.user_id]?.username ?? '?'
           const isMe      = p.user_id === userId

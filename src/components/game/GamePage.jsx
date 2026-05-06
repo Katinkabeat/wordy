@@ -137,33 +137,36 @@ export default function GamePage({ session }) {
   const [cellSize, setCellSize] = useState(initialCellSize)
   // TEMP DEBUG: visible overlay so we can read measurements off a phone
   // screenshot. Remove after the layout issue is solved.
-  const [debugInfo, setDebugInfo] = useState(null)
+  const [debugInfo, setDebugInfo] = useState({ stage: 'init', cs: initialCellSize() })
   useEffect(() => {
     const slot = boardSlotRef.current
-    if (!slot) return
-    const measured = slot.parentElement
-    if (!measured) return
+    if (!slot) {
+      setDebugInfo(d => ({ ...d, stage: 'no-slot' }))
+      return
+    }
     const update = () => {
-      const w = measured.clientWidth
-      const h = measured.clientHeight
-      const rect = measured.getBoundingClientRect()
-      const board = slot.querySelector('div[style*="grid-template-columns"]')
-      const boardRect = board?.getBoundingClientRect()
+      const w = slot.clientWidth
+      const h = slot.clientHeight
+      const rect = slot.getBoundingClientRect()
+      const boardEl = slot.querySelector('div[style*="grid-template-columns"]')
+      const boardRect = boardEl?.getBoundingClientRect()
+      const next = (w && h) ? fitCellSize(w, h) : null
       setDebugInfo({
+        stage: 'ok',
         cw: w, ch: h,
         rt: Math.round(rect.top), rb: Math.round(rect.bottom),
         vw: window.innerWidth, vh: window.innerHeight,
         bt: boardRect ? Math.round(boardRect.top) : null,
         bb: boardRect ? Math.round(boardRect.bottom) : null,
-        cs: cellSize,
+        cs: next ?? cellSize,
       })
-      if (!w || !h) return
-      const next = fitCellSize(w, h)
-      setCellSize(prev => (prev === next ? prev : next))
+      if (next != null) {
+        setCellSize(prev => (prev === next ? prev : next))
+      }
     }
     update()
     const observer = new ResizeObserver(update)
-    observer.observe(measured)
+    observer.observe(slot)
     window.addEventListener('resize', update)
     return () => {
       observer.disconnect()
@@ -539,19 +542,28 @@ export default function GamePage({ session }) {
       scorePanel={scorePanel}
       actionBar={actionBar}
     >
-      {/* TEMP DEBUG OVERLAY — remove once the layout bug is solved */}
-      {debugInfo && (
-        <div className="fixed top-16 left-1 right-1 z-50 bg-yellow-200 text-black text-[10px] font-mono p-1 rounded pointer-events-none border border-yellow-700">
-          parent c={debugInfo.cw}×{debugInfo.ch} rect=t{debugInfo.rt}/b{debugInfo.rb}
-          {' '}vw={debugInfo.vw}/vh={debugInfo.vh}
-          {' '}cs={debugInfo.cs}
-          {' '}board=t{debugInfo.bt}/b{debugInfo.bb}
-        </div>
-      )}
-      {/* `contents` wrapper has no box of its own — it's just a DOM
-          handle so the cellSize effect can find and measure the
-          parent (SQBoardShell's items-center play-area container). */}
-      <div ref={boardSlotRef} className="contents">
+      {/* TEMP DEBUG OVERLAY — always rendered so we can confirm the new
+          bundle is loaded even before measurements arrive. */}
+      <div className="fixed top-16 left-1 right-1 z-50 bg-yellow-200 text-black text-[10px] font-mono p-1 rounded pointer-events-none border border-yellow-700">
+        DBG[{debugInfo.stage}] cs={debugInfo.cs}
+        {debugInfo.stage === 'ok' && (
+          <>
+            {' '}c={debugInfo.cw}×{debugInfo.ch}
+            {' '}rect=t{debugInfo.rt}/b{debugInfo.rb}
+            {' '}v={debugInfo.vw}×{debugInfo.vh}
+            {' '}board=t{debugInfo.bt}/b{debugInfo.bb}
+          </>
+        )}
+      </div>
+      {/* Real flex item that stretches to fill SQBoardShell's items-center
+          play-area container. We measure THIS div's clientWidth/Height to
+          pick a cellSize that fits, then re-center ZoomableBoard inside.
+          Replaces a display:contents wrapper that wasn't being measured
+          correctly on Firefox Android. */}
+      <div
+        ref={boardSlotRef}
+        className="self-stretch flex-1 min-h-0 w-full flex items-center justify-center"
+      >
         <ZoomableBoard
           board={board}
           placements={placements}

@@ -134,17 +134,13 @@ export default function GamePage({ session }) {
   // the same value as the original width-based formula, so users who
   // already see the board correctly see no change.
   const [cellSize, setCellSize] = useState(initialCellSize)
-  // TEMP DEBUG: tiny info strip at the bottom of the viewport so we can
-  // read what Firefox is actually measuring. Remove once the Firefox
-  // mobile layout is correct.
-  const [dbg, setDbg] = useState({ stage: 'init' })
 
   // Callback ref so setup runs the moment the play-area div mounts. A
   // useEffect with [] deps would fire during the initial loading-screen
   // render (when this div doesn't exist in the tree yet) and never
   // re-fire once the real layout appears, leaving the ResizeObserver
-  // unattached on Firefox/Chrome alike. With a callback ref, the
-  // observer attaches exactly when there's something to measure.
+  // unattached. With a callback ref, the observer attaches exactly when
+  // there's something to measure.
   const observerRef = useRef(null)
   const resizeHandlerRef = useRef(null)
   const boardSlotRef = useCallback((el) => {
@@ -157,29 +153,13 @@ export default function GamePage({ session }) {
       window.removeEventListener('resize', resizeHandlerRef.current)
       resizeHandlerRef.current = null
     }
-    if (!el) {
-      setDbg({ stage: 'detached' })
-      return
-    }
+    if (!el) return
     const update = () => {
       const w = el.clientWidth
       const h = el.clientHeight
-      const rect = el.getBoundingClientRect()
-      const boardEl = el.querySelector('div[style*="grid-template-columns"]')
-      const boardRect = boardEl?.getBoundingClientRect()
-      const next = (w && h) ? fitCellSize(w, h) : null
-      setDbg({
-        stage: 'ok',
-        cw: w, ch: h,
-        rt: Math.round(rect.top), rb: Math.round(rect.bottom),
-        vw: window.innerWidth, vh: window.innerHeight,
-        bt: boardRect ? Math.round(boardRect.top) : null,
-        bb: boardRect ? Math.round(boardRect.bottom) : null,
-        cs: next,
-      })
-      if (next != null) {
-        setCellSize(prev => (prev === next ? prev : next))
-      }
+      if (!w || !h) return
+      const next = fitCellSize(w, h)
+      setCellSize(prev => (prev === next ? prev : next))
     }
     update()
     const observer = new ResizeObserver(update)
@@ -564,15 +544,6 @@ export default function GamePage({ session }) {
       scorePanel={scorePanel}
       actionBar={actionBar}
     >
-      {/* TEMP DEBUG STRIP — at the very bottom of the viewport so it
-          doesn't visually disguise the layout. Removable once Firefox
-          mobile renders correctly. */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 text-yellow-300 text-[9px] font-mono px-1 py-0.5 pointer-events-none">
-        [{dbg.stage}] cs={dbg.cs ?? '?'}
-        {dbg.stage === 'ok' && (
-          <> · c={dbg.cw}×{dbg.ch} · rect={dbg.rt}/{dbg.rb} · v={dbg.vw}×{dbg.vh} · b={dbg.bt}/{dbg.bb}</>
-        )}
-      </div>
       {/* Flex item that stretches to fill SQBoardShell's items-center
           play-area container. We measure this div's clientWidth/Height
           (via the boardSlotRef callback ref) to pick a cellSize that

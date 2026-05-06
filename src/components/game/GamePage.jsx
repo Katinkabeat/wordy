@@ -21,14 +21,44 @@ import AvatarMenu from '../lobby/AvatarMenu.jsx'
 import BlankTileModal from './modals/BlankTileModal.jsx'
 import ForfeitModal from './modals/ForfeitModal.jsx'
 
-// Computes board cell size from current viewport width. Container has
-// px-1 (8px total) + 14px grid gaps + 4px board border = 26px overhead
-// on the board's column.
+// Computes board cell size from current viewport.
+//
+// Width-based: container has px-1 (8px total) + 14px grid gaps + 4px
+// board border = 26px overhead on the board's column.
+//
+// Height-based (mobile/tablet only): the board must also fit within
+// the play column's height so it stays centred no matter the player
+// count. The score strip wraps to 2 rows in 4-player games, stealing
+// vertical space; without a height cap the board overflows, items-center
+// hides the bottom behind the sticky action bar (z-20), and the visible
+// top edge appears pushed up. We estimate the non-board vertical space
+// (header + mobile sub-header + score strip at max 2 rows + action bar
+// + wrapper paddings) and clamp cellSize so the board fits in what's
+// left. Width still wins when there's plenty of height (desktop, 2-player
+// games), so this doesn't change the layout for users who already see
+// it correctly.
 function computeCellSize() {
   const vw = window.innerWidth
-  if (vw >= 1024) return 38   // desktop → 584px board
-  if (vw >= 768)  return 32   // tablet  → 494px board
-  return Math.max(20, Math.floor((vw - 26) / 15))
+  let fromWidth
+  if (vw >= 1024) fromWidth = 38                                       // desktop → 584px board
+  else if (vw >= 768) fromWidth = 32                                   // tablet  → 494px board
+  else fromWidth = Math.max(20, Math.floor((vw - 26) / 15))
+
+  // Desktop has plenty of vertical room; skip the height cap.
+  if (vw >= 1024) return fromWidth
+
+  // Mobile/tablet height cap. Estimated non-board vertical space:
+  //   top banner (~52) + mobile sub-header (~32) +
+  //   score strip up to 2 wrapped rows (~88) +
+  //   action bar with TileRack + shuffle + buttons (~196) +
+  //   wrapper paddings + gaps (~24)
+  // ≈ 392, rounded up to 400 for breathing room.
+  const NON_BOARD_HEIGHT = 400
+  const vh = window.innerHeight
+  const availableHeight = vh - NON_BOARD_HEIGHT
+  const fromHeight = Math.max(20, Math.floor((availableHeight - 18) / 15))
+
+  return Math.min(fromWidth, fromHeight)
 }
 
 export default function GamePage({ session }) {

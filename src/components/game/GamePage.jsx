@@ -550,7 +550,7 @@ export default function GamePage({ session }) {
           fits, then re-center ZoomableBoard inside. */}
       <div
         ref={boardSlotRef}
-        className="self-stretch flex-1 min-h-0 w-full flex items-center justify-center"
+        className="self-stretch flex-1 min-h-0 w-full flex items-start justify-center"
       >
         <ZoomableBoard
           board={board}

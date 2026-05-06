@@ -16,47 +16,52 @@ export default function StatsPage({ session }) {
 
   useEffect(() => {
     async function load() {
-      // My profile
-      const { data: prof } = await supabase
-        .from('profiles').select('*').eq('id', user.id).single()
-      setProfile(prof)
+      try {
+        // My profile
+        const { data: prof } = await supabase
+          .from('profiles').select('*').eq('id', user.id).single()
+        setProfile(prof)
 
-      // All-time high score leaderboard (excludes 'test' usernames)
-      const { data: lb } = await supabase.rpc('get_leaderboard')
-      setLeaderboard(lb ?? [])
+        // All-time high score leaderboard (excludes 'test' usernames)
+        const { data: lb } = await supabase.rpc('get_leaderboard')
+        setLeaderboard(lb ?? [])
 
-      // Matchup stats vs each opponent
-      // Note: opponent_id FKs to auth.users, not public.profiles, so we
-      // fetch opponent usernames in a separate query to avoid a 400 error.
-      const { data: mu } = await supabase
-        .from('player_matchups')
-        .select('*')
-        .eq('player_id', user.id)
-        .order('wins', { ascending: false })
+        // Matchup stats vs each opponent
+        // Note: opponent_id FKs to auth.users, not public.profiles, so we
+        // fetch opponent usernames in a separate query to avoid a 400 error.
+        const { data: mu } = await supabase
+          .from('player_matchups')
+          .select('*')
+          .eq('player_id', user.id)
+          .order('wins', { ascending: false })
 
-      const oppIds = (mu ?? []).map(m => m.opponent_id)
-      const { data: oppProfiles } = oppIds.length > 0
-        ? await supabase.from('profiles').select('id, username').in('id', oppIds)
-        : { data: [] }
-      const oppMap = Object.fromEntries((oppProfiles ?? []).map(p => [p.id, p.username]))
-      setMatchups((mu ?? []).map(m => ({ ...m, opponentName: oppMap[m.opponent_id] ?? 'Unknown' })))
+        const oppIds = (mu ?? []).map(m => m.opponent_id)
+        const { data: oppProfiles } = oppIds.length > 0
+          ? await supabase.from('profiles').select('id, username').in('id', oppIds)
+          : { data: [] }
+        const oppMap = Object.fromEntries((oppProfiles ?? []).map(p => [p.id, p.username]))
+        setMatchups((mu ?? []).map(m => ({ ...m, opponentName: oppMap[m.opponent_id] ?? 'Unknown' })))
 
-      // Recent finished games I was in
-      const { data: gp } = await supabase
-        .from('game_players')
-        .select(`
-          score, is_winner,
-          games!inner ( id, status, finished_at, max_players,
-            game_players ( score, is_winner, profiles ( username ) )
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('games.status', 'finished')
-        .order('games(finished_at)', { ascending: false })
-        .limit(10)
-      setHistory(gp ?? [])
-
-      setLoading(false)
+        // Recent finished games I was in. Over-fetch a small buffer so we still
+        // land 10 finished rows after filtering out any in-progress games that
+        // sneak in via NULL-last ordering on finished_at.
+        const { data: gp } = await supabase
+          .from('game_players')
+          .select(`
+            score, is_winner,
+            games ( id, status, finished_at, max_players,
+              game_players ( score, is_winner, profiles ( username ) )
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('games(finished_at)', { ascending: false })
+          .limit(20)
+        setHistory((gp ?? []).filter(g => g.games?.status === 'finished').slice(0, 10))
+      } catch (err) {
+        console.error('[StatsPage] load failed:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [user.id])

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { extractWords, calculateScore } from '../../lib/gameLogic.js'
@@ -133,22 +133,36 @@ export default function GamePage({ session }) {
   // play area is plenty large (desktop, 2-player mobile), this returns
   // the same value as the original width-based formula, so users who
   // already see the board correctly see no change.
-  const boardSlotRef = useRef(null)
   const [cellSize, setCellSize] = useState(initialCellSize)
   // TEMP DEBUG: visible overlay so we can read measurements off a phone
   // screenshot. Remove after the layout issue is solved.
   const [debugInfo, setDebugInfo] = useState({ stage: 'init', cs: initialCellSize() })
-  useEffect(() => {
-    const slot = boardSlotRef.current
-    if (!slot) {
-      setDebugInfo(d => ({ ...d, stage: 'no-slot' }))
+
+  // Callback ref so setup runs the moment the element mounts. A useEffect
+  // with [] deps would have run during the initial loading screen render
+  // (before this div exists in the tree) and never re-fired once the real
+  // layout appeared.
+  const observerRef = useRef(null)
+  const resizeHandlerRef = useRef(null)
+  const boardSlotRef = useCallback((el) => {
+    // Tear down previous observer / listener
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
+    }
+    if (resizeHandlerRef.current) {
+      window.removeEventListener('resize', resizeHandlerRef.current)
+      resizeHandlerRef.current = null
+    }
+    if (!el) {
+      setDebugInfo(d => ({ ...d, stage: 'detached' }))
       return
     }
     const update = () => {
-      const w = slot.clientWidth
-      const h = slot.clientHeight
-      const rect = slot.getBoundingClientRect()
-      const boardEl = slot.querySelector('div[style*="grid-template-columns"]')
+      const w = el.clientWidth
+      const h = el.clientHeight
+      const rect = el.getBoundingClientRect()
+      const boardEl = el.querySelector('div[style*="grid-template-columns"]')
       const boardRect = boardEl?.getBoundingClientRect()
       const next = (w && h) ? fitCellSize(w, h) : null
       setDebugInfo({
@@ -158,7 +172,7 @@ export default function GamePage({ session }) {
         vw: window.innerWidth, vh: window.innerHeight,
         bt: boardRect ? Math.round(boardRect.top) : null,
         bb: boardRect ? Math.round(boardRect.bottom) : null,
-        cs: next ?? cellSize,
+        cs: next,
       })
       if (next != null) {
         setCellSize(prev => (prev === next ? prev : next))
@@ -166,13 +180,18 @@ export default function GamePage({ session }) {
     }
     update()
     const observer = new ResizeObserver(update)
-    observer.observe(slot)
+    observer.observe(el)
+    observerRef.current = observer
     window.addEventListener('resize', update)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', update)
+    resizeHandlerRef.current = update
+  }, [])
+  // Disconnect observer + listener on unmount.
+  useEffect(() => () => {
+    if (observerRef.current) observerRef.current.disconnect()
+    if (resizeHandlerRef.current) {
+      window.removeEventListener('resize', resizeHandlerRef.current)
     }
-  }, [cellSize])
+  }, [])
 
   // ── Derived state ─────────────────────────────────────────
   function isMyTurn() {

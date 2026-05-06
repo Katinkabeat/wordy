@@ -137,12 +137,12 @@ export function useGameData(gameId, user) {
     subscribe()
 
     // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)
-    // the game view still refreshes every 10 seconds while visible.
+    // the game view still refreshes every 60 seconds while visible.
     // IMPORTANT: skip when the user has tiles on the board — reloading would
     // wipe their in-progress placement and return tiles to the rack.
     const poll = setInterval(() => {
       if (document.visibilityState === 'visible' && placementsRef.current.length === 0) loadGame()
-    }, 10_000)
+    }, 60_000)
 
     // When the tab/phone wakes back up, reload state and reconnect if needed.
     // This handles the common case of taking a long time between turns.

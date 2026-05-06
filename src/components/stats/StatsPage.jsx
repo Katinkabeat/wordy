@@ -46,14 +46,15 @@ export default function StatsPage({ session }) {
         .from('game_players')
         .select(`
           score, is_winner,
-          games ( id, status, finished_at, max_players,
+          games!inner ( id, status, finished_at, max_players,
             game_players ( score, is_winner, profiles ( username ) )
           )
         `)
         .eq('user_id', user.id)
+        .eq('games.status', 'finished')
         .order('games(finished_at)', { ascending: false })
-        .limit(100)
-      setHistory((gp ?? []).filter(g => g.games?.status === 'finished').slice(0, 10))
+        .limit(10)
+      setHistory(gp ?? [])
 
       setLoading(false)
     }

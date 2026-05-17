@@ -1,6 +1,6 @@
 // ────────────────────────────────────────────────────────────
 //  Word validation using the Official Scrabble Players Dictionary
-//  (TWL – Tournament Word List, 173,145 words)
+//  (TWL – Tournament Word List, ~173k words; patched with 2018 additions)
 //
 //  The word list lives in /public/words.txt and is loaded once
 //  on first use, then cached in a Set for O(1) lookups.

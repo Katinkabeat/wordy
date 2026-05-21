@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.games (
   board               JSONB       NOT NULL DEFAULT '[]'::jsonb,
   tile_bag            TEXT[]      NOT NULL DEFAULT '{}',
   consecutive_passes  INT         NOT NULL DEFAULT 0,
+  board_layout_version INT        NOT NULL DEFAULT 1,  -- 1 = Scrabble layout; new games use the current version
   created_by          UUID        REFERENCES auth.users(id),
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   finished_at         TIMESTAMPTZ

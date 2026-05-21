@@ -62,7 +62,7 @@ export function useGameMutations({
         return
       }
 
-      const turnScore  = calculateScore(board, placements, words)
+      const turnScore  = calculateScore(board, placements, words, game.board_layout_version ?? 1)
       const newScore   = (myPlayer.score ?? 0) + turnScore
       const newBoardFlat = serializeBoard(board)
 

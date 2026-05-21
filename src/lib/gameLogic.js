@@ -117,8 +117,9 @@ export function extractWords(board, placements) {
 const newCellSet = (placements) =>
   new Set(placements.map(p => `${p.row},${p.col}`))
 
-/** Calculate the total score for a set of placed words */
-export function calculateScore(board, placements, wordsWithCells) {
+/** Calculate the total score for a set of placed words.
+ *  layoutVersion selects which board bonus map to score against (per-game). */
+export function calculateScore(board, placements, wordsWithCells, layoutVersion = 1) {
   const newCells = newCellSet(placements)
   let total = 0
 
@@ -130,7 +131,7 @@ export function calculateScore(board, placements, wordsWithCells) {
       const tile    = board[r][c]
       const letter  = tile.letter
       const isNew   = newCells.has(`${r},${c}`)
-      const bonus   = isNew ? getBonusType(r, c) : null
+      const bonus   = isNew ? getBonusType(r, c, layoutVersion) : null
       const val     = tile.isBlank ? 0 : (TILE_VALUES[letter] ?? 0)
 
       let letterVal = val

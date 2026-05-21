@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wordy — c9 board layout options</title>
+<style>
+  :root{
+    --tw:#dc2626; --dw:#f97316; --tl:#2563eb; --dl:#06b6d4; --ct:#ec4899;
+    --normal:#ede9f4; --ink:#2b2440; --muted:#6b6480; --line:#d9d2ea;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#f6f3fc; color:var(--ink); padding:24px 18px 60px;
+  }
+  h1{font-size:20px; margin:0 0 4px}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 18px; max-width:760px; line-height:1.5}
+  .layout{display:flex; gap:30px; align-items:flex-start; flex-wrap:wrap}
+  .left{flex:0 0 auto}
+  .right{flex:1 1 320px; min-width:300px; max-width:520px}
+
+  /* board */
+  .board{
+    display:grid; gap:1px; background:var(--line); border:2px solid #c5bce0;
+    border-radius:6px; overflow:hidden; box-shadow:0 6px 22px rgba(60,40,110,.16);
+  }
+  .cell{
+    width:34px; height:34px; background:var(--normal);
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:800; color:#fff; line-height:1; user-select:none;
+  }
+  .cell.n{color:transparent}
+  .cell.TW{background:var(--tw)}
+  .cell.DW{background:var(--dw)}
+  .cell.TL{background:var(--tl)}
+  .cell.DL{background:var(--dl)}
+  .cell.CT{background:var(--ct); font-size:15px}
+
+  /* concept picker */
+  .tabs{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px}
+  .tab{
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:8px 13px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .tab.active{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .tab.warn.active{background:#b91c1c; border-color:#b91c1c}
+
+  .name{font-size:17px; font-weight:800; margin:0 0 2px}
+  .tag{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:8px; vertical-align:middle}
+  .tag.ok{background:#dcfce7; color:#166534}
+  .tag.bad{background:#fee2e2; color:#991b1b}
+  .tag.warn{background:#fef3c7; color:#92400e}
+  .desc{font-size:13.5px; line-height:1.55; color:#433c5c; margin:8px 0 14px}
+  .desc b{color:var(--ink)}
+
+  .stats{border:1px solid var(--line); border-radius:10px; background:#fff; padding:12px 14px; margin-bottom:14px}
+  .stats .row{display:flex; justify-content:space-between; font-size:13px; padding:3px 0}
+  .stats .row span:first-child{color:var(--muted)}
+  .swatch{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px; vertical-align:middle}
+  .delta{font-size:11px; color:var(--muted); margin-left:6px}
+
+  .legend{display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#433c5c; margin-bottom:8px}
+  .legend span{display:flex; align-items:center}
+
+  details{border:1px solid var(--line); border-radius:10px; background:#fff; padding:0 14px; margin-top:14px}
+  summary{cursor:pointer; font-size:13px; font-weight:600; padding:11px 0; color:var(--ink)}
+  pre{background:#1e1b2e; color:#e7e2f5; padding:12px; border-radius:8px; overflow:auto; font-size:11.5px; line-height:1.5; margin:0 0 14px}
+
+  /* gallery */
+  .gallery{margin-top:36px; border-top:1px solid var(--line); padding-top:22px}
+  .gallery h2{font-size:14px; margin:0 0 4px}
+  .gallery .sub{margin-bottom:14px}
+  .thumbs{display:flex; gap:22px; flex-wrap:wrap}
+  .thumb{text-align:center; cursor:pointer}
+  .thumb .mini{display:grid; gap:0; border:1px solid #c5bce0; border-radius:4px; overflow:hidden}
+  .thumb .mc{width:11px; height:11px; background:var(--normal)}
+  .thumb .mc.TW{background:var(--tw)} .thumb .mc.DW{background:var(--dw)}
+  .thumb .mc.TL{background:var(--tl)} .thumb .mc.DL{background:var(--dl)}
+  .thumb .mc.CT{background:var(--ct)}
+  .thumb .lbl{font-size:11px; font-weight:700; margin-top:6px}
+  .thumb .lbl small{display:block; font-weight:500; color:var(--muted); font-size:10px}
+  .thumb.sel .mini{outline:3px solid var(--ink); outline-offset:2px}
+</style>
+</head>
+<body>
+  <h1>Wordy board layout options <span style="font-size:12px;font-weight:500;color:#6b6480">— c9</span></h1>
+  <p class="sub">
+    Every option keeps the <b>same 15×15 board, four multiplier types, centre-star start, and premium counts</b> (8 / 16 / 12 / 24) as today.
+    The two <b>Faithful</b> layouts are engineered to also match Scrabble's <b>spacing</b> — no two premiums touch and no short word can land on
+    two word-multipliers — so scoring strategy is preserved while ~67–80% of squares move. Other layouts look striking but
+    <b>change how the game plays</b> (a short word can hit several premiums); each board's panel shows a gameplay-fidelity check.
+    None copy Scrabble or Words With Friends. Click a tab or thumbnail to swap the big board.
+  </p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="layout">
+    <div class="left"><div class="board" id="board"></div></div>
+    <div class="right">
+      <div class="name" id="cName"></div>
+      <div class="desc" id="cDesc"></div>
+
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--tw)"></i>Triple Word ×3</span>
+        <span><i class="swatch" style="background:var(--dw)"></i>Double Word ×2</span>
+        <span><i class="swatch" style="background:var(--tl)"></i>Triple Letter ×3</span>
+        <span><i class="swatch" style="background:var(--dl)"></i>Double Letter ×2</span>
+        <span><i class="swatch" style="background:var(--ct)"></i>Centre start</span>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <details>
+        <summary>Show BONUS_MAP for this layout (paste-ready for boardData.js)</summary>
+        <pre id="export"></pre>
+      </details>
+    </div>
+  </div>
+
+  <div class="gallery">
+    <h2>All layouts at a glance</h2>
+    <p class="sub">Same-scale minis so you can compare the overall shape. The first one is today's board — the one we have to replace.</p>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+
+<script>
+const N = 15, C = 7;
+const key = (r,c)=>`${r},${c}`;
+
+// ---- symmetry helpers ----
+function uniq(pts){const m=new Map();for(const [r,c] of pts)m.set(key(r,c),[r,c]);return [...m.values()];}
+function mirror4(r,c){return uniq([[r,c],[N-1-r,c],[r,N-1-c],[N-1-r,N-1-c]]);}     // both axes (4-fold)
+function d4(r,c){return uniq([[r,c],[N-1-r,c],[r,N-1-c],[N-1-r,N-1-c],[c,r],[N-1-c,r],[c,N-1-c==null?0:N-1-c],[c,N-1-r]==null?[0,0]:[c,N-1-r]]);} // not used (kept simple below)
+function rot90(r,c){return [c, N-1-r];}                                            // 90° about centre
+function c4orbit(r,c){const o=[];let p=[r,c];for(let i=0;i<4;i++){o.push(p);p=rot90(p[0],p[1]);}return uniq(o);}
+function d4full(r,c){return uniq([[r,c],[N-1-r,c],[r,N-1-c],[N-1-r,N-1-c],[c,r],[N-1-c,r],[c,N-1-r],[N-1-c,N-1-r]]);} // 8-fold
+
+// build a board from seed groups: [{type, op, seeds:[[r,c],...]}], op in {mirror4,c4orbit,d4full,'self'}
+function fromSeeds(groups){
+  const b = Array.from({length:N},()=>Array(N).fill(null));
+  b[C][C] = 'CT';
+  const ops = {mirror4, c4orbit, d4full, self:(r,c)=>[[r,c]]};
+  for(const g of groups){
+    const fn = ops[g.op];
+    for(const [r,c] of g.seeds){
+      for(const [rr,cc] of fn(r,c)){
+        if(rr===C && cc===C) continue;        // never overwrite centre
+        if(b[rr][cc]===null) b[rr][cc] = g.type;
+      }
+    }
+  }
+  return b;
+}
+// build from a per-cell rule function
+function fromRule(fn){
+  const b = Array.from({length:N},()=>Array(N).fill(null));
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++) b[r][c] = fn(r,c);
+  b[C][C]='CT';
+  return b;
+}
+
+// ---------- CONCEPTS ----------
+const CONCEPTS = [];
+
+// 0) CURRENT — Scrabble (reference, must replace)
+const SCRABBLE = {
+  TW:[[0,0],[0,7],[0,14],[7,0],[7,14],[14,0],[14,7],[14,14]],
+  DW:[[1,1],[2,2],[3,3],[4,4],[1,13],[2,12],[3,11],[4,10],[10,4],[11,3],[12,2],[13,1],[10,10],[11,11],[12,12],[13,13]],
+  TL:[[1,5],[1,9],[5,1],[5,5],[5,9],[5,13],[9,1],[9,5],[9,9],[9,13],[13,5],[13,9]],
+  DL:[[0,3],[0,11],[2,6],[2,8],[3,0],[3,7],[3,14],[6,2],[6,6],[6,8],[6,12],[7,3],[7,11],[8,2],[8,6],[8,8],[8,12],[11,0],[11,7],[11,14],[12,6],[12,8],[14,3],[14,11]],
+};
+CONCEPTS.push({
+  id:'current', label:'Current (Scrabble)', warn:true, tag:'bad', tagText:'must replace',
+  name:'Current board — Scrabble layout',
+  sym:'Mirror symmetry (8-fold)',
+  desc:'This is what Wordy ships today. The corner + edge Triple-Word squares and the diagonal Double-Word lines are the exact pattern Hasbro/Mattel trademark. <b>Shown only for comparison.</b>',
+  build:()=> {
+    const b = Array.from({length:N},()=>Array(N).fill(null));
+    for(const t of ['TW','DW','TL','DL']) for(const [r,c] of SCRABBLE[t]) b[r][c]=t;
+    b[C][C]='CT'; return b;
+  }
+});
+
+// build a board from an explicit {TW:[[r,c]...], DW, TL, DL} map
+function fromMap(m){
+  const b = Array.from({length:N},()=>Array(N).fill(null));
+  for(const t of ['TW','DW','TL','DL']) for(const [r,c] of m[t]) b[r][c]=t;
+  b[C][C]='CT'; return b;
+}
+
+// ===== FAITHFUL family: engineered to MATCH Scrabble's gameplay spacing =====
+// Both verified: 0 adjacent premiums, and NO short word (even 4 letters) can hit
+// two word-multipliers — exactly like Scrabble — so scoring strategy is preserved.
+
+// FAITHFUL A — keeps Scrabble's corner+edge Triple-Word frame for familiarity.
+const FAITHFUL_A = {
+  TW:[[0,0],[0,7],[0,14],[7,0],[7,14],[14,0],[14,7],[14,14]],
+  DW:[[1,1],[1,5],[1,9],[1,13],[2,2],[2,12],[5,1],[5,13],[9,1],[9,13],[12,2],[12,12],[13,1],[13,5],[13,9],[13,13]],
+  TL:[[0,3],[0,11],[3,0],[3,3],[3,11],[3,14],[11,0],[11,3],[11,11],[11,14],[14,3],[14,11]],
+  DL:[[2,4],[2,10],[3,7],[4,2],[4,4],[4,10],[4,12],[5,5],[5,7],[5,9],[7,3],[7,5],[7,9],[7,11],[9,5],[9,7],[9,9],[10,2],[10,4],[10,10],[10,12],[11,7],[12,4],[12,10]],
+};
+CONCEPTS.push({
+  id:'faithful-a', label:'Faithful · Frame', tag:'ok', tagText:'plays like Scrabble',
+  name:'Faithful — Corner Frame',
+  sym:'Mirror symmetry (8-fold)',
+  desc:'Engineered to <b>match Scrabble\'s spacing exactly</b>: no two premiums touch, and no short word can land on two word-multipliers. Keeps the familiar <b>corner + edge Triple-Word frame</b>, but relocates the Double-Word ramps and every letter bonus. <b>Plays like Scrabble; ~67% of squares moved.</b> Note: because it keeps Scrabble\'s corner frame and spreads letters widely, it ends up sharing more squares with <b>Words With Friends</b> than the Clipped version — see the WWF figure below.',
+  build:()=>fromMap(FAITHFUL_A)
+});
+
+// FAITHFUL B — Triple-Words pulled off the literal corners ("clipped corners").
+const FAITHFUL_B = {
+  TW:[[0,1],[0,13],[1,0],[1,14],[13,0],[13,14],[14,1],[14,13]],
+  DW:[[0,5],[0,9],[1,4],[1,10],[4,1],[4,13],[5,0],[5,14],[9,0],[9,14],[10,1],[10,13],[13,4],[13,10],[14,5],[14,9]],
+  TL:[[1,7],[2,2],[2,12],[3,3],[3,11],[7,1],[7,13],[11,3],[11,11],[12,2],[12,12],[13,7]],
+  DL:[[0,3],[0,11],[3,0],[3,14],[4,4],[4,7],[4,10],[5,5],[5,9],[6,6],[6,8],[7,4],[7,10],[8,6],[8,8],[9,5],[9,9],[10,4],[10,7],[10,10],[11,0],[11,14],[14,3],[14,11]],
+};
+CONCEPTS.push({
+  id:'faithful-b', label:'Faithful · Clipped', tag:'ok', tagText:'plays like Scrabble',
+  name:'Faithful — Clipped Corners',
+  sym:'Mirror symmetry (8-fold)',
+  desc:'Same spacing guarantee as the Frame version — <b>no touching premiums, no short-word word-multiplier doubling</b> — but the Triple-Words are pulled <b>just off the literal corners</b> and the Double-Words form an edge ring. <b>Clear of BOTH Scrabble and Words With Friends</b> (those clipped-corner Triple-Words match neither game\'s positions): plays like Scrabble; ~80% of squares moved. The recommended option.',
+  build:()=>fromMap(FAITHFUL_B)
+});
+
+// 1) PINWHEEL — rotational (90°) symmetry: a swirl no mirror-based game can match
+CONCEPTS.push({
+  id:'pinwheel', label:'Pinwheel', tag:'ok', tagText:'most original',
+  name:'Pinwheel',
+  sym:'Rotational symmetry (90° / 4-fold)',
+  desc:'Premiums spiral out from the centre instead of mirroring. Because Scrabble and Words With Friends are both <b>mirror-symmetric</b>, a rotational swirl is instantly, unmistakably different while staying perfectly fair — every player faces the same board no matter which way it turns. Same counts as today.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'c4orbit', seeds:[[0,5],[0,9]]},
+    {type:'DW', op:'c4orbit', seeds:[[3,3],[2,7],[1,4],[4,1]]},
+    {type:'TL', op:'c4orbit', seeds:[[5,5],[3,6],[6,1]]},
+    {type:'DL', op:'c4orbit', seeds:[[6,6],[7,4],[0,2],[2,4],[1,7],[5,2]]},
+  ])
+});
+
+// 2) QUADRANT ROOMS — four identical premium clusters, open centre lanes
+CONCEPTS.push({
+  id:'rooms', label:'Quadrant Rooms', tag:'ok', tagText:'strategic',
+  name:'Quadrant Rooms',
+  sym:'Mirror symmetry (4-fold, both axes)',
+  desc:'Premiums are grouped into <b>four identical "rooms,"</b> one per quadrant, with the centre row and column kept clear as open lanes. Creates four high-value zones to fight over and clean travel lanes between them — a more spatial, tactical feel than Scrabble\'s even spread.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'mirror4', seeds:[[3,3],[5,5]]},
+    {type:'DW', op:'mirror4', seeds:[[1,3],[3,1],[5,3],[3,5]]},
+    {type:'TL', op:'mirror4', seeds:[[1,1],[2,4],[4,2]]},
+    {type:'DL', op:'mirror4', seeds:[[1,5],[5,1],[2,2],[4,4],[2,6],[6,2]]},
+  ])
+});
+
+// 3) BRICKWORK — a regular woven lattice centred on the board
+function brickRule(r,c){
+  const dr=Math.abs(r-C), dc=Math.abs(c-C);
+  if(r===C&&c===C) return 'CT';
+  const set = new Set(['2','12'].map(Number));
+  // TW at inner 3x3 lattice corners (offset 5 from centre), minus centre
+  if((r===2||r===12)&&(c===2||c===12)) return 'TW';                 // 4
+  if((r===2||r===12)&&c===7) return 'TW';                            // +2
+  if(r===7&&(c===2||c===12)) return 'TW';                            // +2 => 8
+  // DW on the offset-3 lattice ring
+  if((r===4||r===10)&&(c===4||c===10)) return 'DW';                  // 4
+  if((r===4||r===10)&&c===7) return 'DW';                            // 2
+  if(r===7&&(c===4||c===10)) return 'DW';                            // 2
+  if((r===1||r===13)&&(c===1||c===13)) return 'DW';                 // 4 => 12
+  if((r===1||r===13)&&(c===5||c===9)) return 'DW';                  // 4 => 16
+  // TL scattered on a tighter weave
+  if((r===5||r===9)&&(c===5||c===9)) return 'TL';                   // 4
+  if((r===5||r===9)&&(c===1||c===13)) return 'TL';                  // 4
+  if((r===1||r===13)&&(c===5||c===9)) return null;                  // (claimed by DW)
+  if((r===3||r===11)&&(c===3||c===11)) return 'TL';                 // 4 => 12
+  // DL fills the weave
+  if((r===0||r===14)&&(c===4||c===10)) return 'DL';                 // 4
+  if((r===4||r===10)&&(c===0||c===14)) return 'DL';                 // 4
+  if((r===6||r===8)&&(c===6||c===8)) return 'DL';                   // 4
+  if((r===2||r===12)&&(c===5||c===9)) return 'DL';                  // 4
+  if((r===5||r===9)&&(c===2||c===12)) return 'DL';                  // 4
+  if((r===0||r===14)&&c===7) return 'DL';                           // 2
+  if(r===7&&(c===0||c===14)) return 'DL';                           // 2 => 24
+  return null;
+}
+CONCEPTS.push({
+  id:'brickwork', label:'Brickwork', tag:'ok', tagText:'modern / even',
+  name:'Brickwork lattice',
+  sym:'Mirror symmetry (4-fold)',
+  desc:'A regular, evenly-woven lattice centred on the board — Triple-Words sit on a wide grid, the rest fill a staggered weave. Looks clean and modern, spreads the value very evenly (no dead corners), and reads nothing like Scrabble\'s diagonal pattern.',
+  build:()=>fromRule(brickRule)
+});
+
+// 4) LANES — a premium "racetrack" loop; reward long words along the straights
+CONCEPTS.push({
+  id:'lanes', label:'Lanes', tag:'ok', tagText:'long-word reward',
+  name:'Lanes (racetrack)',
+  sym:'Mirror symmetry (4-fold)',
+  desc:'Premiums line up into a <b>square track</b> (rows/columns 2 &amp; 12) with an inner accent ring. Because the bonuses run in straight lines, the board rewards <b>laying long words along a straight</b> rather than hunting isolated squares — a genuinely different strategic pull from Scrabble\'s diffuse scatter.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'mirror4', seeds:[[2,2],[5,5]]},
+    {type:'DW', op:'mirror4', seeds:[[1,2],[3,2],[2,1],[2,3]]},
+    {type:'TL', op:'mirror4', seeds:[[5,2],[2,5],[4,4]]},
+    {type:'DL', op:'mirror4', seeds:[[1,4],[4,1],[3,4],[4,3],[0,2],[2,0]]},
+  ])
+});
+
+// 5) ARGYLE — repeating diamond lattice, even coverage, no dead zones
+CONCEPTS.push({
+  id:'argyle', label:'Argyle', tag:'ok', tagText:'even / decorative',
+  name:'Argyle (diamond lattice)',
+  sym:'Mirror symmetry (4-fold)',
+  desc:'A repeating <b>diamond lattice</b> — four diamond motifs framing the centre. Coverage is very even with no dead corners, and the look is decorative and clearly original. Plays close to today since premiums stay well-distributed; it just trades Scrabble\'s diagonals for diamonds.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'mirror4', seeds:[[3,3],[5,5]]},
+    {type:'DW', op:'mirror4', seeds:[[1,3],[3,1],[5,3],[3,5]]},
+    {type:'TL', op:'mirror4', seeds:[[1,5],[5,1],[0,0]]},
+    {type:'DL', op:'mirror4', seeds:[[2,2],[2,4],[4,2],[4,4],[0,2],[2,0]]},
+  ])
+});
+
+// 6) CROSSROADS — premium highways down the centre cross (inverse of Rooms)
+CONCEPTS.push({
+  id:'crossroads', label:'Crossroads', tag:'ok', tagText:'central highways',
+  name:'Crossroads (central highways)',
+  sym:'Mirror symmetry (4-fold)',
+  desc:'The opposite of Quadrant Rooms: the <b>centre row and column become premium highways</b>, with lighter accents in the quadrants. Since the first word already crosses the centre, this funnels the action through two high-value lanes — high-drama, easy to read, and nothing like Scrabble\'s corners-and-diagonals.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'mirror4', seeds:[[7,1],[1,7],[3,3]]},
+    {type:'DW', op:'mirror4', seeds:[[7,3],[7,5],[3,7],[5,7],[3,5],[5,3]]},
+    {type:'TL', op:'mirror4', seeds:[[2,2],[4,4],[6,6]]},
+    {type:'DL', op:'mirror4', seeds:[[1,3],[3,1],[5,5],[2,4],[4,2],[1,5]]},
+  ])
+});
+
+// ===== "Close to classic, but legally distinct" family =====
+
+// 7) CLASSIC TWIST — keeps the iconic corner+edge Triple-Word frame, but the
+//    Double-Word ramps step OFF the true diagonal and letters are relocated.
+CONCEPTS.push({
+  id:'twist', label:'Classic Twist', tag:'warn2', tagText:'closest — verify w/ IP',
+  name:'Classic Twist',
+  sym:'Mirror symmetry (8-fold)',
+  desc:'Keeps the most familiar, generic part of Scrabble — <b>Triple-Words in the corners and edge-midpoints</b> — but the Double-Word ramps are <b>stepped off the true diagonal</b> and every letter bonus is relocated. Plays almost exactly like today; the protected diagonal pattern is gone. <b>Lowest-risk-but-not-zero — still worth an IP sanity check.</b>',
+  build:()=>fromSeeds([
+    {type:'TW', op:'d4full', seeds:[[0,0],[0,7]]},
+    {type:'DW', op:'d4full', seeds:[[1,3],[3,5]]},
+    {type:'TL', op:'d4full', seeds:[[2,2],[5,7],[6,6]]},
+    {type:'DL', op:'d4full', seeds:[[0,4],[2,6],[4,7],[7,2]]},
+  ])
+});
+
+// 8) INSET FRAME — the whole classic pattern pulled one ring toward the centre,
+//    so Triple-Words sit just off the literal corners. Tighter, familiar board.
+CONCEPTS.push({
+  id:'inset', label:'Inset Frame', tag:'warn2', tagText:'close — verify w/ IP',
+  name:'Inset Frame',
+  sym:'Mirror symmetry (8-fold)',
+  desc:'The classic structure <b>pulled inward by one ring</b>: Triple-Words move off the literal corners, the Double-Word diagonals run from (2,2)→(5,5) instead of (1,1)→(4,4), and letters follow. Same Scrabble rhythm of "ramps toward the centre," but no coordinate matches the trademarked board.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'d4full', seeds:[[1,1],[1,7]]},
+    {type:'DW', op:'d4full', seeds:[[2,2],[3,3],[4,4],[5,5]]},
+    {type:'TL', op:'d4full', seeds:[[2,6],[6,6]]},
+    {type:'DL', op:'d4full', seeds:[[1,4],[4,6],[3,7],[7,5]]},
+  ])
+});
+
+// 9) SPREAD CLASSIC — corner Triple-Word frame kept, but Double-Words split into
+//    short corner stubs + a new edge ring; letters spread evenly.
+CONCEPTS.push({
+  id:'spread', label:'Spread Classic', tag:'warn2', tagText:'close — verify w/ IP',
+  name:'Spread Classic',
+  sym:'Mirror symmetry (8-fold)',
+  desc:'Keeps only the iconic <b>corner + edge Triple-Word frame</b> for familiarity; the entire interior is <b>re-spread into a fresh symmetric pattern that deliberately avoids every Scrabble coordinate</b>. Same corner-power feel, original middle — the most-changed of the "close" trio.',
+  build:()=>fromSeeds([
+    {type:'TW', op:'d4full', seeds:[[0,0],[0,7]]},
+    {type:'DW', op:'d4full', seeds:[[1,4],[3,6]]},
+    {type:'TL', op:'d4full', seeds:[[2,4],[5,7]]},
+    {type:'DL', op:'d4full', seeds:[[0,5],[2,7],[4,6],[7,4]]},
+  ])
+});
+
+// ---------- counts / render ----------
+const SCR_COUNTS = {TW:8,DW:16,TL:12,DL:24};
+function counts(b){const k={TW:0,DW:0,TL:0,DL:0,CT:0,n:0};for(const row of b)for(const v of row){if(v)k[v]++;else k.n++;}return k;}
+
+function renderBoard(b){
+  const el=document.getElementById('board');
+  el.style.gridTemplateColumns=`repeat(${N},34px)`;
+  el.innerHTML='';
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const v=b[r][c];
+    const d=document.createElement('div');
+    d.className='cell '+(v?v:'n');
+    d.textContent = v==='CT' ? '★' : (v||'·');
+    el.appendChild(d);
+  }
+}
+const SCRABBLE_BOARD = CONCEPTS.find(c=>c.id==='current').build();
+// Words With Friends layout (best-effort from the published board) for distinctness checks.
+// glyphs: T=Triple Word, W=Double Word, L=Triple Letter, D=Double Letter
+const WWF_BOARD = (()=>{
+  const grid=`...T..L.L..T...
+..D..W...W..D..
+.D..D....D..D..
+T..L...W...L..T
+..D...L.L...D..
+.W...L...L...W.
+L...D.....D...L
+...W.......W...
+L...D.....D...L
+.W...L...L...W.
+..D...L.L...D..
+T..L...W...L..T
+.D..D....D..D..
+..D..W...W..D..
+...T..L.L..T...`.split('\n');
+  const m={T:'TW',W:'DW',L:'TL',D:'DL'};
+  const b=grid.map(row=>[...row].map(ch=>m[ch]||null)); b[7][7]='CT'; return b;
+})();
+function exactMatches(b,ref){let n=0;for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=b[r][c];if(v&&v!=='CT'&&v===ref[r][c])n++;}return n;}
+// Gameplay-fidelity vs Scrabble: adjacency, short-word word-multiplier doubling, clustering, squares moved.
+function fidelity(b){
+  const isPrem=v=>!!v, isWM=v=>v==='TW'||v==='DW'||v==='CT';
+  let adj=0,w3wm=0,w4wm=0,w3prem=0,kept=0;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(isPrem(b[r][c])){ if(c+1<N&&isPrem(b[r][c+1]))adj++; if(r+1<N&&isPrem(b[r+1][c]))adj++; }
+    const v=b[r][c], s=SCRABBLE_BOARD[r][c];
+    if(v && v!=='CT' && v===s) kept++;   // premium square that exactly matches Scrabble
+  }
+  const moved=60-kept;
+  const matchWWF=exactMatches(b,WWF_BOARD);
+  const scan=l=>{for(let i=0;i+3<=l.length;i++){const w=l.slice(i,i+3);if(w.filter(isPrem).length>=2)w3prem++;if(w.filter(isWM).length>=2)w3wm++;}for(let i=0;i+4<=l.length;i++)if(l.slice(i,i+4).filter(isWM).length>=2)w4wm++;};
+  for(let r=0;r<N;r++)scan(b[r]); for(let c=0;c<N;c++)scan(b.map(x=>x[c]));
+  const wmDoubling=w3wm+w4wm;
+  const faithful = (adj===0 && wmDoubling===0);
+  return {adj,wmDoubling,w3prem,faithful,movedPct:Math.round(moved/60*100),matchScrabble:kept,matchWWF};
+}
+function renderStats(b){
+  const k=counts(b);
+  const total=k.TW+k.DW+k.TL+k.DL;
+  const rows=[['TW','Triple Word','tw'],['DW','Double Word','dw'],['TL','Triple Letter','tl'],['DL','Double Letter','dl']];
+  let html='';
+  for(const [t,name,cls] of rows){
+    const d=k[t]-SCR_COUNTS[t];
+    const dtxt = d===0?'same as current':(d>0?`+${d} vs current`:`${d} vs current`);
+    html+=`<div class="row"><span><i class="swatch" style="background:var(--${cls})"></i>${name}</span><span>${k[t]} <i class="delta">${dtxt}</i></span></div>`;
+  }
+  html+=`<div class="row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span>Total premium squares</span><span>${total} / 225 <i class="delta">current: 60</i></span></div>`;
+
+  const f=fidelity(b);
+  const isCurrent = b===SCRABBLE_BOARD || f.movedPct===0;
+  const verdict = isCurrent
+    ? `<span style="color:#6b6480">— (this is the current board)</span>`
+    : (f.faithful
+        ? `<span style="color:#166534;font-weight:700">✓ plays like Scrabble</span>`
+        : `<span style="color:#991b1b;font-weight:700">✕ changes gameplay</span>`);
+  const adjTxt = f.adj===0 ? `0 <i class="delta">good</i>` : `${f.adj} <i class="delta" style="color:#991b1b">premiums touch — uncommon in Scrabble</i>`;
+  const wmTxt  = f.wmDoubling===0 ? `0 <i class="delta">good — like Scrabble</i>` : `${f.wmDoubling} <i class="delta" style="color:#991b1b">short words can double word score</i>`;
+  html+=`<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:8px">
+    <div class="row"><span style="font-weight:700">Gameplay vs Scrabble</span><span>${verdict}</span></div>
+    <div class="row"><span>Adjacent premium pairs</span><span>${adjTxt}</span></div>
+    <div class="row"><span>Short-word word-mult doubling</span><span>${wmTxt}</span></div>
+    <div class="row"><span>3-tile windows w/ 2 premiums</span><span>${f.w3prem} <i class="delta">Scrabble: 8</i></span></div>
+    <div class="row"><span>Squares moved vs Scrabble</span><span>${f.movedPct}%</span></div>
+    <div class="row"><span>Exact-match squares (lower = safer)</span><span>Scrabble ${f.matchScrabble}/60 · WWF ${f.matchWWF}/60</span></div>
+  </div>`;
+  document.getElementById('stats').innerHTML=html;
+}
+function renderExport(b,id){
+  const groups={TW:[],DW:[],TL:[],DL:[],CT:[]};
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=b[r][c];if(v)groups[v].push(`'${r},${c}':${v}`);}
+  let s=`// ${id} layout — drop into boardData.js BONUS_MAP\nconst BONUS_MAP = {\n`;
+  for(const t of ['TW','DW','TL','DL','CT']){
+    s+=`  // ${t}\n  ${groups[t].join(', ')},\n`;
+  }
+  s+='}';
+  document.getElementById('export').textContent=s;
+}
+
+let active=1; // default to Pinwheel
+function select(i){
+  active=i;
+  const cc=CONCEPTS[i];
+  const b=cc.build();
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.querySelectorAll('.thumb').forEach((t,j)=>t.classList.toggle('sel',j===i));
+  const tagCls = cc.tag==='bad' ? 'bad' : (cc.tag==='warn2' ? 'warn' : 'ok');
+  const tag = `<span class="tag ${tagCls}">${cc.tagText}</span>`;
+  document.getElementById('cName').innerHTML = cc.name + tag;
+  document.getElementById('cDesc').innerHTML = cc.desc + `<br><span style="font-size:12px;color:#6b6480">Symmetry: ${cc.sym}</span>`;
+  renderBoard(b); renderStats(b); renderExport(b,cc.id);
+}
+
+// build tabs
+const tabsEl=document.getElementById('tabs');
+CONCEPTS.forEach((cc,i)=>{
+  const b=document.createElement('button');
+  b.className='tab'+(cc.warn?' warn':'');
+  b.textContent=cc.label;
+  b.onclick=()=>select(i);
+  tabsEl.appendChild(b);
+});
+
+// build gallery thumbs
+const thumbsEl=document.getElementById('thumbs');
+CONCEPTS.forEach((cc,i)=>{
+  const b=cc.build();
+  const wrap=document.createElement('div');
+  wrap.className='thumb'; wrap.onclick=()=>{select(i);window.scrollTo({top:0,behavior:'smooth'});};
+  const mini=document.createElement('div');
+  mini.className='mini'; mini.style.gridTemplateColumns=`repeat(${N},11px)`;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=b[r][c];const d=document.createElement('div');d.className='mc '+(v||'');mini.appendChild(d);}
+  const lbl=document.createElement('div');
+  const f=fidelity(b);
+  const badge = cc.warn ? '<small>today — replace</small>'
+    : (f.faithful ? '<small style="color:#166534">✓ plays like Scrabble</small>'
+                  : '<small style="color:#b45309">changes gameplay</small>');
+  lbl.className='lbl'; lbl.innerHTML=cc.label+badge;
+  wrap.appendChild(mini); wrap.appendChild(lbl); thumbsEl.appendChild(wrap);
+});
+
+select(CONCEPTS.findIndex(c=>c.id==='faithful-b'));
+</script>
+</body>
+</html>

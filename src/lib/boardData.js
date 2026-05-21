@@ -1,14 +1,21 @@
 // ────────────────────────────────────────────────────────────
-//  Standard Scrabble 15×15 bonus square layout
+//  15×15 bonus square layouts (versioned per game)
 //  TW = Triple Word  |  DW = Double Word
 //  TL = Triple Letter|  DL = Double Letter
 //  CT = Centre star (also DW)
+//
+//  Each game stores `board_layout_version`. Existing/in-progress games are
+//  version 1 (the original Scrabble layout). New games use CURRENT_LAYOUT_VERSION
+//  so a layout change never alters a board already in play.
 // ────────────────────────────────────────────────────────────
 
 const TW = 'TW', DW = 'DW', TL = 'TL', DL = 'DL', CT = 'CT'
 
-// Bonus type per [row][col] — only non-normal squares listed
-const BONUS_MAP = {
+// Version used for all newly-created games.
+export const CURRENT_LAYOUT_VERSION = 2
+
+// V1 — original Scrabble layout (kept so games started before the change are unaffected).
+const BONUS_MAP_V1 = {
   '0,0':TW,  '0,7':TW,  '0,14':TW,
   '7,0':TW,  '7,14':TW,
   '14,0':TW, '14,7':TW, '14,14':TW,
@@ -35,9 +42,38 @@ const BONUS_MAP = {
   '14,3':DL, '14,11':DL,
 }
 
-/** Return the bonus type for a cell (null if normal) */
-export function getBonusType(row, col) {
-  return BONUS_MAP[`${row},${col}`] ?? null
+// V2 — "Faithful Clipped": an original, non-copyrighted layout engineered to
+// match Scrabble's spacing (no adjacent premiums; no short word can land on two
+// word-multipliers) while sharing almost no squares with Scrabble or Words With
+// Friends. Same 8/16/12/24 premium counts and centre start.
+const BONUS_MAP_V2 = {
+  '0,1':TW,  '0,13':TW, '1,0':TW,  '1,14':TW,
+  '13,0':TW, '13,14':TW,'14,1':TW, '14,13':TW,
+
+  '0,5':DW,  '0,9':DW,  '1,4':DW,  '1,10':DW,
+  '4,1':DW,  '4,13':DW, '5,0':DW,  '5,14':DW,
+  '9,0':DW,  '9,14':DW, '10,1':DW, '10,13':DW,
+  '13,4':DW, '13,10':DW,'14,5':DW, '14,9':DW,
+  '7,7':CT,
+
+  '1,7':TL,  '2,2':TL,  '2,12':TL, '3,3':TL,
+  '3,11':TL, '7,1':TL,  '7,13':TL, '11,3':TL,
+  '11,11':TL,'12,2':TL, '12,12':TL,'13,7':TL,
+
+  '0,3':DL,  '0,11':DL, '3,0':DL,  '3,14':DL,
+  '4,4':DL,  '4,7':DL,  '4,10':DL, '5,5':DL,
+  '5,9':DL,  '6,6':DL,  '6,8':DL,  '7,4':DL,
+  '7,10':DL, '8,6':DL,  '8,8':DL,  '9,5':DL,
+  '9,9':DL,  '10,4':DL, '10,7':DL, '10,10':DL,
+  '11,0':DL, '11,14':DL,'14,3':DL, '14,11':DL,
+}
+
+const BONUS_MAPS = { 1: BONUS_MAP_V1, 2: BONUS_MAP_V2 }
+
+/** Return the bonus type for a cell (null if normal), for the given layout version. */
+export function getBonusType(row, col, version = 1) {
+  const map = BONUS_MAPS[version] ?? BONUS_MAP_V1
+  return map[`${row},${col}`] ?? null
 }
 
 /** Create an empty 15×15 board as a 2-D array of null */

@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js'
 import { createTileBag, refillRack } from './tileData.js'
-import { createEmptyBoard, serializeBoard } from './boardData.js'
+import { createEmptyBoard, serializeBoard, CURRENT_LAYOUT_VERSION } from './boardData.js'
 
 // Pure data ops for the lobby. UI concerns (toast, navigate, button-state)
 // stay in the caller — these throw on failure and return the new game id.
@@ -25,6 +25,7 @@ export async function createGame({ user, maxPlayers, invitedUserIds = [] }) {
     tile_bag: bag,
     board,
     created_by: user.id,
+    board_layout_version: CURRENT_LAYOUT_VERSION,
   }
   if (invitedUserIds && invitedUserIds.length > 0) {
     insertRow.invited_user_ids = invitedUserIds

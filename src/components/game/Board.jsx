@@ -13,7 +13,7 @@ const BONUS_CLASSES = {
 
 // cellSize = each cell's width/height in pixels.
 // Fonts scale proportionally so the board looks great at any zoom level.
-export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36, isDark = false }) {
+export default function Board({ board, placements, lastMoveTiles = [], onCellClick, myTurn, cellSize = 36, isDark = false, layoutVersion = 1 }) {
   const placedSet   = new Set(placements.map(p => `${p.row},${p.col}`))
   const lastMoveSet = new Set(lastMoveTiles.map(t => `${t.row},${t.col}`))
 
@@ -36,7 +36,7 @@ export default function Board({ board, placements, lastMoveTiles = [], onCellCli
       {Array.from({ length: 15 }, (_, r) =>
         Array.from({ length: 15 }, (_, c) => {
           const cell  = board[r][c]
-          const bonus = getBonusType(r, c)
+          const bonus = getBonusType(r, c, layoutVersion)
           const isNew      = placedSet.has(`${r},${c}`)
           const isLastMove = !isNew && lastMoveSet.has(`${r},${c}`)
           const key        = `${r}-${c}`

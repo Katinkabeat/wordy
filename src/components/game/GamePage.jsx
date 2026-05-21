@@ -330,11 +330,11 @@ export default function GamePage({ session }) {
     try {
       const words = extractWords(board, placements)
       if (words.length === 0) return 0
-      return calculateScore(board, placements, words)
+      return calculateScore(board, placements, words, game?.board_layout_version ?? 1)
     } catch {
       return 0
     }
-  }, [board, placements])
+  }, [board, placements, game?.board_layout_version])
 
   // ── Render ────────────────────────────────────────────────
   if (!game || !board || autoJoining || (game && players && !myPlayer && !autoJoinAttemptedRef.current)) {
@@ -560,6 +560,7 @@ export default function GamePage({ session }) {
           myTurn={myTurn}
           cellSize={cellSize}
           isDark={isDark}
+          layoutVersion={game.board_layout_version ?? 1}
         />
       </div>
 

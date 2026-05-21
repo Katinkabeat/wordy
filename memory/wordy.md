@@ -476,3 +476,49 @@ fire together via one `Promise.all`. Profiles still happens in a
 second round because it needs `user_ids` from the game_players
 result. Net effect: one round-trip removed from every move. Commit
 `10c7257`.
+
+## Session: May 21, 2026
+
+### Board layout versioning — non-copyrighted board for new games (c9)
+Shipped per-game board layouts so we can replace Scrabble's trademarked
+premium-square arrangement before going public, WITHOUT changing any board
+already in play.
+
+**Why:** Scrabble's exact TW/TL/DW/DL placement is trademarked (Hasbro/Mattel).
+Raeban c9 blocked public launch on this. The multiplier *mechanic* is fine —
+only the *arrangement* is the issue.
+
+**New layout chosen — "Faithful Clipped" (version 2):** an original layout
+engineered to MATCH Scrabble's gameplay spacing — no two premiums orthogonally
+adjacent, and no short word (even 4 letters) can land on two word-multipliers —
+while sharing almost no squares with Scrabble (12/60 exact) or Words With
+Friends (4/60 exact). Same 8/16/12/24 premium counts + centre start, so scoring
+strategy is preserved. Triple-Words sit just off the literal corners
+("clipped corners"); Double-Words form an edge ring. ~80% of squares moved vs
+Scrabble. Design exploration + all the rejected options live in
+`docs/c9-board-layouts.html` (a self-contained mockup with a gameplay-fidelity
+readout per layout).
+
+**How it works (per-game version, not a global swap):**
+- `games.board_layout_version INT NOT NULL DEFAULT 1` (migration:
+  `board-layout-version-migration.sql`). Applied to the shared DB via the
+  Supabase Management API query endpoint (direct DB host is IPv6-only and won't
+  resolve from this box; psql failed, Management API worked). All 114 existing
+  games backfilled to 1 = Scrabble, so in-progress games are untouched.
+- `boardData.js`: `BONUS_MAP_V1` (Scrabble) + `BONUS_MAP_V2` (Clipped);
+  `getBonusType(row, col, version = 1)`; exported `CURRENT_LAYOUT_VERSION = 2`.
+- `gameMutations.createGame` stamps new games with `CURRENT_LAYOUT_VERSION`.
+- Version threaded through render + scoring: `GamePage` → `ZoomableBoard` →
+  `Board` (getBonusType), and `calculateScore(board, placements, words,
+  layoutVersion)` in both `useGameMutations` (authoritative) and `GamePage`
+  (live preview). Defaults to 1 everywhere if the field is missing.
+
+**Verified:** logic test (now deleted) confirmed v1=Scrabble, v2=Clipped,
+correct 8/16/12/24 counts for both, version-aware scoring (DW cell scores x2 in
+v1, normal in v2), and legacy default = v1. Vite builds clean; app runs (auth
+redirect fires, no console errors). NOT visually exercised in an authenticated
+in-game board — that needs SQ-hub login; the render is a direct 1:1 of the
+verified getBonusType map, identical to the verified mockup.
+
+**Still open before public launch:** the card's IP sanity-check note still
+applies; and only NEW games use v2. Commit `d23c5ab`.

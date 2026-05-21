@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
+import { SQErrorBoundary } from '../../rae-side-quest/packages/sq-ui/index.js'
 import './index.css'
 
 // Register service worker for push notifications + PWA
@@ -24,8 +25,10 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/wordy">
-      <App />
-    </BrowserRouter>
+    <SQErrorBoundary label="wordy">
+      <BrowserRouter basename="/wordy">
+        <App />
+      </BrowserRouter>
+    </SQErrorBoundary>
   </React.StrictMode>,
 )

@@ -21,7 +21,17 @@ export function useFriends(userId) {
         .or(`user_a.eq.${userId},user_b.eq.${userId}`)
       if (friendErr) throw friendErr
 
-      const otherIds = (rows ?? []).map(r => r.user_a === userId ? r.user_b : r.user_a)
+      // Drop anyone the current user has blocked. RLS on user_blocks only
+      // exposes rows where blocker = auth.uid(), so this is "people I blocked".
+      const { data: blockRows, error: blockErr } = await supabase
+        .from('user_blocks')
+        .select('blocked')
+      if (blockErr) throw blockErr
+      const blockedIds = new Set((blockRows ?? []).map(b => b.blocked))
+
+      const otherIds = (rows ?? [])
+        .map(r => r.user_a === userId ? r.user_b : r.user_a)
+        .filter(id => !blockedIds.has(id))
       if (otherIds.length === 0) {
         setFriends([])
         setLoading(false)

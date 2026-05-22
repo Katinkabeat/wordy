@@ -522,3 +522,23 @@ verified getBonusType map, identical to the verified mockup.
 
 **Still open before public launch:** the card's IP sanity-check note still
 applies; and only NEW games use v2. Commit `d23c5ab`.
+
+### Blocked-user filtering in invite friend list (c124)
+
+`useFriends` now fetches `user_blocks` (RLS exposes only rows where
+`blocker = auth.uid()`) and filters those ids out before loading profiles, so
+people you've blocked no longer show in the Create Game invite dropdown.
+Game-side only, no DB change — mirrors the hub Friends view pattern.
+
+Root cause: `block_user` only inserts into `user_blocks`; it does NOT remove the
+friendship, so blocked friends leaked into the friends-only dropdown.
+
+Scope: only removes people *you* blocked. Stopping someone who blocked *you*
+from inviting you is server-side enforcement and out of scope — RLS won't expose
+who blocked you anyway.
+
+Verified at the data layer: simulated Rae's authenticated session in psql
+(`SET ROLE authenticated` + jwt claims), temp-blocked a friend inside a
+transaction, confirmed the friend dropped from the filtered result, rolled back
+(no persisted change). Build clean. NOT exercised in-browser (Turnstile login,
+no test creds). Byte-identical edit shipped to Rungles.

@@ -82,25 +82,24 @@ export function useGameMutations({
       if (over) finalPlayers = finalizeEndgame(finalPlayers, user.id)
 
       // ── DB write phase ────────────────────────────────────
-      // Suppress real-time reloads while parallel writes are in progress.
+      // Suppress real-time reloads while the write is in progress.
       mutatingRef.current = true
       try {
-        // Run game + player updates in parallel (independent tables)
-        const [{ error: gameErr }, { error: playerErr }] = await Promise.all([
-          supabase.from('games').update({
-            board: newBoardFlat,
-            tile_bag: newBag,
-            current_player_idx: nextIdx,
-            consecutive_passes: 0,
-            ...endgameFields(over),
-          }).eq('id', gameId),
-          supabase.from('game_players').update({
-            score: newScore,
-            rack:  newRack,
-          }).eq('game_id', gameId).eq('user_id', user.id),
-        ])
-        if (gameErr) { console.error('games update failed:', gameErr); toast.error('Failed to save move — please retry.'); recall(); return }
-        if (playerErr) { console.error('game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); recall(); return }
+        // Atomic: a SECURITY DEFINER RPC writes games + game_players in one
+        // transaction so a play is all-or-nothing. A split client-side write
+        // (RLS forces game_players to be a separate UPDATE) could half-commit
+        // and corrupt the game — score/rack saved but board/turn lost.
+        const { error: playErr } = await supabase.rpc('submit_play', {
+          p_game_id: gameId,
+          p_user_id: user.id,
+          p_board: newBoardFlat,
+          p_tile_bag: newBag,
+          p_rack: newRack,
+          p_score: newScore,
+          p_current_player_idx: nextIdx,
+          p_is_game_over: over,
+        })
+        if (playErr) { console.error('submit_play RPC failed:', playErr); toast.error('Failed to save move — please retry.'); recall(); return }
 
         // Fire-and-forget: move log + finish RPC are non-critical for gameplay
         if (over) callFinishGameRpc(gameId, finalPlayers)
@@ -189,19 +188,17 @@ export function useGameMutations({
       let finalPlayers = [...players]
       if (over) finalPlayers = finalizeEndgame(finalPlayers, null)
 
-      // Run game + player updates in parallel (independent tables)
-      const [{ error: gameErr }, { error: playerErr }] = await Promise.all([
-        supabase.from('games').update({
-          tile_bag: newBag,
-          current_player_idx: nextIdx,
-          consecutive_passes: newPasses,
-          ...endgameFields(over),
-        }).eq('id', gameId),
-        supabase.from('game_players').update({ rack: refilled })
-          .eq('game_id', gameId).eq('user_id', user.id),
-      ])
-      if (gameErr) { console.error('exchange: games update failed:', gameErr); toast.error('Failed to exchange — please retry.'); return }
-      if (playerErr) { console.error('exchange: game_players update failed:', playerErr); toast.error('Failed to save rack — please retry.'); return }
+      // Atomic: one transaction for games + game_players (see submit_play note).
+      const { error: exchErr } = await supabase.rpc('submit_exchange', {
+        p_game_id: gameId,
+        p_user_id: user.id,
+        p_tile_bag: newBag,
+        p_rack: refilled,
+        p_current_player_idx: nextIdx,
+        p_consecutive_passes: newPasses,
+        p_is_game_over: over,
+      })
+      if (exchErr) { console.error('submit_exchange RPC failed:', exchErr); toast.error('Failed to exchange — please retry.'); return }
 
       // Fire-and-forget: move log + finish RPC are non-critical
       supabase.from('game_moves').insert({

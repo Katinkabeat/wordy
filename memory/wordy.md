@@ -542,3 +542,42 @@ Verified at the data layer: simulated Rae's authenticated session in psql
 transaction, confirmed the friend dropped from the filtered result, rolled back
 (no persisted change). Build clean. NOT exercised in-browser (Turnstile login,
 no test creds). Byte-identical edit shipped to Rungles.
+
+## Session: 2026-05-23 — Atomic play submission (half-committed move bug)
+
+Onyi reported: played a 20pt word, got the old "couldn't save" toast, then the
+word vanished from the board / her tiles were replaced / score kept the +20 /
+turn never advanced.
+
+**Root cause:** `submitWord` (and `confirmExchange`) did two independent
+client-side UPDATEs (`games` + `game_players`) in a `Promise.all`. RLS forces
+the split — a player may only update their own `game_players` row, so the two
+tables can't be written in one client statement. When the `games` write failed
+but the `game_players` write succeeded, the move half-committed: score+rack
+saved, board+tile_bag+turn lost. The drawn tiles also duplicated (in the rack
+AND still in the bag, since `games.tile_bag` never updated). The old "just
+retry the same word" habit then re-validated against corrupt state.
+
+NOT the SQErrorBoundary (c117) — that was Rae's first guess, but the boundary
+never fired; this was a silent partial DB write.
+
+**Fix:** two SECURITY DEFINER RPCs in `wordy-atomic-submit-play-migration.sql`
+(applied to shared DB via pooler/psql) — `submit_play` and `submit_exchange` —
+each does both table writes in one transaction. They `SELECT ... FOR UPDATE`
+the games row and guard `status='active'` + `current_player_idx = caller's
+player_index`, so a retry after a hidden success is rejected ("Not your turn")
+instead of double-applying. `passTurn` was already a single-statement write, so
+it was left alone. `useGameMutations.js` swapped both Promise.all blocks for the
+RPC calls; `endgameFields` still used by `passTurn`.
+
+**Verified at data layer** (all rolled back, no real data touched): happy path
+updates both tables atomically (board/bag/turn + player score/rack, opponent
+untouched); out-of-turn submit raises "Not your turn"; finished-game submit
+raises "Game is not active". `npm run build` clean. Authed in-game flow not
+E2E'd (no test creds).
+
+**Live data left to clean up:** Dino & Onyi's in-progress game is corrupted from
+the original half-commit — Onyi has +20 score, a refilled rack, an empty board,
+duplicated tiles in the bag, and is stuck on her turn. Needs a manual repair or
+admin-close (not done in this session — pending Rae's call, since it's a live
+game between her friends).

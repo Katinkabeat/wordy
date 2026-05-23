@@ -576,8 +576,14 @@ untouched); out-of-turn submit raises "Not your turn"; finished-game submit
 raises "Game is not active". `npm run build` clean. Authed in-game flow not
 E2E'd (no test creds).
 
-**Live data left to clean up:** Dino & Onyi's in-progress game is corrupted from
-the original half-commit — Onyi has +20 score, a refilled rack, an empty board,
-duplicated tiles in the bag, and is stuck on her turn. Needs a manual repair or
-admin-close (not done in this session — pending Rae's call, since it's a live
-game between her friends).
+**Live data — investigated + fixed.** The original report sounded like a fully
+stuck game, but by the time I checked, Dino & Onyi's game (`e978d2d8`) had
+self-reconciled: each later normal move recomputes board/rack/bag from current
+state, so board, tiles, and turn were all consistent again (now Dino's turn, 7
+moves in). The ONLY lingering artifact was a cumulative-score phantom — Onyi's
+`game_players.score` was 89 but her recorded `game_moves` summed to 69 (exactly
+the +20 word that never landed). An integrity scan (score vs sum-of-moves) of
+all active games found this was the only phantom anywhere. Fixed with a one-row
+`UPDATE game_players SET score = 69` (Rae approved, 2026-05-23). Lesson: this
+bug's durable signature is a score/moves-sum mismatch, NOT tile counts — placed
+tiles leave the rack+bag pool so `tiles_in_play <> 100` is normal.

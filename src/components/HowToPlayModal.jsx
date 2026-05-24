@@ -8,9 +8,9 @@ export default function HowToPlayModal({ open, onClose }) {
         <section>
           <h3 className="font-display text-base text-wordy-700 mb-1">The goal</h3>
           <p>
-            Wordy is multiplayer Scrabble. Build words on the board from the
-            letter tiles in your rack and rack up the highest score. New to
-            Scrabble? Start here.
+            Wordy is a multiplayer word game. Build words on the board from the
+            letter tiles in your rack and rack up the highest score. New to word
+            tile games? Start here.
           </p>
         </section>
 

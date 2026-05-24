@@ -16,6 +16,7 @@ import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard } from '../../../../r
 // don't download its code with the lobby.
 const AdminPanel = lazy(() => import('../admin/AdminPanel.jsx'))
 import SettingsDropdown from './SettingsModal.jsx'
+import HowToPlayModal from '../HowToPlayModal.jsx'
 import AvatarMenu from './AvatarMenu.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 
@@ -34,6 +35,7 @@ export default function LobbyPage({ session }) {
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
   const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
   const [showSettings, setShowSettings] = useState(false)
+  const [showHowTo, setShowHowTo]       = useState(false)
 
   // ── Load profile ──────────────────────────────────────────
   useEffect(() => {
@@ -235,6 +237,7 @@ export default function LobbyPage({ session }) {
                     toggleTheme={toggleTheme}
                     isAdmin={!!adminRecord}
                     lobbyTab={lobbyTab}
+                    onHowToPlay={() => { setShowHowTo(true); setShowSettings(false) }}
                     onToggleAdmin={() => { setLobbyTab(t => t === 'admin' ? 'lobby' : 'admin'); setShowSettings(false) }}
                     onLogout={async () => {
                       try { await supabase.auth.signOut() } catch {}
@@ -351,6 +354,8 @@ export default function LobbyPage({ session }) {
           onCreated={() => setShowCreateSheet(false)}
         />
       )}
+
+      <HowToPlayModal open={showHowTo} onClose={() => setShowHowTo(false)} />
     </SQLobbyShell>
   )
 }

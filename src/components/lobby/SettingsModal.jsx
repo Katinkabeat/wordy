@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin, lobbyTab, onToggleAdmin, onLogout }) {
+export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin, lobbyTab, onToggleAdmin, onLogout, onHowToPlay }) {
   const dropdownRef = useRef(null)
 
   // Close on click outside
@@ -32,6 +32,17 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
           className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
         >
           {isDark ? '☀️ Light' : '🌙 Dark'}
+        </button>
+      </div>
+
+      {/* How to play */}
+      <div className="settings-row">
+        <span className="text-sm font-bold text-wordy-600">How to play</span>
+        <button
+          onClick={onHowToPlay}
+          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
+        >
+          📖 Open
         </button>
       </div>
 

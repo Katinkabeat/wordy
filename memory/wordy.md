@@ -587,3 +587,25 @@ all active games found this was the only phantom anywhere. Fixed with a one-row
 `UPDATE game_players SET score = 69` (Rae approved, 2026-05-23). Lesson: this
 bug's durable signature is a score/moves-sum mismatch, NOT tile counts — placed
 tiles leave the rack+bag pool so `tiles_in_play <> 100` is normal.
+
+## Session: 2026-05-24 — How to Play modal (c134)
+
+Wordy was the only SQ game with no in-game rules. Added `src/components/HowToPlayModal.jsx`
+(SQModal-based, matches Yahdle/Snibble's per-game pattern) covering Scrabble basics for
+first-timers: 7-tile rack, draw/replenish, forming words (first word covers centre star,
+rest connect crossword-style), tile point values, the 2 blanks (=0 pts), DL/TL/DW/TW bonus
+squares, the 50-pt all-7-tiles bingo bonus, scoring, pass/swap/forfeit, 2-4 player async
+turn flow, and endgame. Wired into the settings cog dropdown (`SettingsModal.jsx`, which is
+actually `SettingsDropdown`) via a new "How to Play" row + `onHowToPlay` callback; modal
+state lives in `LobbyPage.jsx`. No em dashes in the user-facing copy.
+
+Verified as far as headless allows: app boots, login renders, all three changed modules
+transform via Vite with no errors (SQModal import resolves), no console errors. The modal
+itself sits behind SQ-hub login + a Cloudflare challenge, so the click-through (open/close)
+was NOT exercised in-browser — Rae should confirm by opening ⚙️ → How to Play once.
+
+Commit `fed20e6`. Push needed a rebase onto remote (origin had picked up the atomic-submit
+work that was sitting as local WIP); rebased cleanly. NOTE: pre-existing local WIP
+(memory/wordy.md edits) is parked in `git stash@{0}` — it was a parallel copy of the
+atomic-submit session already on remote, so it was not auto-merged. Rae can `git stash drop`
+it after a glance, or pop+reconcile if it holds anything unique.

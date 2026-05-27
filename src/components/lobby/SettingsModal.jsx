@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { SQReportPlayer } from '../../../../rae-side-quest/packages/sq-ui/index.js'
+import { supabase } from '../../lib/supabase.js'
 
 export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin, lobbyTab, onToggleAdmin, onLogout, onHowToPlay }) {
   const dropdownRef = useRef(null)
@@ -62,6 +64,9 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
           </button>
         </div>
       )}
+
+      {/* Report a player */}
+      <SQReportPlayer supabase={supabase} game="wordy" />
 
       {/* Log out */}
       <div className="settings-row">

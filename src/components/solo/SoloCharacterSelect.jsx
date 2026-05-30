@@ -155,8 +155,9 @@ export default function SoloCharacterSelect() {
             ))}
           </div>
 
-          <div className="text-xs text-wordy-700 dark:text-wordy-200 bg-wordy-50 dark:bg-[#1f1240] border border-dashed border-wordy-200 dark:border-[#2d1b55] rounded-lg px-3 py-2 my-4">
-            🏆 Solo games don't count toward the leaderboard. Play freely.
+          <div className="text-xs text-wordy-700 dark:text-wordy-200 bg-wordy-50 dark:bg-[#1f1240] border border-dashed border-wordy-200 dark:border-[#2d1b55] rounded-lg px-3 py-2 my-4 flex items-start gap-1.5">
+            <span>🏆</span>
+            <span>Solo games don't count toward the leaderboard. Play freely.</span>
           </div>
 
           <button onClick={start} disabled={!filled}

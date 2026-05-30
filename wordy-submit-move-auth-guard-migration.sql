@@ -43,7 +43,10 @@ DECLARE
 BEGIN
   -- Caller-identity guard: a normal authenticated caller may only submit as
   -- themselves. service_role (the bot-move edge function) is exempt.
-  IF auth.role() <> 'service_role'
+  -- coalesce() guards the NULL-role case: a missing role claim makes
+  -- auth.role() <> 'service_role' evaluate to NULL (not TRUE), which would
+  -- otherwise let the whole AND short-circuit past the guard.
+  IF coalesce(auth.role(), '') <> 'service_role'
      AND (auth.uid() IS NULL OR p_user_id <> auth.uid()) THEN
     RAISE EXCEPTION 'Cannot submit a move as another player';
   END IF;
@@ -114,7 +117,10 @@ DECLARE
 BEGIN
   -- Caller-identity guard: a normal authenticated caller may only submit as
   -- themselves. service_role (the bot-move edge function) is exempt.
-  IF auth.role() <> 'service_role'
+  -- coalesce() guards the NULL-role case: a missing role claim makes
+  -- auth.role() <> 'service_role' evaluate to NULL (not TRUE), which would
+  -- otherwise let the whole AND short-circuit past the guard.
+  IF coalesce(auth.role(), '') <> 'service_role'
      AND (auth.uid() IS NULL OR p_user_id <> auth.uid()) THEN
     RAISE EXCEPTION 'Cannot submit a move as another player';
   END IF;

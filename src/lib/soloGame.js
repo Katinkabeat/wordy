@@ -106,7 +106,7 @@ export function applyPlay(state, placements) {
     status,
     currentPlayerIdx: over ? state.currentPlayerIdx : nextIdx(state),
     consecutivePasses: 0,
-    lastMoveScores: { [me.user_id]: turnScore },
+    lastMoveScores: { ...state.lastMoveScores, [me.user_id]: turnScore },
     lastMoveTiles: placements.map(p => ({ row: p.row, col: p.col })),
     lastWords: words.map(w => w.word),
   }
@@ -123,7 +123,7 @@ export function applyPass(state) {
     consecutivePasses: passes,
     status: over ? 'finished' : state.status,
     currentPlayerIdx: over ? state.currentPlayerIdx : nextIdx(state),
-    lastMoveScores: {},
+    lastMoveScores: { ...state.lastMoveScores, [state.players[state.currentPlayerIdx].user_id]: 0 },
     lastMoveTiles: [],
   }
 }
@@ -155,7 +155,7 @@ export function applyExchange(state, indices) {
     consecutivePasses: passes,
     status,
     currentPlayerIdx: over ? state.currentPlayerIdx : nextIdx(state),
-    lastMoveScores: {},
+    lastMoveScores: { ...state.lastMoveScores, [me.user_id]: 0 },
     lastMoveTiles: [],
   }
 }

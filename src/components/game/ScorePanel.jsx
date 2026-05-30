@@ -45,7 +45,7 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
           items-start + content-start prevent the chips from stretching
           vertically to fill the reserved space when only 1 row renders;
           empty space sits below the chips rather than inflating them. */}
-      <div className="flex lg:hidden gap-x-2 gap-y-1 flex-wrap items-start content-start px-1 min-h-[52px]">
+      <div className="grid grid-cols-2 lg:hidden gap-1.5 justify-items-start content-start px-1 min-h-[52px]">
         {players.map((p, i) => {
           const name      = profiles[p.user_id]?.username ?? '?'
           const isMe      = p.user_id === userId

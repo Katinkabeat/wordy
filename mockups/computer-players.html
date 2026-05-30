@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wordy — Solo / Computer Players (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --w50:#faf5ff; --w100:#f3e8ff; --w200:#e9d5ff; --w300:#d8b4fe; --w400:#c084fc;
+    --w500:#a855f7; --w600:#9333ea; --w700:#7e22ce; --w800:#6b21a8; --w900:#581c87;
+    --pink2:#f472b6;
+    --surface:#ffffff; --card-border:#ede9fe; --text:#3b1d63; --text2:#a855f7;
+    --head:#7e22ce; --info-bg:#faf5ff; --shadow:0 4px 6px rgba(80,30,120,.10);
+  }
+  html.dark{
+    --surface:#1a1130; --card-border:#2d1b55; --text:#ede0ff; --text2:#c4b5fd;
+    --head:#c4b5fd; --info-bg:#1f1240; --shadow:none;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; font-family:'Nunito',sans-serif; color:var(--text);
+    background:linear-gradient(135deg,#faf5ff,#fdf2f8,#f3e8ff);
+    display:flex; justify-content:center; padding:20px; transition:color .2s;
+  }
+  html.dark body{background:#0f0a1e}
+  .display{font-family:'Fredoka',cursive;font-weight:600}
+  .app{width:100%; max-width:480px}
+
+  /* shared card */
+  .card{background:var(--surface); border:1px solid var(--card-border); border-radius:1rem;
+    box-shadow:var(--shadow); padding:1rem 1.1rem; margin-bottom:1.25rem}
+  .ctitle{font-family:'Fredoka',cursive; font-size:1.25rem; color:var(--head); margin:0 0 4px}
+  .csub{font-size:.85rem; opacity:.8; margin:0 0 14px}
+
+  /* header */
+  .head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; padding:0 2px}
+  .head .logo{font-family:'Fredoka',cursive; font-size:1.6rem; color:var(--head)}
+  .me{width:34px;height:34px;border-radius:999px;display:grid;place-items:center;color:#fff;
+    font-family:'Fredoka',cursive;font-size:.75rem;background:hsl(280,70%,55%)}
+
+  /* primary / secondary buttons */
+  .btn-primary{display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;
+    border:0; cursor:pointer; color:#fff; font-family:'Fredoka',cursive; font-size:.95rem; padding:11px;
+    border-radius:.75rem; background:linear-gradient(135deg,#9333ea,#7e22ce); box-shadow:0 3px 0 #581c87;
+    transition:all .12s}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-primary:active{box-shadow:none; transform:translateY(2px)}
+  .btn-primary:disabled{opacity:.5; cursor:not-allowed; transform:none; box-shadow:0 3px 0 #581c87}
+
+  /* mini avatar teaser on solo card */
+  .mini{display:flex; margin-top:4px}
+  .mini span{width:28px;height:28px;border-radius:999px;display:grid;place-items:center;color:#fff;
+    font-family:'Fredoka',cursive;font-size:.58rem;border:2px solid var(--surface);margin-left:-7px}
+  .mini span:first-child{margin-left:0}
+
+  /* sample multiplayer row */
+  .gamerow{display:flex; align-items:center; justify-content:space-between; border-radius:.75rem;
+    padding:8px 12px; border:1px solid var(--w100); background:var(--info-bg); margin-bottom:10px}
+  html.dark .gamerow{border-color:#2d1b55}
+  .chip{font-size:.72rem; font-weight:800; padding:2px 8px; border-radius:999px; background:var(--w200); color:var(--w700)}
+  html.dark .chip{background:#3a2466; color:#e9d5ff}
+  .chip.turn{background:var(--w500); color:#fff}
+  .rowsub{font-size:.72rem; color:var(--text2); margin-top:3px}
+  .smallbtn{border:0; cursor:pointer; color:#fff; font-family:'Fredoka',cursive; font-size:.72rem;
+    padding:5px 12px; border-radius:.5rem; background:linear-gradient(135deg,#9333ea,#7e22ce)}
+
+  /* back bar */
+  .back{display:flex; align-items:center; gap:10px; margin-bottom:16px; cursor:pointer; padding:0 2px}
+  .back .arr{width:34px;height:34px;border-radius:999px;display:grid;place-items:center;
+    border:1px solid var(--card-border);background:var(--surface);color:var(--text);font-size:1.1rem}
+  .back .bt{font-family:'Fredoka',cursive; font-size:1.35rem; color:var(--head)}
+
+  .label{font-size:.7rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--text2); margin:0 0 8px}
+
+  /* player count */
+  .counts{display:flex; gap:8px; margin-bottom:18px}
+  .counts button{flex:1; height:42px; border-radius:.75rem; font-weight:800; font-size:.9rem; cursor:pointer;
+    border:2px solid var(--w200); background:transparent; color:var(--text2); transition:all .15s}
+  html.dark .counts button{border-color:#3a2466}
+  .counts button.active{background:var(--w600); color:#fff; border-color:var(--w600); box-shadow:0 2px 0 var(--w800)}
+
+  /* opponent seats strip */
+  .seats{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap}
+  .seat{flex:1; min-width:120px; display:flex; align-items:center; gap:8px; border-radius:.7rem; padding:8px 10px;
+    border:2px solid var(--card-border); background:var(--info-bg); transition:all .15s}
+  .seat.active{border-color:var(--w500); box-shadow:0 0 0 3px rgba(168,85,247,.15)}
+  .seat.empty{border-style:dashed; color:var(--text2); justify-content:center; cursor:pointer; font-size:.78rem; font-weight:700}
+  .seat .sa{width:30px;height:30px;border-radius:999px;display:grid;place-items:center;color:#fff;
+    font-family:'Fredoka',cursive;font-size:.62rem;flex-shrink:0}
+  .seat .sn{font-family:'Fredoka',cursive; font-size:.82rem; line-height:1.1}
+  .seat .st{font-size:.6rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); font-weight:800}
+  .seat .x{margin-left:auto; cursor:pointer; color:var(--text2); font-size:.95rem; padding:0 2px}
+  .seat .x:hover{color:#e11d48}
+
+  /* character cards */
+  .grid{display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:6px}
+  .char{text-align:left; cursor:pointer; border:2px solid var(--card-border); background:var(--info-bg);
+    border-radius:.85rem; padding:12px; transition:all .15s; position:relative; overflow:hidden; width:100%}
+  .char:hover{border-color:var(--w400)}
+  .char .row{display:flex; align-items:center; gap:9px}
+  .avatar{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;color:#fff;
+    font-family:'Fredoka',cursive;font-size:.8rem;flex-shrink:0}
+  .cname{font-family:'Fredoka',cursive; font-size:.95rem; line-height:1; color:var(--text)}
+  .tier{font-size:.62rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--text2); margin-top:3px}
+  .add{margin-left:auto; font-family:'Fredoka',cursive; font-size:.72rem; color:var(--w600);
+    border:1.5px solid var(--w300); border-radius:999px; padding:3px 11px}
+  html.dark .add{color:var(--w300); border-color:#4c1d95}
+  .blurb{font-size:.7rem; color:var(--text2); margin:9px 0 0; line-height:1.35}
+  .pips{display:flex; gap:3px; margin-top:9px}
+  .pip{width:18px;height:5px;border-radius:3px;background:var(--w200)}
+  html.dark .pip{background:#3a2466}
+  .pip.on{background:var(--w600)}
+  html.dark .pip.on{background:var(--w400)}
+  .char.boss{border-color:#3a1d6e; background:linear-gradient(135deg,#2a1551,#4c1d95)}
+  .char.boss .cname,.char.boss .blurb{color:#f3e8ff}
+  .char.boss .tier{color:#f9a8d4}
+  .char.boss .add{color:#fbcfe8; border-color:#9d4edd}
+  .char.boss .pip{background:rgba(255,255,255,.18)}
+  .char.boss .pip.on{background:var(--pink2)}
+  .char.boss .crown{position:absolute; top:10px; right:12px; font-size:1.1rem; opacity:.9}
+
+  .info{font-size:.72rem; color:var(--text); background:var(--info-bg);
+    border:1px dashed var(--card-border); border-radius:.6rem; padding:9px 11px; margin:14px 0}
+
+  .themer{position:fixed; top:14px; right:14px; border:1px solid var(--card-border); background:var(--surface);
+    color:var(--text); border-radius:999px; padding:6px 13px; cursor:pointer; font-weight:700; font-size:.76rem; box-shadow:var(--shadow)}
+  .stamp{text-align:center; font-size:.68rem; color:var(--text2); margin-top:4px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+  <button class="themer" onclick="document.documentElement.classList.toggle('dark')">◐ light / dark</button>
+
+  <!-- ========== SCREEN 1: LOBBY ========== -->
+  <div class="app" id="lobby">
+    <div class="head">
+      <span class="logo">Wordy</span>
+      <span class="me">RA</span>
+    </div>
+
+    <!-- Solo Play card — matches sibling games' solo cards (plain .card) -->
+    <section class="card">
+      <h2 class="ctitle">🤖 Solo Play</h2>
+      <p class="csub">Take on a computer opponent anytime — no waiting for friends.</p>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+        <button class="btn-primary" style="width:auto; padding-left:20px; padding-right:20px" onclick="show('solo')">▶ Play</button>
+        <div class="mini">
+          <span style="background:hsl(145,60%,45%)">RO</span>
+          <span style="background:hsl(210,70%,52%)">JA</span>
+          <span style="background:hsl(25,75%,50%)">ME</span>
+          <span style="background:linear-gradient(135deg,#ec4899,#a855f7)">👑</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Multiplayer card -->
+    <section class="card">
+      <h2 class="ctitle">🎮 Multiplayer</h2>
+      <p class="csub">Play friends or join an open table.</p>
+      <div class="gamerow">
+        <div>
+          <div><span class="chip turn">You</span> <span class="chip">Sam</span> <span style="font-size:.72rem;color:var(--text2)">(2/2)</span></div>
+          <div class="rowsub">Your turn</div>
+        </div>
+        <button class="smallbtn">Resume</button>
+      </div>
+      <button class="btn-primary">✨ New game</button>
+    </section>
+
+    <!-- Completed games (standard component) -->
+    <section class="card" style="margin-bottom:0">
+      <h2 class="ctitle">🏁 Completed Games</h2>
+      <p class="csub" style="margin:0">Past games will appear here.</p>
+    </section>
+
+    <p class="stamp">Mockup · the Solo Play card is the new bit · tap ▶ Play</p>
+  </div>
+
+  <!-- ========== SCREEN 2: SOLO SETUP ========== -->
+  <div class="app hidden" id="solo">
+    <div class="back" onclick="show('lobby')">
+      <span class="arr">‹</span><span class="bt">Solo Play</span>
+    </div>
+
+    <section class="card">
+      <p class="label">Players</p>
+      <div class="counts" id="counts">
+        <button data-n="2" class="active" onclick="setCount(2)">2</button>
+        <button data-n="3" onclick="setCount(3)">3</button>
+        <button data-n="4" onclick="setCount(4)">4</button>
+      </div>
+
+      <p class="label" id="opplabel">Your opponent</p>
+      <div class="seats" id="seats"></div>
+
+      <p class="label">Tap to fill the highlighted seat</p>
+      <div class="grid" id="grid"></div>
+
+      <div class="info">🏆 Solo games don't count toward the leaderboard — play freely.</div>
+      <button class="btn-primary" id="startbtn">✨ Start game</button>
+    </section>
+    <p class="stamp">Pick 3–4 players to add more opponents · mix difficulties freely</p>
+  </div>
+
+<script>
+  const CHARS = {
+    robin:{name:'Robin', tier:'Easy', ini:'RO', bg:'hsl(145,60%,45%)', pips:1,
+      blurb:"Here for fun. Plays short, friendly words and won't reach for the big plays."},
+    jay:{name:'Jay', tier:'Medium', ini:'JA', bg:'hsl(210,70%,52%)', pips:2,
+      blurb:"A solid casual player. Knows the common words and the odd clever spot."},
+    merlin:{name:'Merlin', tier:'Hard', ini:'ME', bg:'hsl(25,75%,50%)', pips:3,
+      blurb:"Sharp and tactical. Hunts premium squares and bigger words."},
+    claudette:{name:'Claudette', tier:'Expert · the boss', ini:'CL', boss:true,
+      bg:'linear-gradient(135deg,#ec4899,#a855f7)', pips:4,
+      blurb:"Sees every play, holds the perfect tiles, almost never slips. Beat her and you've earned the crown."}
+  };
+
+  let count = 2;
+  let seats = [null];          // length = count - 1
+  let active = 0;
+
+  function firstEmpty(){ return seats.findIndex(s=>!s); }
+
+  function setCount(n){
+    count = n;
+    const opp = n - 1;
+    const next = [];
+    for(let i=0;i<opp;i++) next.push(seats[i] || null);
+    seats = next;
+    active = firstEmpty();
+    document.querySelectorAll('#counts button').forEach(b=>b.classList.toggle('active', +b.dataset.n===n));
+    render();
+  }
+
+  function assign(id){
+    let idx = (active>=0 && !seats[active]) ? active : firstEmpty();
+    if(idx < 0) idx = active>=0 ? active : 0;   // all full → replace active seat
+    seats[idx] = id;
+    active = firstEmpty();
+    if(active < 0) active = idx;                 // keep last as active when full
+    render();
+  }
+  function clearSeat(i){ seats[i]=null; active=i; render(); }
+  function focusSeat(i){ active=i; render(); }
+
+  function pips(n,boss){
+    let h='';
+    for(let i=0;i<4;i++) h+=`<span class="pip ${i<n?'on':''}"></span>`;
+    return h;
+  }
+
+  function render(){
+    document.getElementById('opplabel').textContent = seats.length>1 ? `Your opponents (${seats.length})` : 'Your opponent';
+
+    // seats strip
+    const sc = document.getElementById('seats');
+    sc.innerHTML = seats.map((s,i)=>{
+      if(!s) return `<div class="seat empty ${i===active?'active':''}" onclick="focusSeat(${i})">＋ Seat ${i+1}</div>`;
+      const c = CHARS[s];
+      return `<div class="seat ${i===active?'active':''}" onclick="focusSeat(${i})">
+        <span class="sa" style="background:${c.bg}">${c.boss?'👑':c.ini}</span>
+        <span><span class="sn">${c.name}</span><br><span class="st">${c.tier.split(' ')[0]}</span></span>
+        <span class="x" onclick="event.stopPropagation();clearSeat(${i})">✕</span>
+      </div>`;
+    }).join('');
+
+    // character cards
+    const g = document.getElementById('grid');
+    g.innerHTML = Object.entries(CHARS).map(([id,c])=>`
+      <button class="char ${c.boss?'boss':''}" onclick="assign('${id}')">
+        ${c.boss?'<span class="crown">👑</span>':''}
+        <div class="row">
+          <span class="avatar" style="background:${c.bg}">${c.ini}</span>
+          <div><div class="cname">${c.name}</div><div class="tier">${c.tier}</div></div>
+          <span class="add">+ Add</span>
+        </div>
+        <p class="blurb">${c.blurb}</p>
+        <div class="pips">${pips(c.pips)}</div>
+      </button>`).join('');
+
+    // start button
+    const full = seats.every(Boolean);
+    const btn = document.getElementById('startbtn');
+    btn.disabled = !full;
+    btn.textContent = full ? '✨ Start game' : `Fill ${seats.filter(s=>!s).length} more seat${seats.filter(s=>!s).length>1?'s':''}`;
+  }
+
+  function show(which){
+    document.getElementById('lobby').classList.toggle('hidden', which!=='lobby');
+    document.getElementById('solo').classList.toggle('hidden', which!=='solo');
+    window.scrollTo(0,0);
+  }
+
+  // default: 2 players, Robin pre-filled so it isn't empty on open
+  seats=['robin']; active=firstEmpty(); render();
+</script>
+</body>
+</html>

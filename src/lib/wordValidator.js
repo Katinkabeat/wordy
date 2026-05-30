@@ -26,6 +26,12 @@ async function loadWordList() {
   return loadPromise
 }
 
+/** Expose the loaded word Set (loading it on first call). Used by the
+ *  bot engine to build its move-generation dictionary from the same list. */
+export async function getWordSet() {
+  return loadWordList()
+}
+
 export async function isValidWord(word) {
   const w = word.toUpperCase().trim()
 

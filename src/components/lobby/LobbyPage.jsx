@@ -266,6 +266,27 @@ export default function LobbyPage({ session }) {
         {/* Lobby content */}
         {lobbyTab === 'lobby' && (
           <>
+            {/* Solo Play — practice against a computer character */}
+            <div className="card">
+              <h2 className="font-display text-xl text-wordy-700 mb-1">🤖 Solo Play</h2>
+              <p className="text-sm text-wordy-500 dark:text-wordy-300 mb-3">
+                Take on a computer opponent anytime — no waiting for friends.
+              </p>
+              <div className="flex items-center justify-between gap-3">
+                <button onClick={() => navigate('/solo')} className="btn-primary">▶ Play</button>
+                <div className="flex -space-x-2">
+                  {[
+                    { bg: 'hsl(145,60%,45%)', t: 'RO' },
+                    { bg: 'hsl(210,70%,52%)', t: 'JA' },
+                    { bg: 'hsl(25,75%,50%)', t: 'ME' },
+                    { bg: 'linear-gradient(135deg,#ec4899,#a855f7)', t: '👑' },
+                  ].map((a, i) => (
+                    <span key={i} className="w-7 h-7 rounded-full grid place-items-center text-white font-display text-[10px] border-2 border-white dark:border-[#1a1130]" style={{ background: a.bg }}>{a.t}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Multiplayer */}
             <div className="card">
               <h2 className="font-display text-xl text-wordy-700 mb-3">🎮 Multiplayer</h2>

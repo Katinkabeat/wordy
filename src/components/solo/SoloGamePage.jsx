@@ -8,6 +8,8 @@ import {
   botDecide, applyBotAction, isBoardEmpty,
 } from '../../lib/soloGame.js'
 import { loadBotDictionary } from '../../lib/botDictionary.js'
+import { supabase } from '../../lib/supabase.js'
+import { BOT_ID_BY_CHARACTER } from '../../lib/botAccounts.js'
 import ZoomableBoard from '../game/ZoomableBoard.jsx'
 import TileRack from '../game/TileRack.jsx'
 import ScorePanel from '../game/ScorePanel.jsx'
@@ -66,6 +68,7 @@ export default function SoloGamePage({ session }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsRef = useRef(null)
   const passTimerRef = useRef(null)
+  const recordedRef = useRef(false)
 
   // ── Cell size (ResizeObserver on the play area) ───────────
   const [cellSize, setCellSize] = useState(initialCellSize)
@@ -137,6 +140,21 @@ export default function SoloGamePage({ session }) {
     })()
     return () => { cancelled = true }
   }, [state?.currentPlayerIdx, state?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the game ends, record the result against each bot for the player's
+  // private "vs character" record (fire-and-forget; Solo stays client-side).
+  useEffect(() => {
+    if (!state || state.status !== 'finished' || recordedRef.current) return
+    recordedRef.current = true
+    const humanWon = !!state.players[0].is_winner
+    for (const p of state.players) {
+      if (!p.isBot) continue
+      const botId = BOT_ID_BY_CHARACTER[p.characterId]
+      if (!botId) continue
+      supabase.rpc('record_solo_result', { p_bot_id: botId, p_human_won: humanWon })
+        .then(({ error }) => { if (error) console.warn('record_solo_result:', error.message) })
+    }
+  }, [state?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived ───────────────────────────────────────────────
   const myTurn = !!state && state.currentPlayerIdx === 0 && state.status === 'active' && !botThinking

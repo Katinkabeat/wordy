@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase.js'
+import { BOT_ACCOUNTS, CHARACTER_BY_BOT_ID } from '../../lib/botAccounts.js'
 
 // The four computer characters. easy/medium/hard are bird names; Claudette
 // is the expert "boss" (breaks the bird theme on purpose).
@@ -30,11 +32,29 @@ function Pips({ n, boss }) {
   )
 }
 
-export default function SoloCharacterSelect() {
+export default function SoloCharacterSelect({ session }) {
   const navigate = useNavigate()
   const [count, setCount] = useState(2)        // total players (you + bots)
   const [seats, setSeats] = useState(['robin']) // one entry per opponent seat
   const [active, setActive] = useState(0)
+  const [records, setRecords] = useState({})   // characterId -> { w, l }
+
+  // Load the player's private head-to-head record vs each character.
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase.from('player_matchups')
+      .select('opponent_id, wins, losses')
+      .eq('player_id', session.user.id)
+      .in('opponent_id', BOT_ACCOUNTS.map(b => b.id))
+      .then(({ data }) => {
+        const map = {}
+        for (const r of data ?? []) {
+          const cid = CHARACTER_BY_BOT_ID[r.opponent_id]
+          if (cid) map[cid] = { w: r.wins, l: r.losses }
+        }
+        setRecords(map)
+      })
+  }, [session?.user?.id])
 
   function firstEmpty(arr) { return arr.findIndex(s => !s) }
 
@@ -150,6 +170,11 @@ export default function SoloCharacterSelect() {
                   }`}>+ Add</span>
                 </div>
                 <p className={`text-xs mt-2 leading-snug ${c.boss ? 'text-pink-50/90' : 'text-wordy-500 dark:text-wordy-300'}`}>{c.blurb}</p>
+                {records[c.id] && (records[c.id].w > 0 || records[c.id].l > 0) && (
+                  <p className={`text-[11px] font-bold mt-1.5 ${c.boss ? 'text-pink-100' : 'text-wordy-600 dark:text-wordy-300'}`}>
+                    Your record: {records[c.id].w}–{records[c.id].l}
+                  </p>
+                )}
                 <Pips n={c.pips} boss={c.boss} />
               </button>
             ))}

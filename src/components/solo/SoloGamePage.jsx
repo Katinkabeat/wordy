@@ -124,7 +124,7 @@ export default function SoloGamePage({ session }) {
         const dict = await loadBotDictionary()
         if (cancelled) return
         const action = botDecide(state, dict)
-        await sleep(1500 + Math.random() * 800) // human-ish pause between turns (~1.5–2.3s)
+        await sleep(3000 + Math.random() * 2000) // human-ish pause between turns (~3–5s)
         if (cancelled) return
         const name = state.profiles[cur.user_id]?.username ?? 'Computer'
         if (action.type === 'play') toast(`🤖 ${name}: ${action.move.words.join(', ')} (+${action.move.score})`)

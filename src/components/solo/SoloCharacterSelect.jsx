@@ -5,11 +5,11 @@ import { useNavigate } from 'react-router-dom'
 // is the expert "boss" (breaks the bird theme on purpose).
 export const CHARACTERS = [
   { id: 'robin', name: 'Robin', tier: 'Easy', pips: 1, bg: 'hsl(145,60%,45%)',
-    blurb: "Here for fun — short, friendly words, no big plays." },
+    blurb: 'Here for fun. Short, friendly words, no big plays.' },
   { id: 'jay', name: 'Jay', tier: 'Medium', pips: 2, bg: 'hsl(210,70%,52%)',
     blurb: 'A solid casual player who knows the common words.' },
   { id: 'merlin', name: 'Merlin', tier: 'Hard', pips: 3, bg: 'hsl(25,75%,50%)',
-    blurb: 'Sharp and tactical — hunts premium squares and big words.' },
+    blurb: 'Sharp and tactical. Hunts premium squares and big words.' },
   { id: 'claudette', name: 'Claudette', tier: 'Expert · the boss', pips: 4, boss: true,
     bg: 'linear-gradient(135deg,#ec4899,#a855f7)',
     blurb: "Sees every play, holds the perfect tiles. Beat her and you've earned the crown." },
@@ -138,10 +138,9 @@ export default function SoloCharacterSelect() {
                     : 'border-wordy-100 dark:border-[#2d1b55] bg-wordy-50 dark:bg-[#1f1240] hover:border-wordy-400'
                 }`}
                 style={c.boss ? { background: 'linear-gradient(135deg,#2a1551,#4c1d95)' } : undefined}>
-                {c.boss && <span className="absolute top-2.5 right-3 text-lg">👑</span>}
                 <div className="flex items-center gap-2.5">
                   <span className="w-9 h-9 rounded-full grid place-items-center text-white font-display text-xs shrink-0"
-                    style={{ background: c.bg }}>{c.name.slice(0, 2).toUpperCase()}</span>
+                    style={{ background: c.bg }}>{c.boss ? '👑' : c.name.slice(0, 2).toUpperCase()}</span>
                   <div>
                     <div className={`font-display text-base leading-none ${c.boss ? 'text-white' : 'text-wordy-800 dark:text-wordy-100'}`}>{c.name}</div>
                     <div className={`text-[10px] font-bold uppercase tracking-wide mt-1 ${c.boss ? 'text-pink-200' : 'text-wordy-500'}`}>{c.tier}</div>
@@ -157,7 +156,7 @@ export default function SoloCharacterSelect() {
           </div>
 
           <div className="text-xs text-wordy-700 dark:text-wordy-200 bg-wordy-50 dark:bg-[#1f1240] border border-dashed border-wordy-200 dark:border-[#2d1b55] rounded-lg px-3 py-2 my-4">
-            🏆 Solo games don't count toward the leaderboard — play freely.
+            🏆 Solo games don't count toward the leaderboard. Play freely.
           </div>
 
           <button onClick={start} disabled={!filled}

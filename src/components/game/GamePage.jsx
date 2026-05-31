@@ -365,6 +365,7 @@ export default function GamePage({ session }) {
   // A Solo game = any seat is a computer player. Such games get a "Quit"
   // (delete) instead of "Forfeit" — practice, not a conceded match.
   const isBotGame = players.some(p => profiles[p.user_id]?.is_bot)
+  const currentIsBot = !!profiles[players[game.current_player_idx]?.user_id]?.is_bot
 
   async function quitSolo() {
     if (!window.confirm('Quit this practice game? It will be deleted.')) return
@@ -436,7 +437,11 @@ export default function GamePage({ session }) {
     <SQBoardHeader
       backLabel="← Lobby"
       onBackClick={() => navigate('/lobby')}
-      centerSlot={null}
+      centerSlot={
+        currentIsBot && game.status === 'active'
+          ? <span className="text-xs font-bold text-wordy-600 dark:text-wordy-300 animate-pulse">🤖 {currentPlayerName} is thinking…</span>
+          : null
+      }
       rightSlot={
         <span className="text-xs text-wordy-600 dark:text-wordy-300 font-bold">
           🎒 {game.tile_bag?.length ?? 0} left

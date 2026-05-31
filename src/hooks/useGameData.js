@@ -167,6 +167,20 @@ export function useGameData(gameId, user) {
     }
   }, [gameId, loadGame])
 
+  // When it's a computer player's turn, the move arrives from the server (the
+  // bot-move edge fn). Poll quickly so it appears promptly even if realtime is
+  // slow or missed — notably the bot's FIRST move can land before this client
+  // finishes subscribing. Stops as soon as it's no longer a bot's turn.
+  const currentUid = game ? players.find(p => p.player_index === game.current_player_idx)?.user_id : null
+  const isBotTurn = !!(game?.status === 'active' && currentUid && profiles[currentUid]?.is_bot)
+  useEffect(() => {
+    if (!isBotTurn) return
+    const iv = setInterval(() => {
+      if (placementsRef.current.length === 0) loadGame({ force: true })
+    }, 3000)
+    return () => clearInterval(iv)
+  }, [isBotTurn, loadGame])
+
   return {
     game, setGame,
     players, setPlayers,

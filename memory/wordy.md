@@ -609,3 +609,7 @@ work that was sitting as local WIP); rebased cleanly. NOTE: pre-existing local W
 (memory/wordy.md edits) is parked in `git stash@{0}` — it was a parallel copy of the
 atomic-submit session already on remote, so it was not auto-merged. Rae can `git stash drop`
 it after a glance, or pop+reconcile if it holds anything unique.
+
+## 2026-05-31 — Decline-invite + opt-in decline-notify (c167/c172)
+
+Added a decline (x) button to incoming invites + `wordy_decline_invite` SECURITY DEFINER RPC (wordy-decline-invite-migration.sql). Decline removes the caller from invited_user_ids; multi-seat games stay waiting short-handed and only close when the last invitee bails (close_reason='Invite declined'). Phase 2 (wordy-decline-notify-migration.sql): when a decline strands the game the RPC net.http_post's an 'invite_declined' push to push-notification edge fn, gated by the new per-game 'invite_declined' notif topic (default OFF, opt-in in hub NotificationsPanel). Edge fn handles the type via sendIfOptedIn. Verified via rolled-back impersonation test (close + exactly-1-push + 3p-stays-waiting-0-push + default-OFF gating) + live smoke test on deployed fn (returns opted-out). Authed device-side push NOT E2E'd — Rae to confirm.

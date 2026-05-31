@@ -71,6 +71,10 @@ serve(async (req) => {
     const moves = generateMoves(board, me.rack, dict, { layoutVersion })
     const choice = chooseMoveFor(moves, characterId)
 
+    // Human-ish "thinking" pause (~3–5s) so the bot's move doesn't pop in
+    // instantly. Applies to play / exchange / pass alike.
+    await new Promise((r) => setTimeout(r, 3000 + Math.random() * 2000))
+
     // ── A play ────────────────────────────────────────────────
     if (choice) {
       const b = board.map((row: any[]) => row.slice())

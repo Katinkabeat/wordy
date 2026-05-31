@@ -131,6 +131,30 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ results }), { status: 200, headers: corsHeaders })
     }
 
+    // ── Type: invite_declined (from wordy_decline_invite RPC) ───
+    // Fired only when a decline closes the game (creator left alone).
+    // Gated by the creator's 'invite_declined' pref (default OFF).
+    if (payload.type === 'invite_declined') {
+      const { game_id, creator_id, decliner_id } = payload
+      if (!creator_id) {
+        return new Response(JSON.stringify({ skipped: 'no creator' }), { status: 200, headers: corsHeaders })
+      }
+      let declinerName = 'A friend'
+      if (decliner_id) {
+        const { data: dp } = await supabase
+          .from('profiles').select('username').eq('id', decliner_id).maybeSingle()
+        if (dp?.username) declinerName = dp.username
+      }
+      const result = await sendIfOptedIn(supabase, creator_id, 'wordy', 'invite_declined', {
+        title: 'Wordy',
+        body: `${declinerName} couldn’t join this round. Tap to start another. 🌸`,
+        tag: `wordy-declined-${game_id}`,
+        url: `/wordy/`,
+        icon: '/wordy/favicon.svg',
+      })
+      return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
+    }
+
     // ── Type: player_joined (from client) ───────────────────────
     if (payload.type === 'player_joined') {
       const { game_id, joiner_name } = payload

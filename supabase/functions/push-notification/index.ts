@@ -219,16 +219,15 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ skipped: 'player not found' }), { status: 200, headers: corsHeaders })
     }
 
-    // Solo / bot games: turn pushes are OFF by default — they're quick
-    // downtime games, not something to nag about. (An opt-in toggle in
-    // notification settings is a follow-up.)
+    // Solo / bot games use the opt-in `solo_turn` topic (default OFF) instead
+    // of `your_turn` — quick downtime games shouldn't nag unless the user opts
+    // in (toggle in notification settings).
     const { data: seatProfiles } = await supabase
       .from('game_players')
       .select('profiles(is_bot)')
       .eq('game_id', gameId)
-    if ((seatProfiles ?? []).some((s: any) => s.profiles?.is_bot)) {
-      return new Response(JSON.stringify({ skipped: 'solo/bot game — turn push off by default' }), { status: 200, headers: corsHeaders })
-    }
+    const isBotGame = (seatProfiles ?? []).some((s: any) => s.profiles?.is_bot)
+    const turnTopic = isBotGame ? 'solo_turn' : 'your_turn'
 
     // Get the username of the player who just moved
     let moverName = 'Your opponent'
@@ -250,7 +249,7 @@ serve(async (req: Request) => {
       }
     }
 
-    const result = await sendIfOptedIn(supabase, currentPlayer.user_id, 'wordy', 'your_turn', {
+    const result = await sendIfOptedIn(supabase, currentPlayer.user_id, 'wordy', turnTopic, {
       title: "Wordy — It's your turn!",
       body: `${moverName} just played. Your move! 🟣`,
       tag: `wordy-turn-${gameId}`,

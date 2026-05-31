@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
-import { BOT_ACCOUNTS, CHARACTER_BY_BOT_ID } from '../../lib/botAccounts.js'
+import { BOT_ACCOUNTS, BOT_ID_BY_CHARACTER, CHARACTER_BY_BOT_ID } from '../../lib/botAccounts.js'
+import { createTileBag, refillRack } from '../../lib/tileData.js'
+import { createEmptyBoard, serializeBoard, CURRENT_LAYOUT_VERSION } from '../../lib/boardData.js'
 
 // The four computer characters. easy/medium/hard are bird names; Claudette
 // is the expert "boss" (breaks the bird theme on purpose).
@@ -68,6 +71,9 @@ export default function SoloCharacterSelect({ session }) {
 
   function assign(id) {
     setSeats(prev => {
+      // Each character can only be seated once — the bot accounts are shared
+      // singletons (one Robin account), so two of the same can't be in a game.
+      if (prev.includes(id)) return prev
       const next = [...prev]
       const idx = (active >= 0 && !next[active]) ? active : (firstEmpty(next) === -1 ? active : firstEmpty(next))
       next[idx] = id
@@ -85,10 +91,36 @@ export default function SoloCharacterSelect({ session }) {
   const filled = seats.every(Boolean)
   const remaining = seats.filter(s => !s).length
 
-  function start() {
-    if (!filled) return
-    const chosen = seats.map(id => ({ characterId: id, name: CHAR_BY_ID[id].name }))
-    navigate('/solo/play', { state: { seats: chosen } })
+  const [starting, setStarting] = useState(false)
+
+  // Create a REAL game (you in seat 0 + the chosen bot(s)) so it persists,
+  // resumes, and lists in the lobby. The bot(s) play via the server edge fn.
+  async function start() {
+    if (!filled || starting) return
+    setStarting(true)
+    try {
+      const bag = createTileBag()
+      const players = []
+      const me = refillRack([], bag)
+      players.push({ user_id: session.user.id, player_index: 0, rack: me.rack })
+      seats.forEach((characterId, i) => {
+        const drawn = refillRack([], bag)
+        players.push({ user_id: BOT_ID_BY_CHARACTER[characterId], player_index: i + 1, rack: drawn.rack })
+      })
+      const firstIdx = Math.floor(Math.random() * players.length)
+      const { data, error } = await supabase.rpc('create_game_with_bots', {
+        p_board: serializeBoard(createEmptyBoard()),
+        p_tile_bag: bag,
+        p_layout_version: CURRENT_LAYOUT_VERSION,
+        p_players: players,
+        p_current_player_idx: firstIdx,
+      })
+      if (error) throw error
+      navigate(`/game/${data}`)
+    } catch (err) {
+      toast.error(err.message || 'Could not start the game')
+      setStarting(false)
+    }
   }
 
   return (
@@ -150,9 +182,11 @@ export default function SoloCharacterSelect({ session }) {
           {/* Character cards */}
           <p className="text-xs font-bold uppercase tracking-wide text-wordy-500 mb-2">Tap to fill the highlighted seat</p>
           <div className="space-y-2.5">
-            {CHARACTERS.map(c => (
-              <button key={c.id} onClick={() => assign(c.id)}
-                className={`w-full text-left rounded-xl p-3 border-2 transition relative overflow-hidden ${
+            {CHARACTERS.map(c => {
+              const used = seats.includes(c.id)
+              return (
+              <button key={c.id} onClick={() => assign(c.id)} disabled={used}
+                className={`w-full text-left rounded-xl p-3 border-2 transition relative overflow-hidden ${used ? 'opacity-55' : ''} ${
                   c.boss
                     ? 'border-[#3a1d6e] text-white'
                     : 'border-wordy-100 dark:border-[#2d1b55] bg-wordy-50 dark:bg-[#1f1240] hover:border-wordy-400'
@@ -167,7 +201,7 @@ export default function SoloCharacterSelect({ session }) {
                   </div>
                   <span className={`ml-auto text-xs font-display rounded-full px-3 py-1 border ${
                     c.boss ? 'text-pink-100 border-pink-300/50' : 'text-wordy-600 border-wordy-300 dark:text-wordy-300 dark:border-[#4c1d95]'
-                  }`}>+ Add</span>
+                  }`}>{used ? 'In game ✓' : '+ Add'}</span>
                 </div>
                 <p className={`text-xs mt-2 leading-snug ${c.boss ? 'text-pink-50/90' : 'text-wordy-500 dark:text-wordy-300'}`}>{c.blurb}</p>
                 {records[c.id] && (records[c.id].w > 0 || records[c.id].l > 0) && (
@@ -177,7 +211,8 @@ export default function SoloCharacterSelect({ session }) {
                 )}
                 <Pips n={c.pips} boss={c.boss} />
               </button>
-            ))}
+              )
+            })}
           </div>
 
           <div className="text-xs text-wordy-700 dark:text-wordy-200 bg-wordy-50 dark:bg-[#1f1240] border border-dashed border-wordy-200 dark:border-[#2d1b55] rounded-lg px-3 py-2 my-4 flex items-start gap-1.5">
@@ -185,9 +220,9 @@ export default function SoloCharacterSelect({ session }) {
             <span>Solo games don't count toward the leaderboard. Play freely.</span>
           </div>
 
-          <button onClick={start} disabled={!filled}
+          <button onClick={start} disabled={!filled || starting}
             className="btn-primary w-full disabled:opacity-50">
-            {filled ? '✨ Start game' : `Fill ${remaining} more seat${remaining > 1 ? 's' : ''}`}
+            {starting ? '⏳ Starting…' : filled ? '✨ Start game' : `Fill ${remaining} more seat${remaining > 1 ? 's' : ''}`}
           </button>
         </section>
       </div>

@@ -219,6 +219,17 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ skipped: 'player not found' }), { status: 200, headers: corsHeaders })
     }
 
+    // Solo / bot games: turn pushes are OFF by default — they're quick
+    // downtime games, not something to nag about. (An opt-in toggle in
+    // notification settings is a follow-up.)
+    const { data: seatProfiles } = await supabase
+      .from('game_players')
+      .select('profiles(is_bot)')
+      .eq('game_id', gameId)
+    if ((seatProfiles ?? []).some((s: any) => s.profiles?.is_bot)) {
+      return new Response(JSON.stringify({ skipped: 'solo/bot game — turn push off by default' }), { status: 200, headers: corsHeaders })
+    }
+
     // Get the username of the player who just moved
     let moverName = 'Your opponent'
     if (old_record) {

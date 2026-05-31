@@ -10,7 +10,6 @@ const LobbyPage = lazy(() => import('./components/lobby/LobbyPage.jsx'))
 const GamePage  = lazy(() => import('./components/game/GamePage.jsx'))
 const StatsPage = lazy(() => import('./components/stats/StatsPage.jsx'))
 const SoloCharacterSelect = lazy(() => import('./components/solo/SoloCharacterSelect.jsx'))
-const SoloGamePage        = lazy(() => import('./components/solo/SoloGamePage.jsx'))
 
 function PageLoading() {
   return (
@@ -121,7 +120,6 @@ function AppInner() {
         <Routes>
           <Route path="/lobby"     element={<LobbyPage session={session} />} />
           <Route path="/solo"      element={<SoloCharacterSelect session={session} />} />
-          <Route path="/solo/play" element={<SoloGamePage session={session} />} />
           <Route path="/game/:id"  element={<GamePage  session={session} />} />
           <Route path="/stats"     element={<StatsPage session={session} />} />
           <Route path="*"         element={<Navigate to="/lobby" replace />} />

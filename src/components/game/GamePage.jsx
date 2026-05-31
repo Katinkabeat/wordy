@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { extractWords, calculateScore } from '../../lib/gameLogic.js'
 import { joinGame as joinGameMutation } from '../../lib/gameMutations.js'
+import { supabase } from '../../lib/supabase.js'
 import ZoomableBoard from './ZoomableBoard.jsx'
 import TileRack   from './TileRack.jsx'
 import ScorePanel from './ScorePanel.jsx'
@@ -361,6 +362,15 @@ export default function GamePage({ session }) {
 
   const currentPlayerName = profiles[players[game.current_player_idx]?.user_id]?.username ?? '?'
   const myTurn = isMyTurn()
+  // A Solo game = any seat is a computer player. Such games get a "Quit"
+  // (delete) instead of "Forfeit" — practice, not a conceded match.
+  const isBotGame = players.some(p => profiles[p.user_id]?.is_bot)
+
+  async function quitSolo() {
+    if (!window.confirm('Quit this practice game? It will be deleted.')) return
+    try { await supabase.rpc('quit_solo_game', { p_game_id: gameId }) } catch (e) { console.warn('quit_solo_game:', e) }
+    navigate('/lobby')
+  }
 
   // Top header: app-level identity + nav. Same structure on lobby and board
   // (per sq-style-spec.md §4) so the user always has avatar / hub / settings
@@ -398,11 +408,19 @@ export default function GamePage({ session }) {
                 onClick={() => { toggleTheme(); setSettingsOpen(false) }}
               />
               {game.status === 'active' && myPlayer && (
-                <SQSettingsRow
-                  label="🏳️ Forfeit game"
-                  danger
-                  onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
-                />
+                isBotGame ? (
+                  <SQSettingsRow
+                    label="🚪 Quit game"
+                    danger
+                    onClick={() => { setSettingsOpen(false); quitSolo() }}
+                  />
+                ) : (
+                  <SQSettingsRow
+                    label="🏳️ Forfeit game"
+                    danger
+                    onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
+                  />
+                )
               )}
             </SQDropdown>
           </div>

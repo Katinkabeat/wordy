@@ -60,7 +60,7 @@ export default function LobbyPage({ session }) {
         id, status, max_players, created_at, current_player_idx,
         turn_started_at, last_nudged_at,
         invited_user_ids, expires_at, cancelled_at, created_by,
-        game_players ( user_id, player_index, score, profiles ( username ) )
+        game_players ( user_id, player_index, score, profiles ( username, is_bot ) )
       `)
       .in('status', ['waiting', 'active'])
       .order('created_at', { ascending: false })
@@ -185,18 +185,22 @@ export default function LobbyPage({ session }) {
     const invitedToYou = []
     const myGames = []
     const openGames = []
+    const soloGames = []
     for (const g of games) {
+      const hasBot = (g.game_players ?? []).some(p => p.profiles?.is_bot)
       const iAmPlayer = (g.game_players ?? []).some(p => p.user_id === user.id)
       const iAmInvitee = !iAmPlayer && (g.invited_user_ids ?? []).includes(user.id)
-      if (iAmInvitee && g.status === 'waiting') {
+      if (iAmPlayer && hasBot) {
+        soloGames.push(g)                 // Solo (you + bot) — listed under the Solo card, not multiplayer
+      } else if (iAmInvitee && g.status === 'waiting') {
         invitedToYou.push(g)
       } else if (iAmPlayer) {
         myGames.push(g)
-      } else if (g.status === 'waiting' && (g.game_players ?? []).length < g.max_players) {
+      } else if (g.status === 'waiting' && !hasBot && (g.game_players ?? []).length < g.max_players) {
         openGames.push(g)
       }
     }
-    return { invitedToYou, myGames, openGames }
+    return { invitedToYou, myGames, openGames, soloGames }
   }, [games, user.id])
 
   // Render invites first, then open games, then your own active games.
@@ -285,6 +289,25 @@ export default function LobbyPage({ session }) {
                   ))}
                 </div>
               </div>
+              {buckets.soloGames.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {buckets.soloGames.map(g => {
+                    const bots = (g.game_players ?? [])
+                      .filter(p => p.profiles?.is_bot)
+                      .map(p => p.profiles?.username)
+                      .join(', ')
+                    return (
+                      <div key={g.id} className="flex items-center justify-between rounded-xl px-3 py-2 border bg-wordy-50 border-wordy-100 dark:bg-[#1a1130] dark:border-[#2d1b55]">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-wordy-700 dark:text-wordy-100 truncate">vs {bots || 'computer'}</div>
+                          <div className="text-xs text-wordy-400">in progress</div>
+                        </div>
+                        <button onClick={() => navigate(`/game/${g.id}`)} className="btn-primary text-xs px-3 py-1.5 rounded-lg font-bold shrink-0">Resume</button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Multiplayer */}

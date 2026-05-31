@@ -67,7 +67,7 @@ export function useGameData(gameId, user) {
       // Round 2: profiles needs user_ids from game_players.
       const playerIds = (ps ?? []).map(p => p.user_id)
       const profsRes = playerIds.length
-        ? await supabase.from('profiles').select('id, username').in('id', playerIds)
+        ? await supabase.from('profiles').select('id, username, is_bot').in('id', playerIds)
         : { data: null, error: null }
 
       // ── Phase 2: guard check AFTER all fetches, BEFORE any state updates ──
@@ -106,7 +106,7 @@ export function useGameData(gameId, user) {
       // network failure on mobile doesn't wipe out already-loaded names
       if (!profsRes.error && profsRes.data) {
         const map = {}
-        for (const p of profsRes.data) map[p.id] = { username: p.username }
+        for (const p of profsRes.data) map[p.id] = { username: p.username, is_bot: p.is_bot }
         setProfiles(map)
       }
     } catch (err) {

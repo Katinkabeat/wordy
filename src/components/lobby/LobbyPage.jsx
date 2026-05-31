@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase.js'
 import {
   joinGame as joinGameMutation,
   cancelGame as cancelGameMutation,
+  declineInvite as declineInviteMutation,
   autoStartOrCancelStale,
 } from '../../lib/gameMutations.js'
 import { useUnseenResults } from '../../hooks/useUnseenResults.jsx'
@@ -31,6 +32,7 @@ export default function LobbyPage({ session }) {
   const [games, setGames]             = useState([])
   const [joiningId, setJoiningId]     = useState(null)
   const [cancellingId, setCancellingId] = useState(null)
+  const [decliningId, setDecliningId] = useState(null)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
   const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
@@ -162,6 +164,21 @@ export default function LobbyPage({ session }) {
       toast.error(err.message || 'Failed to cancel')
     } finally {
       setCancellingId(null)
+      loadGames()
+    }
+  }
+
+  async function handleDecline(gameId) {
+    if (decliningId) return
+    if (!confirm('Decline this invite?')) return
+    setDecliningId(gameId)
+    try {
+      await declineInviteMutation(gameId)
+      toast.success('Invite declined.')
+    } catch (err) {
+      toast.error(err.message || 'Failed to decline')
+    } finally {
+      setDecliningId(null)
       loadGames()
     }
   }
@@ -341,6 +358,12 @@ export default function LobbyPage({ session }) {
                             : undefined
                         }
                         cancelDisabled={cancellingId === g.id}
+                        onDecline={
+                          iAmInvitee && g.status === 'waiting'
+                            ? () => handleDecline(g.id)
+                            : undefined
+                        }
+                        declineDisabled={decliningId === g.id}
                       />
                     )
                   })}

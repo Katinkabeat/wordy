@@ -22,6 +22,8 @@ export default function LobbyGameRow({
   pendingInviteeNames,
   onCancel,
   cancelDisabled,
+  onDecline,
+  declineDisabled,
 }) {
   const [nudging, setNudging] = useState(false)
   const [justNudged, setJustNudged] = useState(false)
@@ -164,6 +166,18 @@ export default function LobbyGameRow({
             className="w-7 h-7 grid place-items-center rounded-full text-wordy-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 transition-colors"
             aria-label="Cancel game"
             title="Cancel game"
+          >
+            ✕
+          </button>
+        )}
+        {onDecline && (
+          <button
+            type="button"
+            onClick={onDecline}
+            disabled={declineDisabled}
+            className="w-7 h-7 grid place-items-center rounded-full text-wordy-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 transition-colors"
+            aria-label="Decline invite"
+            title="Decline invite"
           >
             ✕
           </button>

@@ -57,6 +57,19 @@ export async function cancelGame(gameId) {
 }
 
 /**
+ * Decline an invite to a waiting game. Server enforces:
+ *   - caller is a pending invitee of a 'waiting' game
+ *   - caller hasn't already joined
+ * Removes the caller from invited_user_ids; if that strands the game
+ * (only the creator left, no other pending invitees) it's closed with
+ * close_reason = 'Invite declined'.
+ */
+export async function declineInvite(gameId) {
+  const { error } = await supabase.rpc('wordy_decline_invite', { p_game_id: gameId })
+  if (error) throw error
+}
+
+/**
  * Sweeps any waiting games past expires_at:
  *   - 2+ players joined → auto-start
  *   - <2 joined        → auto-cancel

@@ -337,6 +337,31 @@ export default function GamePage({ session }) {
     }
   }, [board, placements, game?.board_layout_version])
 
+  // No-show invitees (c151): friends invited to a game that auto-started
+  // short-handed before they joined. Rendered as greyed ✗ chips so the
+  // score panel explains itself. Only meaningful once the game left 'waiting'.
+  // NOTE: these hooks MUST stay above the early-return guard below — declaring
+  // them after a conditional return is a Rules-of-Hooks violation (React #310).
+  const noShowIds = useMemo(() => {
+    if (!game || game.status === 'waiting') return []
+    const seated = new Set(players.map(p => p.user_id))
+    return (game.invited_user_ids ?? []).filter(id => id && !seated.has(id))
+  }, [game, players])
+
+  const [noShowNames, setNoShowNames] = useState({})
+  const noShowKey = noShowIds.join(',')
+  useEffect(() => {
+    if (!noShowKey) { setNoShowNames({}); return }
+    let cancelled = false
+    supabase.from('profiles').select('id, username').in('id', noShowKey.split(','))
+      .then(({ data }) => {
+        if (!cancelled) setNoShowNames(Object.fromEntries((data ?? []).map(p => [p.id, p.username])))
+      })
+    return () => { cancelled = true }
+  }, [noShowKey])
+
+  const noShows = noShowIds.map(id => ({ user_id: id, name: noShowNames[id] ?? '?' }))
+
   // ── Render ────────────────────────────────────────────────
   if (!game || !board || autoJoining || (game && players && !myPlayer && !autoJoinAttemptedRef.current)) {
     return (
@@ -548,29 +573,6 @@ export default function GamePage({ session }) {
       </div>
     </div>
   ) : null
-
-  // No-show invitees (c151): friends invited to a game that auto-started
-  // short-handed before they joined. Rendered as greyed ✗ chips so the
-  // score panel explains itself. Only meaningful once the game left 'waiting'.
-  const noShowIds = useMemo(() => {
-    if (!game || game.status === 'waiting') return []
-    const seated = new Set(players.map(p => p.user_id))
-    return (game.invited_user_ids ?? []).filter(id => id && !seated.has(id))
-  }, [game, players])
-
-  const [noShowNames, setNoShowNames] = useState({})
-  const noShowKey = noShowIds.join(',')
-  useEffect(() => {
-    if (!noShowKey) { setNoShowNames({}); return }
-    let cancelled = false
-    supabase.from('profiles').select('id, username').in('id', noShowKey.split(','))
-      .then(({ data }) => {
-        if (!cancelled) setNoShowNames(Object.fromEntries((data ?? []).map(p => [p.id, p.username])))
-      })
-    return () => { cancelled = true }
-  }, [noShowKey])
-
-  const noShows = noShowIds.map(id => ({ user_id: id, name: noShowNames[id] ?? '?' }))
 
   const scorePanel = (
     <ScorePanel

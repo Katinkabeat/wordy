@@ -378,13 +378,19 @@ export default function LobbyPage({ session }) {
             {/* Completed games — last 10 finished games */}
             <SQCompletedGamesCard emptyMessage="🪧 No finished games yet.">
               {unseenResults.map(({ gameId, game: g, winnerName, allPlayerNames }) => {
-                const headline = g?.closed_by_admin
-                  ? '🛑 Game closed by admin'
-                  : g?.forfeit_user_id
-                    ? '🏳️ Opponent forfeited!'
-                    : winnerName
-                      ? `🏆 ${winnerName} wins!`
-                      : "🤝 It's a tie!"
+                const closedNoShow = g?.close_reason === 'no_other_players'
+                const headline = closedNoShow
+                  ? '🚫 Game closed'
+                  : g?.closed_by_admin
+                    ? '🛑 Game closed by admin'
+                    : g?.forfeit_user_id
+                      ? '🏳️ Opponent forfeited!'
+                      : winnerName
+                        ? `🏆 ${winnerName} wins!`
+                        : "🤝 It's a tie!"
+                const subtitle = closedNoShow
+                  ? 'Invite expired — this game closed because no other players joined.'
+                  : allPlayerNames
                 return (
                   <div
                     key={gameId}
@@ -394,9 +400,9 @@ export default function LobbyPage({ session }) {
                       <div className="font-display text-sm text-wordy-700 dark:text-wordy-100 truncate">
                         {headline}
                       </div>
-                      {allPlayerNames && (
+                      {subtitle && (
                         <div className="text-xs text-wordy-500 dark:text-wordy-300 truncate">
-                          {allPlayerNames}
+                          {subtitle}
                         </div>
                       )}
                     </div>

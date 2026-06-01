@@ -549,6 +549,29 @@ export default function GamePage({ session }) {
     </div>
   ) : null
 
+  // No-show invitees (c151): friends invited to a game that auto-started
+  // short-handed before they joined. Rendered as greyed ✗ chips so the
+  // score panel explains itself. Only meaningful once the game left 'waiting'.
+  const noShowIds = useMemo(() => {
+    if (!game || game.status === 'waiting') return []
+    const seated = new Set(players.map(p => p.user_id))
+    return (game.invited_user_ids ?? []).filter(id => id && !seated.has(id))
+  }, [game, players])
+
+  const [noShowNames, setNoShowNames] = useState({})
+  const noShowKey = noShowIds.join(',')
+  useEffect(() => {
+    if (!noShowKey) { setNoShowNames({}); return }
+    let cancelled = false
+    supabase.from('profiles').select('id, username').in('id', noShowKey.split(','))
+      .then(({ data }) => {
+        if (!cancelled) setNoShowNames(Object.fromEntries((data ?? []).map(p => [p.id, p.username])))
+      })
+    return () => { cancelled = true }
+  }, [noShowKey])
+
+  const noShows = noShowIds.map(id => ({ user_id: id, name: noShowNames[id] ?? '?' }))
+
   const scorePanel = (
     <ScorePanel
       players={players}
@@ -557,6 +580,7 @@ export default function GamePage({ session }) {
       userId={user.id}
       status={game.status}
       lastMoveScores={lastMoveScores}
+      noShows={noShows}
     />
   )
 
@@ -592,14 +616,19 @@ export default function GamePage({ session }) {
       {game.status === 'finished' && (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-wordy-600 to-pink-500 text-white text-center p-4">
           <p className="font-display text-xl mb-1">
-            {game.closed_by_admin
-              ? '🛑 Game closed by admin'
-              : game.forfeit_user_id
-                ? `🏳️ ${profiles[game.forfeit_user_id]?.username ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id]?.username ?? '?'} wins!`
-                : players.find(p => p.is_winner)
-                  ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id]?.username ?? '?'} wins!`
-                  : "🤝 It's a tie!"}
+            {game.close_reason === 'no_other_players'
+              ? '🚫 Game closed — invite expired'
+              : game.closed_by_admin
+                ? '🛑 Game closed by admin'
+                : game.forfeit_user_id
+                  ? `🏳️ ${profiles[game.forfeit_user_id]?.username ?? '?'} forfeited — ${profiles[players.find(p => p.user_id !== game.forfeit_user_id)?.user_id]?.username ?? '?'} wins!`
+                  : players.find(p => p.is_winner)
+                    ? `🏆 ${profiles[players.find(p => p.is_winner)?.user_id]?.username ?? '?'} wins!`
+                    : "🤝 It's a tie!"}
           </p>
+          {game.close_reason === 'no_other_players' && (
+            <p className="text-sm opacity-90 mb-1">No other players joined before the invite expired.</p>
+          )}
           <div className="flex items-center justify-center gap-4 mt-2">
             <button onClick={() => navigate('/lobby')} className="bg-white/20 hover:bg-white/30 text-white font-bold text-sm px-4 py-1.5 rounded-full transition-colors">
               ← Back to Lobby

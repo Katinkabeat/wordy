@@ -1,6 +1,6 @@
 // On mobile: renders as a compact horizontal row of score chips (saves vertical space).
 // On desktop (lg+): renders as a vertical sidebar card with full player rows.
-export default function ScorePanel({ players, profiles, currentIdx, userId, status, lastMoveScores = {} }) {
+export default function ScorePanel({ players, profiles, currentIdx, userId, status, lastMoveScores = {}, noShows = [] }) {
   return (
     <>
       {/* ── Desktop: vertical sidebar card ─────────────────── */}
@@ -36,6 +36,19 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
             </div>
           )
         })}
+        {/* No-show invitees (c151) — greyed ✗ rows, no score (never played). */}
+        {noShows.map(ns => (
+          <div
+            key={`noshow-${ns.user_id}`}
+            className="flex items-center justify-between rounded-xl px-3 py-2 bg-wordy-50/50 border border-dashed border-wordy-200 opacity-60"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm">✗</span>
+              <span className="text-sm font-bold text-wordy-400">{ns.name}</span>
+            </div>
+            <span className="text-[11px] text-wordy-400">no-show</span>
+          </div>
+        ))}
       </div>
 
       {/* ── Mobile: compact horizontal score bar ────────────── */}
@@ -70,6 +83,16 @@ export default function ScorePanel({ players, profiles, currentIdx, userId, stat
             </div>
           )
         })}
+        {/* No-show invitees (c151) — greyed ✗ chips, no score. */}
+        {noShows.map(ns => (
+          <div
+            key={`noshow-${ns.user_id}`}
+            className="flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold bg-wordy-50/50 border border-dashed border-wordy-200 text-wordy-400 opacity-70"
+          >
+            <span>✗</span>
+            <span>{ns.name}</span>
+          </div>
+        ))}
       </div>
     </>
   )

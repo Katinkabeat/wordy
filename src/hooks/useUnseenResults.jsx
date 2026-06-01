@@ -13,7 +13,7 @@ export function useUnseenResults({ user, games, navigate }) {
     // actually limit on (ordering by a joined column only sorts the embed).
     const { data: gms, error: gErr } = await supabase
       .from('games')
-      .select('id, status, finished_at, forfeit_user_id, closed_by_admin, game_players!inner(user_id, is_winner)')
+      .select('id, status, finished_at, forfeit_user_id, closed_by_admin, close_reason, game_players!inner(user_id, is_winner)')
       .eq('status', 'finished')
       .eq('game_players.user_id', user.id)
       .order('finished_at', { ascending: false })
@@ -81,7 +81,9 @@ export function useUnseenResults({ user, games, navigate }) {
 
     const gameId = payload.new.id
     let headline
-    if (payload.new.closed_by_admin) {
+    if (payload.new.close_reason === 'no_other_players') {
+      headline = '🚫 Game closed — invite expired'
+    } else if (payload.new.closed_by_admin) {
       headline = '🛑 Game closed by admin'
     } else if (payload.new.forfeit_user_id) {
       headline = '🏳️ Opponent forfeited!'

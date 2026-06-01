@@ -177,6 +177,24 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
     }
 
+    // ── Type: game_closed (from wordy_auto_start_or_cancel_stale) ─
+    // The expire sweep closed a never-filled game (only the creator was
+    // seated). Exactly one recipient: the creator. (c151 baseline)
+    if (payload.type === 'game_closed') {
+      const { record } = payload
+      if (!record?.id || !record.created_by) {
+        return new Response(JSON.stringify({ skipped: 'missing fields' }), { status: 200, headers: corsHeaders })
+      }
+      const result = await sendIfOptedIn(supabase, record.created_by, 'wordy', 'game_closed', {
+        title: 'Wordy — game closed',
+        body: 'Your game closed because no one else joined in time.',
+        tag: `wordy-closed-${record.id}`,
+        url: `/wordy/`,
+        icon: '/wordy/favicon.svg',
+      })
+      return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
+    }
+
     // ── Type: player_joined (from client) ───────────────────────
     if (payload.type === 'player_joined') {
       const { game_id, joiner_name } = payload

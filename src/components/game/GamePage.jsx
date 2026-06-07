@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { extractWords, calculateScore } from '../../lib/gameLogic.js'
-import { joinGame as joinGameMutation } from '../../lib/gameMutations.js'
+import { joinGame as joinGameMutation, claimInactiveWin } from '../../lib/gameMutations.js'
 import { supabase } from '../../lib/supabase.js'
 import ZoomableBoard from './ZoomableBoard.jsx'
 import TileRack   from './TileRack.jsx'
@@ -398,6 +398,27 @@ export default function GamePage({ session }) {
     navigate('/lobby')
   }
 
+  // Claim the win when it's been the opponent's turn for 7+ days (c153).
+  // Not offered in solo/bot games — a bot never stalls. Lives in the cog
+  // menu (always reachable on mobile) rather than inline on the board.
+  const canClaim = (
+    game.status === 'active' && myPlayer && !isBotGame &&
+    game.current_player_idx !== myPlayer.player_index &&
+    game.last_activity_at &&
+    Date.now() - new Date(game.last_activity_at).getTime() > 7 * 24 * 60 * 60 * 1000
+  )
+
+  async function handleClaim() {
+    if (!window.confirm('Claim the win? Your opponent has been inactive for 7+ days.')) return
+    try {
+      await claimInactiveWin(gameId)
+      toast.success('🏆 Game claimed.')
+      await loadGame({ force: true })
+    } catch (e) {
+      toast.error(e.message ?? 'Failed to claim')
+    }
+  }
+
   // Top header: app-level identity + nav. Same structure on lobby and board
   // (per sq-style-spec.md §4) so the user always has avatar / hub / settings
   // access.
@@ -433,6 +454,12 @@ export default function GamePage({ session }) {
                 label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
                 onClick={() => { toggleTheme(); setSettingsOpen(false) }}
               />
+              {canClaim && (
+                <SQSettingsRow
+                  label="🏆 Claim win (opponent inactive)"
+                  onClick={() => { setSettingsOpen(false); handleClaim() }}
+                />
+              )}
               {game.status === 'active' && myPlayer && (
                 isBotGame ? (
                   <SQSettingsRow

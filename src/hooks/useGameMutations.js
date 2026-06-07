@@ -142,6 +142,7 @@ export function useGameMutations({
       const { error: gameErr } = await supabase.from('games').update({
         current_player_idx: nextIdx,
         consecutive_passes: newPasses,
+        last_activity_at: new Date().toISOString(),
         ...endgameFields(over),
       }).eq('id', gameId)
       if (gameErr) { console.error('pass: games update failed:', gameErr); toast.error('Failed to pass — please retry.'); return }

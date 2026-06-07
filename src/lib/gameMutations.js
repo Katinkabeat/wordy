@@ -70,6 +70,17 @@ export async function declineInvite(gameId) {
 }
 
 /**
+ * Claim the win on a game stalled on an inactive opponent (c153). Server
+ * enforces: caller is a participant, it's NOT the caller's turn, and the
+ * current player has been idle 7+ days (games.last_activity_at). The stalled
+ * player is forfeited; the caller wins.
+ */
+export async function claimInactiveWin(gameId) {
+  const { error } = await supabase.rpc('claim_inactive_win', { p_game_id: gameId })
+  if (error) throw error
+}
+
+/**
  * Sweeps any waiting games past expires_at:
  *   - 2+ players joined → auto-start
  *   - <2 joined        → auto-cancel

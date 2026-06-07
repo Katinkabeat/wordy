@@ -36,7 +36,9 @@ test('expert weighs the leave (equity), not just raw score', () => {
     { score: 30, leave: ['Q'], words: ['AA'], bingo: false }, // equity 30 + (-10) = 20
     { score: 24, leave: ['S'], words: ['BB'], bingo: false }, // equity 24 + 8    = 32
   ]
-  const pick = chooseMove(moves, PROFILES.claudette, { rng: rngHigh })
+  // rng 0.4 dodges Claudette's bingoSkip (0.30) and noise (0.03) and floors her
+  // top-K pick to index 0 — so we test the equity ranking, not the off-pick.
+  const pick = chooseMove(moves, PROFILES.claudette, { rng: () => 0.4 })
   assert.equal(pick.score, 24, 'expert prefers the better-leave play')
 })
 

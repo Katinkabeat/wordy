@@ -6,7 +6,7 @@
 //  down per character — not four separate AIs.
 //
 //  A profile is { tier, maxWordLength, allowBingo, rank, topK,
-//  noise, useEquity }:
+//  noise, useEquity, bingoSkip }:
 //   • maxWordLength / allowBingo — the "vocabulary cap": weaker bots
 //     simply don't reach for long/bingo plays (believable weakness =
 //     short-word bias, NOT random nonsense).
@@ -15,6 +15,10 @@
 //   • rank / topK — where in the ranked list it picks (best / a
 //     random top-K / mid-pack / lower-pack).
 //   • noise — small chance of an off-pick, for unpredictability.
+//   • bingoSkip — chance the bot "doesn't go for it" this turn and
+//     leans on a shorter play (bingos dropped from the pool). A
+//     believable difficulty dial for an otherwise-strong bot: caps
+//     runaway multi-bingo games without random blunders (c177).
 //
 //  Selection takes an injectable rng so it's deterministic in tests.
 //  Pure ESM — shared by client + bot-move edge function.
@@ -66,7 +70,10 @@ export const PROFILES = {
   robin: { tier: 'easy', maxWordLength: 5, allowBingo: false, rank: 'low', noise: 0.25, useEquity: false },
   jay: { tier: 'medium', maxWordLength: 7, allowBingo: true, rank: 'mid', noise: 0.10, useEquity: false },
   merlin: { tier: 'hard', maxWordLength: 15, allowBingo: true, rank: 'topK', topK: 4, noise: 0.03, useEquity: false },
-  claudette: { tier: 'expert', maxWordLength: 15, allowBingo: true, rank: 'best', noise: 0, useEquity: true },
+  // Expert, but no longer flawless (c177): she was scoring 500+ and winning
+  // felt unattainable. Equity-aware short-word turns (bingoSkip) + a tight
+  // top-3 pick keep her clearly the strongest bot while making a win reachable.
+  claudette: { tier: 'expert', maxWordLength: 15, allowBingo: true, rank: 'topK', topK: 3, noise: 0.03, useEquity: true, bingoSkip: 0.30 },
 }
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x))
@@ -88,6 +95,14 @@ export function chooseMove(moves, profile, { rng = Math.random } = {}) {
     m => m.words.every(w => w.length <= profile.maxWordLength) && (profile.allowBingo || !m.bingo),
   )
   if (pool.length === 0) pool = moves.slice()
+
+  // Bingo throttle: some turns a strong bot "doesn't go for it" and leans on
+  // a shorter play. Drop bingos from the pool this turn (falling back if that
+  // empties it). Believable difficulty without random blunders — see header.
+  if (profile.bingoSkip && rng() < profile.bingoSkip) {
+    const noBingo = pool.filter(m => !m.bingo)
+    if (noBingo.length > 0) pool = noBingo
+  }
 
   // Rank: expert weighs the leave (equity); everyone else ranks on raw score.
   const keyed = pool.map(m => ({

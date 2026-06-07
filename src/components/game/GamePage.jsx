@@ -399,11 +399,16 @@ export default function GamePage({ session }) {
   }
 
   // Claim the win when it's been the opponent's turn for 7+ days (c153).
-  // Not offered in solo/bot games — a bot never stalls. Lives in the cog
-  // menu (always reachable on mobile) rather than inline on the board.
-  const canClaim = (
+  // Lives in the cog menu (always reachable on mobile). The row is shown
+  // greyed whenever it's the opponent's turn in an active human game, and
+  // becomes clickable once they've been idle past the 7-day threshold.
+  // Not offered in solo/bot games — a bot never stalls.
+  const claimContext = (
     game.status === 'active' && myPlayer && !isBotGame &&
-    game.current_player_idx !== myPlayer.player_index &&
+    game.current_player_idx !== myPlayer.player_index
+  )
+  const canClaim = (
+    claimContext &&
     game.last_activity_at &&
     Date.now() - new Date(game.last_activity_at).getTime() > 7 * 24 * 60 * 60 * 1000
   )
@@ -454,9 +459,13 @@ export default function GamePage({ session }) {
                 label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
                 onClick={() => { toggleTheme(); setSettingsOpen(false) }}
               />
-              {canClaim && (
+              {claimContext && (
                 <SQSettingsRow
                   label="🏆 Claim win (opponent inactive)"
+                  disabled={!canClaim}
+                  title={canClaim
+                    ? 'Claim the win — opponent inactive 7+ days'
+                    : 'Available once your opponent has been inactive for 7 days'}
                   onClick={() => { setSettingsOpen(false); handleClaim() }}
                 />
               )}

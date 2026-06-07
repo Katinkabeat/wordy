@@ -398,17 +398,15 @@ export default function GamePage({ session }) {
     navigate('/lobby')
   }
 
-  // Claim the win when it's been the opponent's turn for 7+ days (c153).
-  // Lives in the cog menu (always reachable on mobile). The row is shown
-  // greyed whenever it's the opponent's turn in an active human game, and
-  // becomes clickable once they've been idle past the 7-day threshold.
-  // Not offered in solo/bot games — a bot never stalls.
-  const claimContext = (
-    game.status === 'active' && myPlayer && !isBotGame &&
-    game.current_player_idx !== myPlayer.player_index
-  )
+  // Claim the win when the opponent has stalled 7+ days (c153). The row is
+  // ALWAYS shown in the cog for an active human game (so it's consistently
+  // discoverable), and greyed out unless it's actually claimable — i.e. it's
+  // the opponent's turn and they've been idle past 7 days. Not offered in
+  // solo/bot games — a bot never stalls.
+  const claimVisible = game.status === 'active' && myPlayer && !isBotGame
   const canClaim = (
-    claimContext &&
+    claimVisible &&
+    game.current_player_idx !== myPlayer.player_index &&
     game.last_activity_at &&
     Date.now() - new Date(game.last_activity_at).getTime() > 7 * 24 * 60 * 60 * 1000
   )
@@ -459,7 +457,7 @@ export default function GamePage({ session }) {
                 label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
                 onClick={() => { toggleTheme(); setSettingsOpen(false) }}
               />
-              {claimContext && (
+              {claimVisible && (
                 <SQSettingsRow
                   label="🏆 Claim win (opponent inactive)"
                   disabled={!canClaim}

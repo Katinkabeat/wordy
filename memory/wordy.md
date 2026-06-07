@@ -12,6 +12,13 @@ Multiplayer Scrabble word game built with React + Vite + Supabase, deployed to G
 - `.git` lock files (`index.lock`, `HEAD.lock`, `refs/heads/main.lock`) get stuck on the mounted workspace — use GitHub Git Data API to push commits directly (see Git Push Workaround section below)
 - PAT is embedded in the git remote URL; no `workflow` scope so `.github/workflows/` changes must go through GitHub web editor
 
+## Session: June 7, 2026 — How-to: inactive-player rules documented
+
+Added a "When a player goes quiet" section at the bottom of `HowToPlayModal.jsx`:
+🔔 nudge appears on the opponent's lobby chip after 12h idle; claim-win from the
+settings cog ⚙ after 7 days idle. Pure copy, no logic change. Committed + pushed.
+Part of a 4-game sweep (Raeban c185) documenting the shared inactive-player rules.
+
 ## Session: March 20, 2026
 
 ### Push Notifications — Fixed

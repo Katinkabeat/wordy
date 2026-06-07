@@ -141,6 +141,21 @@ export default function HowToPlayModal({ open, onClose }) {
           </p>
         </section>
 
+        <section>
+          <h3 className="font-display text-base text-wordy-700 mb-1">When a player goes quiet</h3>
+          <ul className="list-disc pl-5 space-y-1.5">
+            <li>
+              Waiting on someone? Once their turn has sat for <b>12 hours</b>, a
+              🔔 appears on their chip in the lobby. Tap it to send a reminder
+              (plus a push, if they have them on).
+            </li>
+            <li>
+              If a player goes inactive for <b>7 days</b>, you can claim the win
+              from the settings cog ⚙.
+            </li>
+          </ul>
+        </section>
+
       </div>
     </SQModal>
   )

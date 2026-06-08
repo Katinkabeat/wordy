@@ -426,7 +426,7 @@ export default function GamePage({ session }) {
         <>
           {claimVisible && (
             <SQSettingsRow
-              label="🏆 Claim win (opponent inactive)"
+              label="Claim win (opponent inactive)"
               disabled={!canClaim}
               title={canClaim
                 ? 'Claim the win — opponent inactive 7+ days'
@@ -436,13 +436,13 @@ export default function GamePage({ session }) {
           )}
           {isBotGame ? (
             <SQSettingsRow
-              label="🚪 Quit game"
+              label="Quit game"
               danger
               onClick={() => { close(); quitSolo() }}
             />
           ) : (
             <SQSettingsRow
-              label="🏳️ Forfeit game"
+              label="Forfeit game"
               danger
               onClick={() => { close(); setForfeitModal(true) }}
             />

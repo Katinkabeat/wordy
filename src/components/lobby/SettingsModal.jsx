@@ -26,7 +26,7 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
   return (
     <div ref={dropdownRef} className="settings-dropdown card">
 
-      {/* Canonical SQ order: Theme → How to play → Admin → game rows → Report → Log out */}
+      {/* Canonical SQ order: Theme → How to play → Admin → Report → game rows → Log out */}
       <SQSettingsRow
         label="Theme"
         control={isDark ? '☀️ Light' : '🌙 Dark'}
@@ -44,10 +44,11 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
           onClick={onToggleAdmin}
         />
       )}
-      {/* Game-specific rows (Claim win / Forfeit / Quit) injected on the board
-          via the gameRows render-prop; the lobby passes none. */}
-      {gameRows && gameRows(onClose)}
       <SQReportPlayer supabase={supabase} game="wordy" />
+      {/* Game-specific rows (Claim win / Forfeit / Quit) injected on the board
+          via the gameRows render-prop, grouped with Log out at the bottom;
+          the lobby passes none. */}
+      {gameRows && gameRows(onClose)}
       <SQSettingsRow label="Log out" danger onClick={onLogout} />
 
     </div>

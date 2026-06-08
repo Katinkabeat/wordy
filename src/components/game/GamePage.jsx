@@ -15,10 +15,11 @@ import {
   SQBoardShell,
   SQBoardHeader,
   SQLobbyHeader,
-  SQDropdown,
   SQSettingsRow,
 } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 import AvatarMenu from '../lobby/AvatarMenu.jsx'
+import SettingsDropdown from '../lobby/SettingsModal.jsx'
+import HowToPlayModal from '../HowToPlayModal.jsx'
 import BlankTileModal from './modals/BlankTileModal.jsx'
 import ForfeitModal from './modals/ForfeitModal.jsx'
 
@@ -70,7 +71,8 @@ export default function GamePage({ session }) {
   const [forfeitModal, setForfeitModal] = useState(false)
   const [passConfirm, setPassConfirm]   = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const settingsRef = useRef(null)
+  const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
+  const [showHowTo, setShowHowTo] = useState(false)
   const [autoJoining, setAutoJoining] = useState(false)
   const autoJoinAttemptedRef = useRef(false)
 
@@ -112,17 +114,11 @@ export default function GamePage({ session }) {
     })()
   }, [game, players, myPlayer, autoJoining, user, profiles, loadGame, navigate])
 
-  // ── Close settings menu on outside click ──────────────────
+  // ── Load admin status (gates the Admin panel cog row) ─────
   useEffect(() => {
-    if (!settingsOpen) return
-    function handleClick(e) {
-      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
-        setSettingsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [settingsOpen])
+    supabase.from('admins').select('*').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setAdminRecord(data ?? null))
+  }, [user.id])
 
   // ── Cell size — sized to the actual play area ─────────────
   // We measure the board's parent (the items-center container in
@@ -422,6 +418,39 @@ export default function GamePage({ session }) {
     }
   }
 
+  // Game-specific cog rows (Claim win / Forfeit / Quit), injected into the
+  // shared settings menu via its gameRows render-prop — same pattern as the
+  // other SQ games (c201). `close` dismisses the menu after the action fires.
+  const cogGameRows = (game.status === 'active' && myPlayer)
+    ? (close) => (
+        <>
+          {claimVisible && (
+            <SQSettingsRow
+              label="🏆 Claim win (opponent inactive)"
+              disabled={!canClaim}
+              title={canClaim
+                ? 'Claim the win — opponent inactive 7+ days'
+                : 'Available once your opponent has been inactive for 7 days'}
+              onClick={() => { close(); handleClaim() }}
+            />
+          )}
+          {isBotGame ? (
+            <SQSettingsRow
+              label="🚪 Quit game"
+              danger
+              onClick={() => { close(); quitSolo() }}
+            />
+          ) : (
+            <SQSettingsRow
+              label="🏳️ Forfeit game"
+              danger
+              onClick={() => { close(); setForfeitModal(true) }}
+            />
+          )}
+        </>
+      )
+    : null
+
   // Top header: app-level identity + nav. Same structure on lobby and board
   // (per sq-style-spec.md §4) so the user always has avatar / hub / settings
   // access.
@@ -439,7 +468,7 @@ export default function GamePage({ session }) {
           >
             🏠
           </a>
-          <div className="relative" ref={settingsRef}>
+          <div className="relative">
             <button
               onClick={() => setSettingsOpen(o => !o)}
               className="text-lg leading-none hover:scale-110 transition-transform"
@@ -447,42 +476,26 @@ export default function GamePage({ session }) {
             >
               ⚙️
             </button>
-            <SQDropdown
-              open={settingsOpen}
-              onClose={() => setSettingsOpen(false)}
-              align="right"
-              className="text-sm"
-            >
-              <SQSettingsRow
-                label={isDark ? '☀️ Light mode' : '🌙 Dark mode'}
-                onClick={() => { toggleTheme(); setSettingsOpen(false) }}
+            {settingsOpen && (
+              <SettingsDropdown
+                onClose={() => setSettingsOpen(false)}
+                isDark={isDark}
+                toggleTheme={toggleTheme}
+                isAdmin={!!adminRecord}
+                onHowToPlay={() => { setShowHowTo(true); setSettingsOpen(false) }}
+                onToggleAdmin={() => { setSettingsOpen(false); navigate('/lobby?tab=admin') }}
+                onLogout={async () => {
+                  try { await supabase.auth.signOut() } catch {}
+                  // Clear any lingering sb-* auth tokens so a corrupt session
+                  // can't bounce the user straight back in (matches the lobby).
+                  Object.keys(localStorage).forEach(k => {
+                    if (k.startsWith('sb-')) localStorage.removeItem(k)
+                  })
+                  window.location.replace('/games/')
+                }}
+                gameRows={cogGameRows}
               />
-              {claimVisible && (
-                <SQSettingsRow
-                  label="🏆 Claim win (opponent inactive)"
-                  disabled={!canClaim}
-                  title={canClaim
-                    ? 'Claim the win — opponent inactive 7+ days'
-                    : 'Available once your opponent has been inactive for 7 days'}
-                  onClick={() => { setSettingsOpen(false); handleClaim() }}
-                />
-              )}
-              {game.status === 'active' && myPlayer && (
-                isBotGame ? (
-                  <SQSettingsRow
-                    label="🚪 Quit game"
-                    danger
-                    onClick={() => { setSettingsOpen(false); quitSolo() }}
-                  />
-                ) : (
-                  <SQSettingsRow
-                    label="🏳️ Forfeit game"
-                    danger
-                    onClick={() => { setForfeitModal(true); setSettingsOpen(false) }}
-                  />
-                )
-              )}
-            </SQDropdown>
+            )}
           </div>
         </>
       }
@@ -679,6 +692,7 @@ export default function GamePage({ session }) {
       {forfeitModal && (
         <ForfeitModal onConfirm={forfeitGame} onCancel={() => setForfeitModal(false)} />
       )}
+      <HowToPlayModal open={showHowTo} onClose={() => setShowHowTo(false)} />
     </SQBoardShell>
   )
 }

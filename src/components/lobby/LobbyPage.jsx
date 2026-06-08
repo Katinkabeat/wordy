@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
 import {
@@ -25,6 +25,7 @@ const AVATAR_HUES = [270, 330, 190, 30, 160, 10]
 
 export default function LobbyPage({ session }) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = session.user
   const { isDark, toggle: toggleTheme } = useTheme()
 
@@ -35,7 +36,9 @@ export default function LobbyPage({ session }) {
   const [decliningId, setDecliningId] = useState(null)
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [adminRecord, setAdminRecord] = useState(null)  // null = not admin
-  const [lobbyTab, setLobbyTab]       = useState('lobby') // 'lobby' | 'admin'
+  // Initial tab honours ?tab=admin so the in-game cog's "Admin panel" row can
+  // deep-link straight to the admin view (the board has no admin tab of its own).
+  const [lobbyTab, setLobbyTab]       = useState(() => searchParams.get('tab') === 'admin' ? 'admin' : 'lobby') // 'lobby' | 'admin'
   const [showSettings, setShowSettings] = useState(false)
   const [showHowTo, setShowHowTo]       = useState(false)
 

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { SQReportPlayer, SQSettingsRow } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 import { supabase } from '../../lib/supabase.js'
 
-export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin, lobbyTab, onToggleAdmin, onLogout, onHowToPlay }) {
+export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin, lobbyTab, onToggleAdmin, onLogout, onHowToPlay, gameRows = null }) {
   const dropdownRef = useRef(null)
 
   // Close on click outside
@@ -26,7 +26,7 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
   return (
     <div ref={dropdownRef} className="settings-dropdown card">
 
-      {/* Canonical SQ order: Theme → How to play → Admin → Report → Log out */}
+      {/* Canonical SQ order: Theme → How to play → Admin → game rows → Report → Log out */}
       <SQSettingsRow
         label="Theme"
         control={isDark ? '☀️ Light' : '🌙 Dark'}
@@ -44,6 +44,9 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
           onClick={onToggleAdmin}
         />
       )}
+      {/* Game-specific rows (Claim win / Forfeit / Quit) injected on the board
+          via the gameRows render-prop; the lobby passes none. */}
+      {gameRows && gameRows(onClose)}
       <SQReportPlayer supabase={supabase} game="wordy" />
       <SQSettingsRow label="Log out" danger onClick={onLogout} />
 

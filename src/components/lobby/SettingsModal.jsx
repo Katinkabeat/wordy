@@ -60,7 +60,7 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
                 : 'text-wordy-700 hover:text-wordy-500'
             }`}
           >
-            {lobbyTab === 'admin' ? '← Lobby' : '🔐 Open'}
+            {lobbyTab === 'admin' ? '← Lobby' : 'Open'}
           </button>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
+import { timeAgo } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
 const NUDGE_COOLDOWN_MS = 12 * 60 * 60 * 1000 // 12 hours
 
@@ -33,17 +34,7 @@ export default function LobbyGameRow({
   const isFull     = players.length >= game.max_players
   // Active games show "X ago" since the current turn started (last move).
   // Waiting and finished games keep their text label.
-  const turnTimeAgo = (() => {
-    if (!game.turn_started_at) return null
-    const diff  = Date.now() - new Date(game.turn_started_at).getTime()
-    const mins  = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days  = Math.floor(diff / 86400000)
-    if (days  > 0) return `${days}d ago`
-    if (hours > 0) return `${hours}h ago`
-    if (mins  > 0) return `${mins}m ago`
-    return 'just now'
-  })()
+  const turnTimeAgo = game.turn_started_at ? timeAgo(game.turn_started_at) : null
   // Pending invitees = those in invited_user_ids who haven't yet joined.
   const joinedIds = new Set(players.map(p => p.user_id))
   const pendingInviteeIds = (game.invited_user_ids ?? []).filter(id => !joinedIds.has(id))

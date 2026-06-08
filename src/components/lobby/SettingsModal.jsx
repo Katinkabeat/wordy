@@ -51,7 +51,7 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
       {/* Admin (only for admins) */}
       {isAdmin && (
         <div className="settings-row">
-          <span className="text-sm font-bold text-wordy-600">Admin</span>
+          <span className="text-sm font-bold text-wordy-600">Admin panel</span>
           <button
             onClick={onToggleAdmin}
             className={`text-sm font-bold transition-colors ${

@@ -40,7 +40,7 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
       {isAdmin && (
         <SQSettingsRow
           label="Admin panel"
-          control={lobbyTab === 'admin' ? '← Lobby' : 'Open'}
+          control={lobbyTab === 'admin' ? '← Lobby' : '🔐 Open'}
           onClick={onToggleAdmin}
         />
       )}

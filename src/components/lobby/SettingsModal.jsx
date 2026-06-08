@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { SQReportPlayer } from '../../../../rae-side-quest/packages/sq-ui/index.js'
+import { SQReportPlayer, SQSettingsRow } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 import { supabase } from '../../lib/supabase.js'
 
 export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin, lobbyTab, onToggleAdmin, onLogout, onHowToPlay }) {
@@ -26,57 +26,26 @@ export default function SettingsDropdown({ onClose, isDark, toggleTheme, isAdmin
   return (
     <div ref={dropdownRef} className="settings-dropdown card">
 
-      {/* Theme */}
-      <div className="settings-row">
-        <span className="text-sm font-bold text-wordy-600">Theme</span>
-        <button
-          onClick={toggleTheme}
-          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
-        >
-          {isDark ? '☀️ Light' : '🌙 Dark'}
-        </button>
-      </div>
-
-      {/* How to play */}
-      <div className="settings-row">
-        <span className="text-sm font-bold text-wordy-600">How to play</span>
-        <button
-          onClick={onHowToPlay}
-          className="text-sm font-bold text-wordy-700 hover:text-wordy-500 transition-colors"
-        >
-          📖 Open
-        </button>
-      </div>
-
-      {/* Admin (only for admins) */}
+      {/* Canonical SQ order: Theme → How to play → Admin → Report → Log out */}
+      <SQSettingsRow
+        label="Theme"
+        control={isDark ? '☀️ Light' : '🌙 Dark'}
+        onClick={toggleTheme}
+      />
+      <SQSettingsRow
+        label="How to play"
+        control="📖 Open"
+        onClick={onHowToPlay}
+      />
       {isAdmin && (
-        <div className="settings-row">
-          <span className="text-sm font-bold text-wordy-600">Admin panel</span>
-          <button
-            onClick={onToggleAdmin}
-            className={`text-sm font-bold transition-colors ${
-              lobbyTab === 'admin'
-                ? 'text-wordy-500 hover:text-wordy-700'
-                : 'text-wordy-700 hover:text-wordy-500'
-            }`}
-          >
-            {lobbyTab === 'admin' ? '← Lobby' : 'Open'}
-          </button>
-        </div>
+        <SQSettingsRow
+          label="Admin panel"
+          control={lobbyTab === 'admin' ? '← Lobby' : 'Open'}
+          onClick={onToggleAdmin}
+        />
       )}
-
-      {/* Report a player */}
       <SQReportPlayer supabase={supabase} game="wordy" />
-
-      {/* Log out */}
-      <div className="settings-row">
-        <button
-          onClick={onLogout}
-          className="text-sm font-bold text-rose-500 hover:text-rose-700 transition-colors"
-        >
-          Log out
-        </button>
-      </div>
+      <SQSettingsRow label="Log out" danger onClick={onLogout} />
 
     </div>
   )

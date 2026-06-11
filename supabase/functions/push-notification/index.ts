@@ -92,6 +92,16 @@ async function sendPushToUser(
   return { sent: false, reason: 'no push subscription' }
 }
 
+// Helper: look up a user's display name, falling back to 'Someone'.
+async function getUsername(supabase: any, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', userId)
+    .maybeSingle()
+  return data?.username ?? 'Someone'
+}
+
 // Rotating quips for the invite_declined push — funny / bird / dog / ADHD
 // flavoured, all warm rather than blunt. One picked at random per send.
 // Rae-approved set (2026-05-31).
@@ -255,6 +265,56 @@ serve(async (req: Request) => {
         icon: '/wordy/favicon.svg',
       })
 
+      return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
+    }
+
+    // ── Type: game_finished (from on_game_finished trigger) ─────
+    // A claim or forfeit ended the game. Push the player who DIDN'T
+    // initiate it. Normal completion + admin-close never reach here —
+    // the trigger only fires when end_reason ('claim'|'forfeit') is set.
+    if (payload.type === 'game_finished') {
+      const { record } = payload
+      if (!record?.id || !record.forfeit_user_id || !record.end_reason) {
+        return new Response(JSON.stringify({ skipped: 'missing fields' }), { status: 200, headers: corsHeaders })
+      }
+      const loserId = record.forfeit_user_id  // forfeiter, or the claimed-against player
+      const { data: players } = await supabase
+        .from('game_players')
+        .select('user_id')
+        .eq('game_id', record.id)
+      const winnerId = (players ?? []).find((p: any) => p.user_id !== loserId)?.user_id
+      if (!winnerId) {
+        return new Response(JSON.stringify({ skipped: 'no opponent' }), { status: 200, headers: corsHeaders })
+      }
+
+      // claim   → notify the LOSER (claimed against while idle)
+      // forfeit → notify the WINNER (their opponent gave up)
+      const isClaim = record.end_reason === 'claim'
+      const recipientId = isClaim ? loserId : winnerId
+
+      // Don't push bots (solo-vs-computer games).
+      const { data: prof } = await supabase
+        .from('profiles').select('is_bot').eq('id', recipientId).maybeSingle()
+      if (prof?.is_bot) {
+        return new Response(JSON.stringify({ skipped: 'recipient is bot' }), { status: 200, headers: corsHeaders })
+      }
+
+      let title: string, body: string
+      if (isClaim) {
+        title = 'Wordy — game over'
+        body = `${await getUsername(supabase, winnerId)} claimed the win because your turn was idle 7+ days.`
+      } else {
+        title = 'Wordy — you won!'
+        body = `${await getUsername(supabase, loserId)} forfeited, you win!`
+      }
+
+      const result = await sendIfOptedIn(supabase, recipientId, 'wordy', 'game_finished', {
+        title,
+        body,
+        tag: `wordy-finish-${record.id}`,
+        url: `/wordy/game/${record.id}`,
+        icon: '/wordy/favicon.svg',
+      })
       return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
     }
 

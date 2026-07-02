@@ -132,7 +132,7 @@ export default function StatsPage({ session }) {
 
                     {/* Username */}
                     <span className={`flex-1 text-sm font-bold truncate ${isMe ? 'text-wordy-700 dark:text-wordy-200' : 'text-wordy-600 dark:text-wordy-300'}`}>
-                      {entry.username}{isMe ? ' (you)' : ''}
+                      {entry.username}
                     </span>
 
                     {/* Stats */}

@@ -83,18 +83,31 @@ export default function LobbyGameRow({
         .eq('id', game.id)
       if (updateErr) throw updateErr
 
-      // Send push notification via Edge Function (fire-and-forget)
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/Push-Notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ type: 'nudge', game_id: game.id, nudger_name: profile?.username }),
-      })
-        .then(r => r.json().then(d => console.log('[nudge]', r.status, d)))
-        .catch(e => console.warn('[nudge] failed:', e))
+      // The push IS the nudge — await it so a dropped POST surfaces instead
+      // of a false "sent" toast (c239). 8s cap so a hung edge fn can't spin
+      // the button forever.
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 8000)
+      let ok = false
+      try {
+        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/Push-Notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ type: 'nudge', game_id: game.id, nudger_name: profile?.username }),
+          signal: ctrl.signal,
+        })
+        ok = r.ok
+        if (!ok) console.warn(`[nudge] push failed: HTTP ${r.status}`)
+      } catch (err) {
+        console.warn('[nudge] push error:', err?.name === 'AbortError' ? 'timeout' : err)
+      } finally {
+        clearTimeout(timer)
+      }
+      if (!ok) throw new Error("Couldn't send the reminder")
 
       setJustNudged(true)
       toast.success('🔔 Reminder sent!')

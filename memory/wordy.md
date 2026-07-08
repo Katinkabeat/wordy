@@ -644,3 +644,7 @@ Wordy had no game-end push (on_turn_change only fires when status='active'). Add
 
 ## 2026-07-02 — Removed "← you" leaderboard self-marker (Rae request)
 Dropped the "← you" text label (Wordy: "(you)") from the leaderboard row in StatsPage. The `isYou`/`isMe` prop still drives the row highlight (bg-white/15 ring) — only the redundant text was removed. In-match "(you)" during live games left as-is (not a leaderboard). No Quill post (Rae's call, too small).
+
+## 2026-07-07 — Nudge push failures now surfaced (c239)
+The nudge push was fire-and-forget (`.catch(() => {})` / warn-only), so a dropped POST left the nudger with a false "Reminder sent!" toast. Now the handler awaits the push, checks `res.ok`, and on a non-2xx or network error surfaces a failure toast instead of success (plus `console.warn`). Added an 8s `AbortController` cap so a hung edge fn can't spin the nudge button forever. Failure leaves the button available to retry.
+Known limit (unchanged, out of scope): the RPC/update stamps `last_nudged_at` *before* the push, so a retry within 12h is still cooldown-blocked server-side. Verified: all four games build clean + boot; the failure toast itself needs an authed >12h-stale match to click (hub-login bounce = known authed-verify wall).

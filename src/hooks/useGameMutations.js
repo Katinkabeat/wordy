@@ -14,17 +14,26 @@ function endgameFields(over) {
   return over ? { status: 'finished', finished_at: new Date().toISOString() } : {}
 }
 
-// Fire-and-forget finish_game RPC. Errors are logged, never thrown — the
-// move itself succeeded; the RPC just stamps winner/score history.
-function callFinishGameRpc(gameId, finalPlayers) {
-  return supabase.rpc('finish_game', {
-    p_game_id: gameId,
-    p_player_results: finalPlayers.map(fp => ({
-      user_id:   fp.user_id,
-      score:     fp.score,
-      is_winner: fp.is_winner ?? false,
-    })),
-  }).then(({ error }) => { if (error) console.error('finish_game RPC failed:', error) })
+// Records final winner / scores / leaderboard stats. Called unawaited from the
+// move flow — the game-finished status is already set atomically inside
+// submit_play, so the game itself is never stuck on this. But it is NOT
+// fire-and-forget internally: a stale-token 401 after a backgrounded mobile tab
+// would otherwise silently drop the win flag + the leaderboard (player_matchups)
+// stamp while the game still shows finished. So we refreshSession() and retry
+// until it lands. Errors are logged, never thrown.
+async function callFinishGameRpc(gameId, finalPlayers) {
+  const p_player_results = finalPlayers.map(fp => ({
+    user_id:   fp.user_id,
+    score:     fp.score,
+    is_winner: fp.is_winner ?? false,
+  }))
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error } = await supabase.rpc('finish_game', { p_game_id: gameId, p_player_results })
+    if (!error) return
+    console.error(`finish_game RPC failed (attempt ${attempt + 1}):`, error)
+    await supabase.auth.refreshSession().catch(() => {})
+    await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
+  }
 }
 
 export function useGameMutations({

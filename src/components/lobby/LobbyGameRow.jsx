@@ -104,6 +104,8 @@ export default function LobbyGameRow({
       const { delivered, reason } = await postNudge({
         url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`,
         anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        reportUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sq-report-client-error`,
+        game: 'wordy',
         body: { type: 'nudge', game_id: game.id, nudger_name: profile?.username },
       })
       if (!delivered) throw new Error(nudgeFailureMessage(reason))

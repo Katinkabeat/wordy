@@ -1,7 +1,9 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
-import { timeAgo } from '../../../../rae-side-quest/packages/sq-ui/index.js'
+import {
+  timeAgo, isNudgeEnabled, postNudge, nudgeFailureMessage,
+} from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
 const NUDGE_COOLDOWN_MS = 12 * 60 * 60 * 1000 // 12 hours
 
@@ -28,6 +30,8 @@ export default function LobbyGameRow({
 }) {
   const [nudging, setNudging] = useState(false)
   const [justNudged, setJustNudged] = useState(false)
+  // null = pref not loaded yet; the bell stays hidden until it resolves.
+  const [nudgeAllowed, setNudgeAllowed] = useState(null)
 
   const players    = game.game_players ?? []
   const isMyGame   = players.some(p => p.user_id === userId)
@@ -64,12 +68,29 @@ export default function LobbyGameRow({
   const turnAge = game.turn_started_at ? now - new Date(game.turn_started_at).getTime() : 0
   const nudgeAge = game.last_nudged_at ? now - new Date(game.last_nudged_at).getTime() : Infinity
 
-  const canNudge = game.status === 'active'
+  // Everything that qualifies this game for a nudge EXCEPT the opponent's
+  // opt-in, which has to be fetched.
+  const nudgeEligible = game.status === 'active'
     && isMyGame
     && !isMyTurn
     && turnAge > NUDGE_COOLDOWN_MS
     && nudgeAge > NUDGE_COOLDOWN_MS
     && !justNudged
+
+  // Show the bell only if the current player can actually receive it (c259).
+  const canNudge = nudgeEligible && nudgeAllowed === true
+
+  // Fetch the current player's nudge opt-in, but only for a game that's
+  // otherwise nudgeable — most rows never ask. Re-runs if the turn passes to
+  // someone else, so the bell reflects whoever we'd actually be nudging.
+  const currentPlayerId = currentPlayer?.user_id
+  useEffect(() => {
+    if (!nudgeEligible || !currentPlayerId) { setNudgeAllowed(null); return }
+    let cancelled = false
+    isNudgeEnabled(supabase, currentPlayerId, 'wordy')
+      .then(ok => { if (!cancelled) setNudgeAllowed(ok) })
+    return () => { cancelled = true }
+  }, [nudgeEligible, currentPlayerId])
 
   async function sendNudge(e) {
     e.stopPropagation()
@@ -77,30 +98,15 @@ export default function LobbyGameRow({
     setNudging(true)
     try {
       // The push IS the nudge — await it so a dropped POST surfaces instead
-      // of a false "sent" toast (c239). 8s cap so a hung edge fn can't spin
-      // the button forever.
-      const ctrl = new AbortController()
-      const timer = setTimeout(() => ctrl.abort(), 8000)
-      let ok = false
-      try {
-        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ type: 'nudge', game_id: game.id, nudger_name: profile?.username }),
-          signal: ctrl.signal,
-        })
-        ok = r.ok
-        if (!ok) console.warn(`[nudge] push failed: HTTP ${r.status}`)
-      } catch (err) {
-        console.warn('[nudge] push error:', err?.name === 'AbortError' ? 'timeout' : err)
-      } finally {
-        clearTimeout(timer)
-      }
-      if (!ok) throw new Error("Couldn't send the reminder")
+      // of a false "sent" toast (c239), and read the 200 body rather than
+      // res.ok, since the edge fn answers 200 { sent: false } when the
+      // recipient is opted out or has no push subscription (c259).
+      const { delivered, reason } = await postNudge({
+        url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`,
+        anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        body: { type: 'nudge', game_id: game.id, nudger_name: profile?.username },
+      })
+      if (!delivered) throw new Error(nudgeFailureMessage(reason))
 
       // Stamp the 12h cooldown only once the push has landed, so a failed
       // send doesn't lock the game out of retries for 12h (c248, Yahdle).
@@ -115,7 +121,7 @@ export default function LobbyGameRow({
       setJustNudged(true)
       toast.success('🔔 Reminder sent!')
     } catch (err) {
-      toast.error('Failed to send reminder')
+      toast.error(err.message ?? 'Failed to send reminder')
       console.error('Nudge error:', err)
     } finally {
       setNudging(false)

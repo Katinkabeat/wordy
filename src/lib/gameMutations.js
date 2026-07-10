@@ -121,7 +121,7 @@ export async function joinGame({ user, game, joinerName }) {
   }
 
   // Notify the game creator that someone joined (fire-and-forget)
-  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/Push-Notification`, {
+  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

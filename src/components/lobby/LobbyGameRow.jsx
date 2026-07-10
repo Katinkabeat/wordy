@@ -76,13 +76,6 @@ export default function LobbyGameRow({
     if (nudging || !canNudge) return
     setNudging(true)
     try {
-      // Update last_nudged_at on the game (server-side cooldown enforcement)
-      const { error: updateErr } = await supabase
-        .from('games')
-        .update({ last_nudged_at: new Date().toISOString() })
-        .eq('id', game.id)
-      if (updateErr) throw updateErr
-
       // The push IS the nudge — await it so a dropped POST surfaces instead
       // of a false "sent" toast (c239). 8s cap so a hung edge fn can't spin
       // the button forever.
@@ -90,7 +83,7 @@ export default function LobbyGameRow({
       const timer = setTimeout(() => ctrl.abort(), 8000)
       let ok = false
       try {
-        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/Push-Notification`, {
+        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -108,6 +101,16 @@ export default function LobbyGameRow({
         clearTimeout(timer)
       }
       if (!ok) throw new Error("Couldn't send the reminder")
+
+      // Stamp the 12h cooldown only once the push has landed, so a failed
+      // send doesn't lock the game out of retries for 12h (c248, Yahdle).
+      // The push is what "sent" means, so a failed stamp warns rather than
+      // throws — worst case the cooldown doesn't hold for this nudge.
+      const { error: updateErr } = await supabase
+        .from('games')
+        .update({ last_nudged_at: new Date().toISOString() })
+        .eq('id', game.id)
+      if (updateErr) console.warn('[nudge] cooldown stamp failed:', updateErr)
 
       setJustNudged(true)
       toast.success('🔔 Reminder sent!')

@@ -124,14 +124,36 @@ function declineBody(name: string, emoji: string): string {
   return `${quip} Tap to start another. ${emoji}`
 }
 
+// Report an unexpected push-function failure to the private #error-log channel
+// (c266 Phase 3). Best-effort; never throws. Only the top-level catch calls it,
+// so routine 410/404 expired-subscription cleanup (handled inline) never lands here.
+const ERRORLOG_WEBHOOK = Deno.env.get('SQ_DISCORD_ERRORLOG_WEBHOOK') ?? ''
+async function reportServerError(game: string, type: string, detail: string) {
+  if (!ERRORLOG_WEBHOOK) return
+  try {
+    await fetch(ERRORLOG_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Rook',
+        content: `**${game}** — push function error\n\`${type}\`\ndetail: ${String(detail ?? '').slice(0, 500)}`,
+        allowed_mentions: { parse: [] },
+      }),
+    })
+  } catch (_e) {
+    // best-effort: a failed report must never mask the original error
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let payload: any = null
   try {
-    const payload = await req.json()
+    payload = await req.json()
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
     // ── Type: game_invited (from games AFTER INSERT trigger) ────
@@ -384,6 +406,7 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
   } catch (err: any) {
     console.error('Push notification error:', err)
+    await reportServerError('Wordy', payload?.type ?? 'unknown', err?.message)
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
   }
 })

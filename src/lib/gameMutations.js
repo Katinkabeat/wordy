@@ -1,6 +1,9 @@
 import { supabase } from './supabase.js'
 import { createTileBag, refillRack } from './tileData.js'
 import { createEmptyBoard, serializeBoard, CURRENT_LAYOUT_VERSION } from './boardData.js'
+// Direct utils import (not sq-ui's index) so this non-React lib file doesn't
+// pull the package's JSX components into its chunk.
+import { firePushAndReport } from '../../../rae-side-quest/packages/sq-ui/utils/report.js'
 
 // Pure data ops for the lobby. UI concerns (toast, navigate, button-state)
 // stay in the caller — these throw on failure and return the new game id.
@@ -120,18 +123,19 @@ export async function joinGame({ user, game, joinerName }) {
     await supabase.from('games').update({ status: 'active', current_player_idx: randomFirst }).eq('id', game.id)
   }
 
-  // Notify the game creator that someone joined (fire-and-forget)
-  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ type: 'player_joined', game_id: game.id, joiner_name: joinerName }),
+  // Notify the game creator that someone joined. This is a side effect of a join
+  // that already succeeded, so we never block the joiner or toast on failure —
+  // but a swallowed push failure is reported to #error-log (c262/c265) so a broken
+  // push can't hide the way player_joined's 404 did for months (c260). A 200 with
+  // { sent:false } (creator opted out / no subscription) is a normal outcome, not
+  // a failure, and is left silent.
+  void firePushAndReport({
+    pushUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-notification`,
+    reportUrl: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sq-report-client-error`,
+    anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    body: { type: 'player_joined', game_id: game.id, joiner_name: joinerName },
+    game: 'wordy', type: 'player_joined', detail: `game_id=${game.id}`,
   })
-    .then(r => r.json().then(d => console.log('[push-notify]', r.status, d)))
-    .catch(e => console.warn('[push-notify] failed:', e))
 
   return { gameId: game.id, alreadyIn: false }
 }

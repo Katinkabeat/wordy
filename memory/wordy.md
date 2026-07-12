@@ -7,6 +7,9 @@ Multiplayer Scrabble word game built with React + Vite + Supabase, deployed to G
 - **Live:** katinkabeat.github.io/wordy/
 - **Supabase project:** yyhewndblruwxsrqzart
 
+## Session: 2026-07-12 — notification-tap routing fix (c274)
+Cross-game fix for push taps opening the wrong board / doing nothing when the installed PWA is already open (Rae hit it as "tapping a Wordy notification while on a different Wordy board did nothing"). Wordy's part: `main.jsx` now calls `installNotificationNav()` (new sq-ui helper) — the hub SW posts a `{type:'NAVIGATE', url}` message on tap and this navigates the open app to the target board. `openWindow` was a no-op inside an already-running installed PWA on Android (the root cause). Commit `920ac35`. Substantive fix lives in the hub (`public/sw.js` + `sq-ui/utils/notificationNav.js`); this game only wires the receiver. See `rae-side-quest` memory + auto-memory `feedback_sq_notification_click_routing`.
+
 ## Deployment
 - GitHub Actions workflow (`deploy.yml`) auto-deploys on push to `main` (also supports manual `workflow_dispatch`)
 - `.git` lock files (`index.lock`, `HEAD.lock`, `refs/heads/main.lock`) get stuck on the mounted workspace — use GitHub Git Data API to push commits directly (see Git Push Workaround section below)

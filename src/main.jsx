@@ -16,23 +16,11 @@ installGlobalErrorReporting({
 // No-op unless notification permission is already granted; never prompts.
 installPushHeal()
 
-// Register service worker for push notifications + PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/wordy/sw.js').catch(() => {
-      // SW registration failed — push won't work but game still loads fine
-    })
-  })
-
-  // Listen for navigation messages from the service worker.
-  // When a push notification is tapped, the SW sends { type: 'NAVIGATE', url }
-  // so we can route to the game without a full page reload.
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data?.type === 'NAVIGATE' && event.data.url) {
-      window.location.href = event.data.url
-    }
-  })
-}
+// No service worker here (c272). Push is centralized at the hub, whose SW owns
+// the single `sidequest` subscription; a game SW would never receive a push.
+// Games are intentionally NOT installable PWAs — the hub is the only installable
+// SideQuest app. installPushHeal() above keeps the shared address fresh via a
+// hub-scoped iframe, so nothing here depends on a game service worker.
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

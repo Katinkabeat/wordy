@@ -47,7 +47,7 @@ async function sendIfOptedIn(
   } else if (enabled === false) {
     return { sent: false, reason: 'opted out' }
   }
-  return sendPushToUser(supabase, userId, payload)
+  return sendPushToUser(supabase, userId, payload, topic)
 }
 
 // Helper: send a push notification to a user, cleaning up expired subs.
@@ -57,7 +57,8 @@ async function sendIfOptedIn(
 async function sendPushToUser(
   supabase: any,
   userId: string,
-  payload: { title: string; body: string; tag: string; url: string; icon?: string }
+  payload: { title: string; body: string; tag: string; url: string; icon?: string },
+  topic = 'unknown'
 ): Promise<{ sent: boolean; reason?: string; via?: string }> {
   const apps = ['sidequest', 'wordy']
 
@@ -82,6 +83,7 @@ async function sendPushToUser(
     } catch (pushErr: any) {
       if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
         await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', app)
+        await reportAddressDeath('Wordy', userId, app, topic, pushErr.statusCode, sub.endpoint)
         // Fall through to the next app (fallback)
         continue
       }
@@ -128,6 +130,34 @@ function declineBody(name: string, emoji: string): string {
 // (c266 Phase 3). Best-effort; never throws. Only the top-level catch calls it,
 // so routine 410/404 expired-subscription cleanup (handled inline) never lands here.
 const ERRORLOG_WEBHOOK = Deno.env.get('SQ_DISCORD_ERRORLOG_WEBHOOK') ?? ''
+
+// Report an expired-and-deleted push address to #error-log as a low-noise FYI
+// (c268). A 410/404 on a *previously-valid* subscription silently darkens a
+// real player — the exact blind spot that let Rae's turn pushes vanish for a
+// day unnoticed. Distinct from reportServerError (a red alarm from the top-level
+// catch): the SW self-heal (c252) + refresh-on-play (c270) re-create the address
+// on the next rotation / hub-open / play, so this is an FYI, not an alarm.
+async function reportAddressDeath(
+  game: string, userId: string, app: string, topic: string, statusCode: number, endpoint: string
+) {
+  if (!ERRORLOG_WEBHOOK) return
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  try {
+    await fetch(ERRORLOG_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Rook',
+        content: `**${game}** — push address expired (FYI)\n\`${statusCode} → sub deleted\` app:\`${app}\` topic:\`${topic}\` user:\`${userId}\` endpoint:\`${host}\`\nSelf-heal re-subscribes on next rotation / hub-open / play.`,
+        allowed_mentions: { parse: [] },
+      }),
+    })
+  } catch (_e) {
+    // best-effort: a failed report must never mask the push flow
+  }
+}
+
 async function reportServerError(game: string, type: string, detail: string) {
   if (!ERRORLOG_WEBHOOK) return
   try {

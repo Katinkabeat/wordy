@@ -54,6 +54,59 @@ async function sendIfOptedIn(
 // Tries the SideQuest hub subscription first (so users who enabled
 // notifications in SideQuest get a single consolidated notification),
 // falls back to the user's Wordy-specific subscription otherwise.
+// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// A 5xx / 429 / timeout from a push service is that service having a moment, not
+// a dead address. With no retry a single blip silently drops a real turn ping —
+// the same player-goes-dark outcome reportAddressDeath (c268) guards the other
+// half of. Retry twice with a short backoff; only a failure of every attempt is
+// worth reporting.
+const PUSH_RETRIES = 2
+const PUSH_BACKOFF_MS = [400, 1200]
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// No statusCode at all means the request never got an HTTP response back (DNS,
+// socket, timeout) — transient too.
+function isTransientPushError(err: any): boolean {
+  const status = err?.statusCode
+  if (status == null) return true
+  return status === 429 || status >= 500
+}
+
+// web-push's WebPushError message is always the generic "Received unexpected
+// response code" — the push service's real status and body hang off the error
+// object, never the message. Fold them in so the #error-log line is diagnosable.
+function pushErrDetail(err: any, userId: string, app: string, endpoint: string, attempts: number): string {
+  let host = 'unknown'
+  try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
+  const status = err?.statusCode ?? 'no response'
+  const body = String(err?.body ?? err?.message ?? err ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
+  return `push send failed: ${status} — ${body} | app:${app} host:${host} user:${userId} attempts:${attempts}`
+}
+
+// Sends, retrying transient failures. 410/404 propagate raw so the caller can run
+// its expired-address cleanup; anything else surfaces as an enriched Error.
+async function sendWithRetry(
+  pushSubscription: any,
+  payload: unknown,
+  userId: string,
+  app: string,
+  endpoint: string,
+): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      return
+    } catch (err: any) {
+      if (err?.statusCode === 410 || err?.statusCode === 404) throw err
+      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES) {
+        throw new Error(pushErrDetail(err, userId, app, endpoint, attempt + 1))
+      }
+      await sleep(PUSH_BACKOFF_MS[attempt])
+    }
+  }
+}
+
 async function sendPushToUser(
   supabase: any,
   userId: string,
@@ -78,7 +131,7 @@ async function sendPushToUser(
     }
 
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      await sendWithRetry(pushSubscription, payload, userId, app, sub.endpoint)
       return { sent: true, via: app }
     } catch (pushErr: any) {
       if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
@@ -87,7 +140,11 @@ async function sendPushToUser(
         // Fall through to the next app (fallback)
         continue
       }
-      throw pushErr
+      // One recipient's failed send is not the whole call's failure: throwing here
+      // aborted the fan-out loops (game_finished), so the *other* players silently
+      // got no push either. Report it and let the caller carry on.
+      await reportServerError('Wordy', topic, pushErr?.message ?? String(pushErr))
+      return { sent: false, reason: 'send failed' }
     }
   }
 

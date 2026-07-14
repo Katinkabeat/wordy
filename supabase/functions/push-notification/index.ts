@@ -36,7 +36,7 @@ async function sendIfOptedIn(
   app: string,
   topic: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string }
-): Promise<{ sent: boolean; reason?: string; via?: string }> {
+): Promise<{ sent: boolean; reason?: string; via?: string; tag?: string; user?: string }> {
   const { data: enabled, error } = await supabase.rpc('sq_notification_enabled', {
     p_user_id: userId,
     p_app: app,
@@ -45,7 +45,7 @@ async function sendIfOptedIn(
   if (error) {
     console.error('sq_notification_enabled failed (fail-open):', error)
   } else if (enabled === false) {
-    return { sent: false, reason: 'opted out' }
+    return { sent: false, reason: 'opted out', tag: payload.tag, user: userId }
   }
   return sendPushToUser(supabase, userId, payload, topic)
 }
@@ -76,10 +76,19 @@ const PUSH_BACKOFF_MS = [400, 1200]
 //
 // A push service can fail SLOWLY: Mozilla was taking ~4.8s to return each 502.
 // Three of those plus backoff is ~16s, which overruns even the raised budget —
-// so an unbounded retry count turns one failed push into a severed call. Stop
-// retrying once we're past the deadline and report instead; the attempt already
-// in flight is allowed to finish (it may still succeed).
-const PUSH_DEADLINE_MS = 9000
+// so an unbounded retry count turns one failed push into a severed call. The
+// loop only starts another attempt if the backoff plus a full worst-case attempt
+// still fits inside the deadline, so send time per recipient never exceeds it.
+// 11s admits two ~5s slow-fail attempts (so the retry still fires when a service
+// is failing slowly) while leaving pg_net headroom for function overhead.
+const PUSH_DEADLINE_MS = 11000
+
+// Per-attempt socket-inactivity timeout (web-push passes it to https.request).
+// Kills a hung socket — the "single attempt hanging >15s" hole — without
+// tripping on Mozilla's ~4.8s slow-fails, which stay under it and return a real
+// status. Also what makes the deadline projection above trustworthy: no attempt
+// can outlive it.
+const PUSH_ATTEMPT_TIMEOUT_MS = 5000
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -124,12 +133,17 @@ async function sendWithRetry(
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400 })
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
       return
     } catch (err: any) {
       if (err?.statusCode === 410 || err?.statusCode === 404) throw err
-      const outOfTime = Date.now() - startedAt >= PUSH_DEADLINE_MS
-      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES || outOfTime) {
+      // Project the next attempt BEFORE committing to it: an after-the-fact
+      // elapsed check can pass just under the deadline and still admit a
+      // backoff + full attempt, grazing pg_net's 15s. attempt < PUSH_RETRIES
+      // whenever this is read, so the backoff index is safe.
+      const nextWouldOverrun =
+        Date.now() - startedAt + PUSH_BACKOFF_MS[attempt] + PUSH_ATTEMPT_TIMEOUT_MS > PUSH_DEADLINE_MS
+      if (!isTransientPushError(err) || attempt >= PUSH_RETRIES || nextWouldOverrun) {
         throw new Error(pushErrDetail(err, userId, app, endpoint, attempt + 1))
       }
       await sleep(PUSH_BACKOFF_MS[attempt])
@@ -142,7 +156,7 @@ async function sendPushToUser(
   userId: string,
   payload: { title: string; body: string; tag: string; url: string; icon?: string },
   topic = 'unknown'
-): Promise<{ sent: boolean; reason?: string; via?: string }> {
+): Promise<{ sent: boolean; reason?: string; via?: string; tag?: string; user?: string }> {
   // Every push address lives under the unified 'sidequest' app: the hub is the only
   // surface that ever calls pushManager.subscribe, and it hardcodes that value. The
   // old per-game fallback list ('wordy', 'rungles', …) dated from when each game
@@ -287,8 +301,9 @@ serve(async (req: Request) => {
         .maybeSingle()
       const inviterName = profile?.username ?? 'Someone'
 
-      const results = []
-      for (const inviteeId of record.invited_user_ids) {
+      // Recipients in parallel: pg_net's 15s budget covers the WHOLE call, so it
+      // must take ≈ the slowest recipient, not the sum (c278 follow-up).
+      const results = await Promise.all(record.invited_user_ids.map(async (inviteeId: string) => {
         const r = await sendIfOptedIn(supabase, inviteeId, 'wordy', 'invite', {
           title: 'Wordy — game invite',
           body: `${inviterName} invited you to a Wordy game. Tap to play! 🌸`,
@@ -296,8 +311,8 @@ serve(async (req: Request) => {
           url: `/wordy/game/${record.id}`,
           icon: '/wordy/favicon.svg',
         })
-        results.push({ invitee: inviteeId, ...r })
-      }
+        return { invitee: inviteeId, ...r }
+      }))
       return new Response(JSON.stringify({ results }), { status: 200, headers: corsHeaders })
     }
 

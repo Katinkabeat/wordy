@@ -139,7 +139,7 @@ async function sendPushToUser(
     .eq('app', PUSH_APP)
     .maybeSingle()
 
-  if (!sub) return { sent: false, reason: 'no push subscription' }
+  if (!sub) return { sent: false, reason: 'no push subscription', tag: payload.tag, user: userId }
 
   const pushSubscription = {
     endpoint: sub.endpoint,
@@ -148,18 +148,18 @@ async function sendPushToUser(
 
   try {
     await sendWithRetry(pushSubscription, payload, userId, PUSH_APP, sub.endpoint)
-    return { sent: true, via: PUSH_APP }
+    return { sent: true, via: PUSH_APP, tag: payload.tag, user: userId }
   } catch (pushErr: any) {
     if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
       await supabase.from('push_subscriptions').delete().eq('user_id', userId).eq('app', PUSH_APP)
       await reportAddressDeath('Wordy', userId, PUSH_APP, topic, pushErr.statusCode, sub.endpoint)
-      return { sent: false, reason: 'address expired' }
+      return { sent: false, reason: 'address expired', tag: payload.tag, user: userId }
     }
     // One recipient's failed send is not the whole call's failure: throwing here
     // aborted the fan-out loops (game_finished), so the *other* players silently
     // got no push either. Report it and let the caller carry on.
     await reportServerError('Wordy', topic, pushErr?.message ?? String(pushErr))
-    return { sent: false, reason: 'send failed' }
+    return { sent: false, reason: 'send failed', tag: payload.tag, user: userId }
   }
 }
 

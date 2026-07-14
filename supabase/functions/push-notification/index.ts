@@ -57,7 +57,7 @@ async function sendIfOptedIn(
 // The one app every push address is stored under (see sendPushToUser).
 const PUSH_APP = 'sidequest'
 
-// ── Transient-failure retry (c271) ───────────────────────────────────────────
+// ── Transient-failure retry (c276) ───────────────────────────────────────────
 // A 5xx / 429 / timeout from a push service is that service having a moment, not
 // a dead address. With no retry a single blip silently drops a real turn ping —
 // the same player-goes-dark outcome reportAddressDeath (c268) guards the other

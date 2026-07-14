@@ -76,6 +76,16 @@ function isTransientPushError(err: any): boolean {
   return status === 429 || status >= 500
 }
 
+// Last 8 chars of the push endpoint — enough to tell one address from another
+// without logging the whole (sensitive, capability-bearing) URL. Lets an
+// #error-log line be correlated against the push_subscriptions row: same ep on a
+// later failure = the address never healed; different ep = it rotated and the
+// failure is the push service's, not a stale address.
+function epFingerprint(endpoint: string): string {
+  const s = String(endpoint ?? '')
+  return s.length > 8 ? s.slice(-8) : (s || 'unknown')
+}
+
 // web-push's WebPushError message is always the generic "Received unexpected
 // response code" — the push service's real status and body hang off the error
 // object, never the message. Fold them in so the #error-log line is diagnosable.
@@ -84,7 +94,7 @@ function pushErrDetail(err: any, userId: string, app: string, endpoint: string, 
   try { host = new URL(endpoint).host } catch (_e) { /* keep 'unknown' */ }
   const status = err?.statusCode ?? 'no response'
   const body = String(err?.body ?? err?.message ?? err ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
-  return `push send failed: ${status} — ${body} | app:${app} host:${host} user:${userId} attempts:${attempts}`
+  return `push send failed: ${status} — ${body} | app:${app} host:${host} ep:${epFingerprint(endpoint)} user:${userId} attempts:${attempts}`
 }
 
 // Sends, retrying transient failures. 410/404 propagate raw so the caller can run
@@ -208,7 +218,7 @@ async function reportAddressDeath(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: 'Rook',
-        content: `**${game}** — push address expired (FYI)\n\`${statusCode} → sub deleted\` app:\`${app}\` topic:\`${topic}\` user:\`${userId}\` endpoint:\`${host}\`\nSelf-heal re-subscribes on next rotation / hub-open / play.`,
+        content: `**${game}** — push address expired (FYI)\n\`${statusCode} → sub deleted\` app:\`${app}\` topic:\`${topic}\` user:\`${userId}\` endpoint:\`${host}\` ep:\`${epFingerprint(endpoint)}\`\nSelf-heal re-subscribes on next rotation / hub-open / play.`,
         allowed_mentions: { parse: [] },
       }),
     })

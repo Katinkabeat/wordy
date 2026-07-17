@@ -137,7 +137,9 @@ export default function HowToPlayModal({ open, onClose }) {
             The game ends when the bag is empty and one player uses their last
             tile. That player earns a bonus from everyone else's leftover tiles,
             while the rest lose the value of the tiles still on their racks.
-            Highest score wins.
+            Highest score wins. If the bag is empty and every player passes
+            twice in a row, the game ends there too, with the same leftover-tile
+            deductions.
           </p>
         </section>
 

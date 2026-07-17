@@ -9,11 +9,6 @@ import {
 } from '../lib/gameLogic.js'
 import { validateWords } from '../lib/wordValidator.js'
 
-// Spread into a `games` UPDATE payload to flip status when the game ends.
-function endgameFields(over) {
-  return over ? { status: 'finished', finished_at: new Date().toISOString() } : {}
-}
-
 // Records final winner / scores / leaderboard stats. Called unawaited from the
 // move flow — the game-finished status is already set atomically inside
 // submit_play, so the game itself is never stuck on this. But it is NOT
@@ -139,22 +134,17 @@ export function useGameMutations({
     if (!isMyTurn()) return
     recall()
     mutatingRef.current = true
-    const nextIdx   = (myPlayer.player_index + 1) % players.length
-    const newPasses = (game.consecutive_passes ?? 0) + 1
-    const over      = newPasses >= players.length * 2
-
-    // If game over via passes: everyone loses their rack value (no one gets the bonus)
-    let finalPlayers = [...players]
-    if (over) finalPlayers = finalizeEndgame(finalPlayers, null)
 
     try {
-      const { error: gameErr } = await supabase.from('games').update({
-        current_player_idx: nextIdx,
-        consecutive_passes: newPasses,
-        last_activity_at: new Date().toISOString(),
-        ...endgameFields(over),
-      }).eq('id', gameId)
-      if (gameErr) { console.error('pass: games update failed:', gameErr); toast.error('Failed to pass — please retry.'); return }
+      // Atomic + authoritative: the RPC increments the pass counter, advances
+      // the turn, and decides game-over SERVER-side — pass-out only ends the
+      // game when the tile bag is empty (c289), so a client can't force an
+      // early finish. Returns whether the game ended.
+      const { data: over, error: passErr } = await supabase.rpc('submit_pass', {
+        p_game_id: gameId,
+        p_user_id: user.id,
+      })
+      if (passErr) { console.error('submit_pass RPC failed:', passErr); toast.error('Failed to pass — please retry.'); return }
 
       // Fire-and-forget: move log + finish RPC are non-critical
       supabase.from('game_moves').insert({
@@ -163,7 +153,8 @@ export function useGameMutations({
       }).then(({ error }) => { if (error) console.error('pass: game_moves insert failed:', error) })
 
       if (over) {
-        callFinishGameRpc(gameId, finalPlayers)
+        // Game over via passes: everyone loses their rack value (no one gets the bonus)
+        callFinishGameRpc(gameId, finalizeEndgame([...players], null))
         toast('🏆 Game over — no moves left!')
       } else {
         toast('⏩ Turn passed.')
@@ -193,7 +184,11 @@ export function useGameMutations({
 
       const nextIdx   = (myPlayer.player_index + 1) % players.length
       const newPasses = (game.consecutive_passes ?? 0) + 1
-      const over      = newPasses >= players.length * 2
+      // Pass-out only ends the game when the bag is empty (c289) — and an
+      // exchange puts tiles back in the bag, so `over` is effectively always
+      // false here. Kept as the real rule (server recomputes it anyway) so
+      // this stays in sync with submit_exchange / isGameOver.
+      const over      = newPasses >= players.length * 2 && newBag.length === 0
 
       let finalPlayers = [...players]
       if (over) finalPlayers = finalizeEndgame(finalPlayers, null)

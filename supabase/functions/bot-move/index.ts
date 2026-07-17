@@ -119,12 +119,13 @@ serve(async (req) => {
     }
 
     // ── No play: exchange if the bag allows, else pass ────────
-    const newPasses = (game.consecutive_passes ?? 0) + 1
-    const over = newPasses >= players.length * 2
-    let finalPlayers = players.map((p: any) => ({ ...p }))
-    if (over) finalPlayers = finalizeEndgame(finalPlayers, null)
+    // Pass-out only ends the game when the bag is empty (c289). An exchange
+    // returns tiles to the bag, so it can never be the game-ending move; a
+    // pass goes through submit_pass, which decides game-over server-side.
+    let over = false
 
     if (game.tile_bag.length >= 1) {
+      const newPasses = (game.consecutive_passes ?? 0) + 1
       const n = Math.min(me.rack.length, game.tile_bag.length)
       const returned = me.rack.slice(0, n)
       const remaining = me.rack.slice(n)
@@ -133,20 +134,23 @@ serve(async (req) => {
 
       const { error } = await supabase.rpc('submit_exchange', {
         p_game_id: game.id, p_user_id: me.user_id, p_tile_bag: newBag, p_rack: refilled,
-        p_current_player_idx: nextIdx, p_consecutive_passes: newPasses, p_is_game_over: over,
+        p_current_player_idx: nextIdx, p_consecutive_passes: newPasses, p_is_game_over: false,
       })
       if (error) throw error
       await supabase.from('game_moves').insert({ game_id: game.id, user_id: me.user_id, move_type: 'exchange', score: 0, rack_after: refilled })
     } else {
-      // Pass: direct update (service role bypasses RLS).
-      const { error } = await supabase.from('games').update({
-        current_player_idx: nextIdx,
-        consecutive_passes: newPasses,
-        ...(over ? { status: 'finished', finished_at: new Date().toISOString() } : {}),
-      }).eq('id', game.id)
+      // Same atomic RPC humans use (the c157 guard exempts service_role);
+      // also bumps last_activity_at, which the old direct UPDATE skipped.
+      const { data, error } = await supabase.rpc('submit_pass', {
+        p_game_id: game.id, p_user_id: me.user_id,
+      })
       if (error) throw error
+      over = data === true
       await supabase.from('game_moves').insert({ game_id: game.id, user_id: me.user_id, move_type: 'pass', score: 0, rack_after: me.rack })
     }
+
+    let finalPlayers = players.map((p: any) => ({ ...p }))
+    if (over) finalPlayers = finalizeEndgame(finalPlayers, null)
 
     if (over) {
       await supabase.rpc('finish_game', {

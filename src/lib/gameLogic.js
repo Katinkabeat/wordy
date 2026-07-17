@@ -155,11 +155,14 @@ export function calculateScore(board, placements, wordsWithCells, layoutVersion 
 
 /** Game ends when:
  *  (a) a player empties their rack and the bag is empty, OR
- *  (b) all players pass/exchange consecutively (≥ 2 × numPlayers times)
+ *  (b) the bag is empty and all players pass/exchange consecutively
+ *      (≥ 2 × numPlayers times) — a true endgame stalemate. With tiles
+ *      still in the bag, passing never ends the game (c289: kills
+ *      pass-out score farming; mid-bag quitters forfeit instead).
  */
 export function isGameOver(bagLength, rack, consecutivePasses, numPlayers) {
   if (bagLength === 0 && rack.length === 0) return true
-  if (consecutivePasses >= numPlayers * 2)   return true
+  if (bagLength === 0 && consecutivePasses >= numPlayers * 2) return true
   return false
 }
 

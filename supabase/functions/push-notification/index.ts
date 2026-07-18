@@ -121,6 +121,13 @@ function pushErrDetail(err: any, userId: string, app: string, endpoint: string, 
   return `push send failed: ${status} — ${body} | app:${app} host:${host} ep:${epFingerprint(endpoint)} user:${userId} attempts:${attempts}`
 }
 
+// Topics where a held-back delivery goes stale before it's seen (the turn's
+// already played, the invite already handled) ride Urgency: high so battery
+// saver / Doze shows them immediately instead of at the next maintenance
+// window (c283). Everything else stays normal — FCM can deprioritize senders
+// that blanket-mark pushes high.
+const HIGH_URGENCY_TOPICS = new Set(['your_turn', 'nudge', 'invite', 'opponent_joined'])
+
 // Sends, retrying transient failures. 410/404 propagate raw so the caller can run
 // its expired-address cleanup; anything else surfaces as an enriched Error.
 async function sendWithRetry(
@@ -129,11 +136,13 @@ async function sendWithRetry(
   userId: string,
   app: string,
   endpoint: string,
+  topic: string,
 ): Promise<void> {
+  const urgency = HIGH_URGENCY_TOPICS.has(topic) ? 'high' : 'normal'
   const startedAt = Date.now()
   for (let attempt = 0; ; attempt++) {
     try {
-      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS })
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload), { TTL: 86400, timeout: PUSH_ATTEMPT_TIMEOUT_MS, urgency })
       return
     } catch (err: any) {
       if (err?.statusCode === 410 || err?.statusCode === 404) throw err
@@ -178,7 +187,7 @@ async function sendPushToUser(
   }
 
   try {
-    await sendWithRetry(pushSubscription, payload, userId, PUSH_APP, sub.endpoint)
+    await sendWithRetry(pushSubscription, payload, userId, PUSH_APP, sub.endpoint, topic)
     return { sent: true, via: PUSH_APP, tag: payload.tag, user: userId }
   } catch (pushErr: any) {
     if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {

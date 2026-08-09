@@ -1,15 +1,17 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { supabase } from './lib/supabase.js'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
+import { lazyWithRetry } from '../../rae-side-quest/packages/sq-ui/index.js'
 
 // Code-split each route: only the page the user is visiting downloads
 // up-front; the others fetch on demand the first time they're navigated to.
-const LobbyPage = lazy(() => import('./components/lobby/LobbyPage.jsx'))
-const GamePage  = lazy(() => import('./components/game/GamePage.jsx'))
-const StatsPage = lazy(() => import('./components/stats/StatsPage.jsx'))
-const SoloCharacterSelect = lazy(() => import('./components/solo/SoloCharacterSelect.jsx'))
+// lazyWithRetry (c314): a dropped chunk fetch retries instead of hard-crashing.
+const LobbyPage = lazyWithRetry(() => import('./components/lobby/LobbyPage.jsx'))
+const GamePage  = lazyWithRetry(() => import('./components/game/GamePage.jsx'))
+const StatsPage = lazyWithRetry(() => import('./components/stats/StatsPage.jsx'))
+const SoloCharacterSelect = lazyWithRetry(() => import('./components/solo/SoloCharacterSelect.jsx'))
 
 function PageLoading() {
   return (

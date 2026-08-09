@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react'
+import { Suspense, useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase.js'
@@ -11,11 +11,11 @@ import {
 import { useUnseenResults } from '../../hooks/useUnseenResults.jsx'
 import LobbyGameRow from './LobbyGameRow.jsx'
 import CreateGameSheet from './CreateGameSheet.jsx'
-import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard } from '../../../../rae-side-quest/packages/sq-ui/index.js'
+import { SQLobbyShell, SQLobbyHeader, SQCompletedGamesCard, lazyWithRetry } from '../../../../rae-side-quest/packages/sq-ui/index.js'
 
 // Admin-only panel — split out so non-admins (the vast majority of users)
 // don't download its code with the lobby.
-const AdminPanel = lazy(() => import('../admin/AdminPanel.jsx'))
+const AdminPanel = lazyWithRetry(() => import('../admin/AdminPanel.jsx'))
 import SettingsDropdown from './SettingsModal.jsx'
 import HowToPlayModal from '../HowToPlayModal.jsx'
 import AvatarMenu from './AvatarMenu.jsx'

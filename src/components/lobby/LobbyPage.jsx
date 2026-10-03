@@ -112,22 +112,17 @@ export default function LobbyPage({ session }) {
   }, [loadGames, handleFinishedToast])
 
   useEffect(() => {
-    // Narrow filters: subscribe only to games I created and to game_players
-    // rows that are mine. The previous unfiltered subscription fired on
-    // every other player's move across the entire Wordy database, causing
-    // the lobby to re-fetch + re-render constantly. Open games created by
-    // OTHERS still appear via the 10s poll fallback below — that's fine
-    // since urgent events ("your turn", "opponent joined") have push
-    // notifications anyway.
-    const channel = supabase.channel(`lobby-updates-${user.id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'games',
-        filter: `created_by=eq.${user.id}`,
-      }, handleGameChange)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'game_players',
-        filter: `user_id=eq.${user.id}`,
-      }, loadGames)
+    // Private per-user Broadcast topic: the DB trigger (realtime_broadcast.sql)
+    // only sends me changes to games I'm in or created, so other players'
+    // activity never reaches this client. Open games created by OTHERS still
+    // appear via the 10s poll fallback below — that's fine since urgent events
+    // ("your turn", "opponent joined") have push notifications anyway.
+    // Payload: { table, event, game_id, status, new? } — `new` only for games.
+    const channel = supabase.channel(`wordy:user:${user.id}`, { config: { private: true } })
+      .on('broadcast', { event: 'change' }, ({ payload }) => {
+        if (payload?.table === 'games') handleGameChange(payload)
+        else loadGames()
+      })
       .subscribe()
 
     // Polling fallback: if Supabase Realtime is down (free-tier limits, etc.)

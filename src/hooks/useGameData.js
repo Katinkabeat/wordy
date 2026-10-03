@@ -118,17 +118,15 @@ export function useGameData(gameId, user) {
   useEffect(() => { loadGame() }, [loadGame])
 
   // Real-time subscription with auto-reconnect.
-  // Both handlers call loadGame() for a guaranteed fresh fetch.
-  // Note: game_players filters on game_id (non-PK), which requires
-  // REPLICA IDENTITY FULL on the table — set via SQL migration.
+  // The handler calls loadGame() for a guaranteed fresh fetch.
+  // Events are Broadcast-from-database messages sent by the
+  // wordy_broadcast_game_change trigger (realtime_broadcast.sql) on the private
+  // topic wordy:game:<id>; no replica identity / publication needed.
   useEffect(() => {
     function subscribe() {
       if (channelRef.current) supabase.removeChannel(channelRef.current)
-      channelRef.current = supabase.channel(`game-${gameId}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
-          () => { if (placementsRef.current.length === 0) loadGame() }
-        )
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'game_players', filter: `game_id=eq.${gameId}` },
+      channelRef.current = supabase.channel(`wordy:game:${gameId}`, { config: { private: true } })
+        .on('broadcast', { event: 'change' },
           () => { if (placementsRef.current.length === 0) loadGame() }
         )
         .subscribe()

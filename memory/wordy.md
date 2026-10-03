@@ -712,3 +712,6 @@ Follow-up to the 2026-07-14 stale-notification investigation (c285): battery sav
 
 ## 2026-09-24 — Test Accounts group (c332)
 Hub group `test-accounts` (Test + Claude test logins) is excluded from every leaderboard/stat; any MP game with a member seated is ignored for BOTH players; members get a "Replay (test account)" button on the daily finished screen and a replay overwrites the day's row (server-enforced). Check with `sq_is_test_account(uid)` / `sq_test_account_ids(uuid[])`. **Any new leaderboard/stat aggregate must add the exclusion.** Full detail on c332.
+
+## 2026-10-03 — Realtime → Broadcast (c386, `1e06b5b`)
+`realtime_broadcast.sql` (repo root): trigger `wordy_broadcast_game_change` on `games` (UPDATE) + `game_players` (I/U/D) → `realtime.send` to `wordy:game:<id>` and `wordy:user:<uid>` per player; policies `wordy_realtime_*` on `realtime.messages`. `useGameData.js` + `LobbyPage.jsx` subscribe to private Broadcast channels; polls kept as fallback. Payload `new` carries `{id,status,created_by,close_reason,closed_by_admin,forfeit_user_id}` for the finish toast. `games`/`game_players`/`game_moves` dropped from the publication.
